@@ -1,0 +1,17 @@
+#ifndef __TERACACHE_CONFIG_H__
+#define __TERACACHE_CONFIG_H__
+
+//#define POLLING_MODE_ENABLED
+#define RUN_TERACACHE  
+
+#define NUM_CHANNEL                           (5)
+#define CHANNEL_SIZE                          (1024)
+#define NUM_TX_DESCRIPTORS_PER_QUEUE          (512)
+#define NUM_RX_DESCRIPTORS_PER_QUEUE          (512)
+
+#define NUM_RX_QUEUES                         (NUM_RX_THREADS_PER_NIC * 2)
+#define NUM_TX_QUEUES                         (NUM_TX_THREADS_PER_NIC * 2)
+#define NUM_RX_THREADS_PER_NIC                (NUM_CHANNEL)
+#define NUM_TX_THREADS_PER_NIC                (NUM_CHANNEL)
+
+#endif

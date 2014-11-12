@@ -1,0 +1,1 @@
+/usr/local/bin/qemu-system-x86_64 -m 4096 -hda ./hdd.img -drive file=./nvme.img,if=none,id=D22 -device nvme,drive=D22,serial=1234 --enable-kvm -redir tcp:2222::22 -boot d -cdrom ubuntu-14.04.1-desktop-amd64.iso -smb /home/SISA/d.waddington

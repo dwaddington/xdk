@@ -1,0 +1,190 @@
+/*
+   eXokernel Development Kit (XDK)
+
+   Based on code by Samsung Research America Copyright (C) 2013
+ 
+   The GNU C Library is free software; you can redistribute it and/or
+   modify it under the terms of the GNU Lesser General Public
+   License as published by the Free Software Foundation; either
+   version 2.1 of the License, or (at your option) any later version.
+
+   The GNU C Library is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   Lesser General Public License for more details.
+
+   You should have received a copy of the GNU Lesser General Public
+   License along with the GNU C Library; if not, see
+   <http://www.gnu.org/licenses/>.
+
+   As a special exception, if you link the code in this file with
+   files compiled with a GNU compiler to produce an executable,
+   that does not cause the resulting executable to be covered by
+   the GNU Lesser General Public License.  This exception does not
+   however invalidate any other reasons why the executable file
+   might be covered by the GNU Lesser General Public License.
+   This exception applies to code released by its copyright holders
+   in files containing the exception.  
+*/
+
+
+
+#ifndef __EXO_STACK_H__
+#define __EXO_STACK_H__
+
+#include <libexo.h>
+#include <network/nic_itf.h>
+#include <network/stack_itf.h>
+#include <network/memory_itf.h>
+#include <x540/driver_config.h>
+#include <x540/x540_types.h>
+#include <network_stack/protocol.h>
+#include "../../msg_processor.h"
+#include <x540/xml_config_parser.h>
+
+using namespace Exokernel;
+
+namespace Exokernel {
+
+class Exo_stack {
+
+  INic * _inic;
+  IStack * _istack;
+  IMem * _imem;
+  int _index; // corresponding to NIC driver index
+  Msg_processor * _msg_processor;
+  Config_params * _params;
+
+  union {
+    struct {
+      unsigned pkt;
+      cpu_time_t timer;
+      unsigned accum_pkt;
+    } ctr;
+    char padding[CACHE_LINE_SIZE];
+  } recv_counter[NUM_RX_QUEUES];
+
+  struct etharp_entry arp_table[ARP_TABLE_SIZE];
+  uint8_t mac[6];
+  struct eth_addr ethaddr;
+  uint8_t ip[4];
+  uint16_t udp_port;
+  uint16_t remote_port;
+  uint64_t cpu_freq;
+  ip_addr_t ip_addr;
+  ip_addr_t remote_ip_addr;
+  struct ip_reassdata *reassdatagrams[NUM_RX_THREADS_PER_NIC];
+  struct udp_pcb *udp_pcbs[NUM_RX_THREADS_PER_NIC];
+  unsigned rx_core[NUM_RX_THREADS_PER_NIC];
+  struct exo_mbuf ** mbuf[NUM_TX_THREADS_PER_NIC]; 
+
+  union {
+    uint16_t ctr;
+    char padding[CACHE_LINE_SIZE];
+  } ip_iden_counter[NUM_TX_QUEUES];
+  uint16_t ip_iden_space_per_queue;
+  uint16_t ip_iden_base[NUM_TX_QUEUES];
+
+  unsigned stats_num;
+  unsigned client_rx_flow_num;
+  unsigned server_port;
+
+public:
+  /** 
+    * Constructor
+    * 
+    */
+  Exo_stack(IStack * istack, INic * inic, IMem * imem, 
+            unsigned index, Msg_processor * msg, Config_params * params) {
+    assert(inic);
+    assert(istack);
+    assert(imem);
+
+    _params = params;
+
+    stats_num = _params->stats_num;
+    client_rx_flow_num = _params->client_rx_flow_num;
+    assert(client_rx_flow_num == 4);
+    server_port = _params->server_port;
+
+    _inic = inic;
+    _istack = istack;
+    _imem = imem;
+    _index = index;
+    _msg_processor = msg;   
+
+    init_param();
+  }
+
+  /* stack functions */
+  void init_param();
+  void send_pkt_test(unsigned queue);
+  void send_udp_pkt_test(unsigned queue);
+  ip_addr_t* get_remote_ip() { return &remote_ip_addr; }
+  INic * get_nic_component() { return _inic; }
+  IMem * get_mem_component() { return _imem; }
+  Msg_processor * get_msg_processor() { return _msg_processor; }
+  unsigned get_rx_core(unsigned idx) { return rx_core[idx]; }
+  /**
+  * To free a pbuf list associated memory.
+  *
+  * @param pbuf_list The pointer to the pbuf struct.
+  * @param flag True means to free packet buffer and pbuf meta data; False means to free pbuf meta data only.
+  */
+  void free_packets(pbuf_t* pbuf_list, bool flag);
+  
+  /* stack component interfaces*/
+  pkt_status_t ethernet_input(uint8_t *pkt, size_t len, unsigned queue);
+  status_t ethernet_output_simple(struct exo_mbuf **p, size_t& cnt, unsigned queue);
+  status_t ethernet_output(struct exo_mbuf **p, size_t& cnt, unsigned queue);
+
+  /* ARP functions */
+  pkt_status_t arp_input(uint8_t *pkt);
+  void update_arp_entry(ip_addr_t *ipaddr, struct eth_addr *ethaddr);
+  int find_arp_entry(ip_addr_t *ipaddr);
+  void arp_output(ip_addr_t *ipdst_addr);
+  void send_arp_reply(uint8_t *pkt);
+  int get_entry_in_arp_table(ip_addr_t* ip_addr);
+  void send_arp(uint8_t *pkt, uint32_t length, unsigned tx_queue, bool is_arp_reply);
+
+  /* IP functions */
+  pkt_status_t ip_input(uint8_t *pkt, uint16_t len, unsigned queue);
+  pkt_status_t icmp_input(uint8_t *pkt);
+  void send_ping_reply(uint8_t *pkt);
+  bool is_sent_to_me(uint8_t *pkt); 
+  pbuf_t * ip_reass(pbuf_t *pkt, pkt_status_t * t, unsigned queue);
+  struct ip_reassdata* ip_reass_enqueue_new_datagram(struct ip_hdr *fraghdr, unsigned queue);
+  bool ip_reass_chain_frag_into_datagram_and_validate(struct ip_reassdata *ipr, pbuf_t *new_p, pkt_status_t * t);
+  void ip_reass_dequeue_datagram(struct ip_reassdata *ipr, struct ip_reassdata *prev, unsigned queue);
+
+  /* UDP functions*/
+  pkt_status_t udp_input(pbuf_t *pkt, unsigned queue);
+  void udp_bind(ip_addr_t *ipaddr, uint16_t port);
+
+  /**
+   * To send UDP packets.
+   *
+   * @param vaddr Virtual address of the UDP payload.
+   * @param paddr Physical address of the UDP payload.
+   * @param udp_payload_len The length of UDP payload.
+   * @param queue The TX queue where the packets are sent.
+   * @param recycle packet memory recycle flag.
+   * @param allocator_id The memory allocator id.
+   */
+  void udp_send_pkt(uint8_t *vaddr, addr_t paddr, unsigned udp_payload_len, unsigned queue, 
+                    bool recycle, unsigned allocator_id);
+
+  /**
+   * To send UDP packets for GET/GET_K reply. This function is application specific.
+   *
+   * @param app_hdr_vaddr Virtual address of the application header.
+   * @param app_hdr_paddr Physical address of the application header.
+   * @param app_hdr_len The length of the application header.
+   * @param pbuf_list The frame list for the object.
+   * @param queue The TX queue where the packets are sent.
+   */
+  void udp_send_get_reply(uint8_t *app_hdr_vaddr, addr_t app_hdr_paddr, uint32_t app_hdr_len, pbuf_t* pbuf_list, unsigned queue);
+};
+
+}
+#endif

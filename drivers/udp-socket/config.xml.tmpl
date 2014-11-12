@@ -1,0 +1,65 @@
+<?xml version="1.0" ?>
+
+<!-- 
+    1. This config file contains major parameters for UDP socket and TeraCache app.
+       config.xml.tmpl is a sample file for beast server configuration.
+
+    2. The old driver_config.h is still needed for now. Please make sure the macros 
+       defined in driver_config.h match those defined in this file. 
+
+    3. All numbers should be configured carefully based on your target platform.
+       Make sure combined allocator quota does not exceed memory size.
+-->
+
+<udp_socket>
+
+
+  <!-- MEMORY AND ALLOCATOR QUOTA -->
+  <shm_max_size>2</shm_max_size>                                  <!-- maximum size of shared memory in GB. -->
+  <frame_num_per_core>4096</frame_num_per_core>
+  <jd_num_per_core>4096</jd_num_per_core>
+  <mbuf_num_per_core>4096</mbuf_num_per_core>
+  <meta_data_num_per_core>4096</meta_data_num_per_core>
+  <pbuf_num_per_core>4096</pbuf_num_per_core>
+  <net_header_num_per_core>4096</net_header_num_per_core>
+  <ip_reass_num_per_core>4096</ip_reass_num_per_core>
+  <udp_pcb_num_per_core>1024</udp_pcb_num_per_core>
+
+
+
+  <!-- PLATFORM AND DRIVER CONFIG -->
+  <channels_per_nic>2</channels_per_nic>                           <!-- same as in driver_config.h. -->
+  <channel_size>1024</channel_size>                                <!-- same as in driver_config.h. -->                             
+  <tx_desc_per_queue>512</tx_desc_per_queue>                       <!-- same as in driver_config.h. -->
+  <rx_desc_per_queue>512</rx_desc_per_queue>                       <!-- same as in driver_config.h. -->
+  <nic_num>1</nic_num>                                             
+  <cpus_per_nic>8</cpus_per_nic>                                  
+  <rx_threads_cpu_mask>0001001001001001</rx_threads_cpu_mask>
+  <tx_threads_cpu_mask>0010010011000010</tx_threads_cpu_mask>
+  <flex_byte_pos>24</flex_byte_pos>
+
+
+
+  <!-- APPLICATION CONFIG -->
+  <stats_num>1000000</stats_num>
+  <client_rx_flow_num>3</client_rx_flow_num>
+  <eviction_period>10</eviction_period>
+  <server_port>11211</server_port>
+  <server_ip1>10.0.0.1</server_ip1>
+  <server_ip2>10.0.0.2</server_ip2>
+  <server_ip3>10.0.0.3</server_ip3>
+  <server_ip4>10.0.0.4</server_ip4>
+  <!-- 
+    Expected peak request rate (in requests per second).
+    Used to estimate evition threshold in the IXGBE driver (acting as memory manager) 
+  -->
+  <request_rate>3500000</request_rate>
+  <!--
+   SERVER_TIMESTAMP 0 (no timestamp)
+   SERVER_TIMESTAMP 1 (2 timestamps to get overall server latency)
+   SERVER_TIMESTAMP 2 (6 timestamps to breakdown in fine granularity)
+  -->
+  <server_timestamp>1</server_timestamp>
+
+
+</udp_socket>

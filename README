@@ -1,0 +1,29 @@
+The eXokernel Development Kit is an open source effort to build exokernel capabilities for the Linux operating system.
+
+The project uses code developed and released by Samsung Research America.
+
+--------
+History:
+--------
+
+12-11-2014:  
+
+XDK seed code released as open source.  At this point much of
+the code is not fully operational and requires significant attention.  The
+basic Exokernel is operational and the AHCI block device driver can be 
+used to demonstrate its capability.
+
+
+
+-------------
+Contributors:
+-------------
+
+Daniel Waddington (d.waddington@samsung.com)
+Jilong Kuang (jilong.kuang@samsung.com)
+Juan Colmenares (juan.col@samsung.com)
+Changhui Lin (changhui.lin@samsung.com)
+Won Jeon (won.jeon@samsung.com)
+Reza Dorrigiv (r.dorrigiv@samsung.com)
+
+

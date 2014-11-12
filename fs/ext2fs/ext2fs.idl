@@ -1,0 +1,109 @@
+import "file/types.h";
+
+module Ext2fs
+{
+
+  interface Filesystem
+  {
+    /** 
+     * Open a session and establish shared memory (client allocated)
+     * 
+     * @param shmem Handle to shared memory
+     * @param ipc_endpoint Handle to open Filesystem_session interface
+     *
+     * @return Status S_OK on success
+     */
+    status_t open_session(in Shmem_handle shmem,
+                          out IPC_handle ipc_endpoint);
+
+
+    /** 
+     * Close a session
+     * 
+     * @param IPC_handle Currently open session handle
+     * 
+     * @return 
+     */
+    status_t close_session(in IPC_handle ipc_endpoint);
+  };
+
+  interface Filesystem_session
+  {
+
+    /** 
+     * Open a file 
+     * 
+     * @param pathname Full pathname of file
+     * @param file [out] file handle
+     * 
+     * @return 
+     */
+    status_t open_file(in String pathname, in unsigned long flags, out file_handle_t file);
+    
+    /** 
+     * Close a file
+     * 
+     * @param file File handle
+     * 
+     * @return Status S_OK on success
+     */
+    status_t close_file(in file_handle_t file);
+
+    /** 
+     * Read from a file from a given file offset
+     * 
+     * @param file File handle to read from
+     * @param byte_count 
+     * @param offset 
+     * 
+     * @return 
+     */
+    status_t read_file_from_offset(in file_handle_t file, in unsigned long byte_count, in offset_t offset);
+
+    /** 
+     * Read from a file from the current position
+     * 
+     * @param file File handle to read from
+     * @param byte_count 
+     * @param offset 
+     * 
+     * @return 
+     */
+    status_t read_file(in file_handle_t file, in unsigned long byte_count);
+
+
+    /** 
+     * Retrieve information for a given file (reads from inode on ext2fs)
+     * 
+     * @param file 
+     * @param finfo 
+     * 
+     * @return 
+     */
+    status_t read_file_info(in file_handle_t file, out file_info_t finfo);
+
+    /** 
+     * Read entries from a given directory.  Result is put in shared memory.
+     * 
+     * @param pathname Full path name of the directory /foo/bar/
+     * @param flags Query flags
+     * @param entries Number of entries read
+     * 
+     * @return S_OK on success
+     */
+    status_t read_directory_entries(in String pathname, 
+                                    in directory_query_flags_t flags,
+                                    out size_t entries);
+    
+    /** 
+     * Seek current file position
+     * 
+     * @param file Open file handle
+     * @param pos Position to seek to in bytes
+     * 
+     * @return S_OK on success
+     */
+    status_t seek(in file_handle_t file, in offset_t offset);
+  };
+
+};
