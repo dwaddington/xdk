@@ -1,0 +1,3 @@
+Loadable kernel module (known as the parasitic kernel) provides services to support user-level drivers etc. It is comparable to the UIO kernel module but provides cleaner and broader control.
+
+11-12-2014: Working on non-root access to devices (currently access is root only).

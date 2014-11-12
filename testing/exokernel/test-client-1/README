@@ -1,0 +1,3 @@
+Open up a PCI device and dump the PCI registers.
+
+Uses QEMU AHCI device.  Make sure to rmmod ahci driver (or run unbind.sh).
