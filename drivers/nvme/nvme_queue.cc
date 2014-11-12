@@ -116,7 +116,7 @@ status_t NVME_queues_base::increment_submission_tail(queue_ptr_t * tptr) {
   if(_sq_tail == _queue_items)
     _sq_tail = 0;
   
-  return S_OK;
+  return Exokernel::S_OK;
 }
 
 

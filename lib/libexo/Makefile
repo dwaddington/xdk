@@ -12,7 +12,7 @@ libexo.so: $(OBJS)
 	gcc -g -shared -Wl,-soname,libexo.so -o libexo.so $(OBJS) -ldl -lnuma
 
 clean:
-	rm -Rf obj libexo.so
+	rm -Rf obj
 
 TAGS:
 	etags *.cc *.h

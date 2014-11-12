@@ -1,4 +1,4 @@
-AC_INIT([SILICA],[0.2])
+AC_INIT([XDK],[0.1])
 
 AC_CHECK_LIB([numa],[numa_available],[],AC_MSG_ERROR([libnuma-dev not installed]))
 AC_CHECK_LIB([tinyxml],[tolower],[],AC_MSG_ERROR([libtinyxml-dev not installed]))
@@ -18,6 +18,7 @@ AC_CHECK_LIB([tinyxml],[tolower],[],AC_MSG_ERROR([libtinyxml-dev not installed])
 AC_CONFIG_FILES([
       Makefile
       lib/libexo/Makefile
+      mk/global.mk
 ])
 
 AC_OUTPUT

@@ -1,4 +1,4 @@
-#XDK_BASE = $(HOME)/xdk
+XDK_BASE = /home/dwaddington/xdk
 
 COBJS   = $(addprefix obj/,$(subst .c,.o,$(filter %.c,$(SOURCES)))) 
 CXXOBJS = $(addprefix obj/,$(subst .cc,.o,$(filter %.cc,$(SOURCES))))
