@@ -27,10 +27,7 @@
    in files containing the exception.  
 */
 
-
-
-
-#include <exo/component.h>
+#include <component/base.h>
 
 /** 
  * Interface definition for IHello

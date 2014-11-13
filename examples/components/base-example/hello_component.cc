@@ -27,12 +27,13 @@
    in files containing the exception.  
 */
 
-
-
-
-#include <exo/component.h>
-#include "hello_itf.h"
 #include <string.h>
+#include <stdio.h>
+
+#include <component/base.h>
+
+#include "hello_itf.h"
+
 
 /** 
  * Interface IHello implementation
@@ -53,20 +54,21 @@ public:
  * Definition of the component
  * 
  */
-class MyComponent : public Exokernel::Component_base,
+class MyComponent : public Component::Base,
                     public IHello_impl
 {
 public:  
   DECLARE_COMPONENT_UUID(0xae591c36,0x7988,0x11e3,0x9f1c,0xbc30,0x5bdc,0x754d);
 
-  void * query_interface(Exokernel::uuid_t& itf_uuid) {
+public:
+  void * query_interface(Component::uuid_t& itf_uuid) {
     if(itf_uuid == IHello::uuid()) {
       add_ref(); // implicitly add reference
       return (void *) static_cast<IHello *>(this);
     }
     else 
       return NULL; // we don't support this interface
-  }
+  };
 };
 
 

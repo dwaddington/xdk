@@ -27,17 +27,16 @@
    in files containing the exception.  
 */
 
-
-
-
-#include <exo/component.h>
+#include <component/base.h>
 #include <dlfcn.h>
+#include <stdio.h>
+
 #include "hello_itf.h"
 
 
 int main()
 {
-  Exokernel::Component_base * hello_comp = Exokernel::load_component("./libhello.so.1");
+  Component::Base * hello_comp = Component::load_component("./libhello.so.1");
 
   IHello * hello_itf = (IHello *) hello_comp->query_interface(IHello::uuid());
   printf("hello_itf=%p\n",hello_itf);
