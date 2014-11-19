@@ -1,3 +1,37 @@
+/*
+   eXokernel Development Kit (XDK)
+
+   Based on code by Samsung Research America Copyright (C) 2013
+ 
+   The GNU C Library is free software; you can redistribute it and/or
+   modify it under the terms of the GNU Lesser General Public
+   License as published by the Free Software Foundation; either
+   version 2.1 of the License, or (at your option) any later version.
+
+   The GNU C Library is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   Lesser General Public License for more details.
+
+   You should have received a copy of the GNU Lesser General Public
+   License along with the GNU C Library; if not, see
+   <http://www.gnu.org/licenses/>.
+
+   As a special exception, if you link the code in this file with
+   files compiled with a GNU compiler to produce an executable,
+   that does not cause the resulting executable to be covered by
+   the GNU Lesser General Public License.  This exception does not
+   however invalidate any other reasons why the executable file
+   might be covered by the GNU Lesser General Public License.
+   This exception applies to code released by its copyright holders
+   in files containing the exception.  
+*/
+
+/*
+  Authors:
+  Copyright (C) 2014, Daniel G. Waddington <daniel.waddington@acm.org>
+*/
+
 #ifndef __COMPONENT_BASE_H__
 #define __COMPONENT_BASE_H__
 
@@ -5,7 +39,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <dlfcn.h>
-
+#include <stdio.h>
 #include "types.h"
 
 #define DECLARE_UUID(name,f1,f2,f3,f4,f5,f6,f7) \
@@ -44,16 +78,16 @@ namespace Component
    * Base class. All components must inherit from this class.
    * 
    */
-  class Base
+  class IBase
   {
   private:
     boost::atomic<unsigned> _ref_count;
     void *                  _dll_handle;
 
   public:
-    Base() : _dll_handle(NULL) {
-      _ref_count++;
+    IBase() : _dll_handle(NULL), _ref_count(0) {
     }
+
 
     /** 
      * Pure virtual functions that should be implemented by all
@@ -63,40 +97,46 @@ namespace Component
     virtual void * query_interface(Component::uuid_t& itf) = 0;
     virtual Component::uuid_t component_id(void) = 0;
 
+    /* optional unload */
+    virtual void unload() {}
+
 
     /** 
      * Reference counting
      * 
      */
-    void add_ref() {
+    virtual void add_ref() {
       _ref_count++;
     }
 
-    void release_ref() {
+    virtual void release_ref() {
       int val = _ref_count.fetch_sub(1) - 1;    
       assert(val >= 0);
       if(val == 0) {
-        delete this;
+        this->unload(); /* call virtual unload function */
         dlclose(_dll_handle);
       }
     }
 
-    unsigned ref_count() { 
+    virtual unsigned ref_count() { 
       return _ref_count.load();
     }
 
-    void set_dll_handle(void * dll) {
+    virtual void set_dll_handle(void * dll) {
       assert(dll);
       _dll_handle = dll;
     }
   };
 
-
   /** 
    * Called by the client to load the component from a DLL file
    * 
+   * @param dllname Name of dynamic library file
+   * @param component_id Component UUID to load
+   * 
+   * @return Pointer to IBase interface
    */
-  Base * load_component(const char * dllname);
+  IBase * load_component(const char * dllname, Component::uuid_t& component_id);
 
 };
 

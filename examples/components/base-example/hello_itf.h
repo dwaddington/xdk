@@ -33,7 +33,7 @@
  * Interface definition for IHello
  * 
  */
-class IHello
+class IHello : public Component::IBase
 {
 public:
   DECLARE_INTERFACE_UUID(0xc7ac2b3c,0x7989,0x11e3,0x8f16,0xbc30,0x5bdc,0x754d);

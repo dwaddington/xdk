@@ -31,20 +31,19 @@
 #include <dlfcn.h>
 #include <stdio.h>
 
-#include "hello_itf.h"
+#include "hello_component.h"
 
 
 int main()
 {
-  Component::Base * hello_comp = Component::load_component("./libhello.so.1");
+  Component::IBase * hello_comp = Component::load_component("./libhello.so.1",
+                                                            MyComponent::uuid());
 
   IHello * hello_itf = (IHello *) hello_comp->query_interface(IHello::uuid());
   printf("hello_itf=%p\n",hello_itf);
 
   hello_itf->sayHello(10);
 
-  printf("ref count = %u\n", hello_comp->ref_count());
   hello_comp->release_ref();
-  printf("ref count = %u\n", hello_comp->ref_count());
   return 0;
 }
