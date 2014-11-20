@@ -56,7 +56,11 @@ namespace Component
     void * (*factory_createInstance)(Component::uuid_t&);
     char * error;
     void * dll = dlopen(dllname,RTLD_LAZY);
-    assert(dll);
+
+    if(!dll) {
+      fprintf(stderr,"Invalid DLL name (%s)\n",dllname);
+      return NULL;
+    }
 
     dlerror();
     *(void **) (&factory_createInstance) = dlsym(dll,"factory_createInstance");

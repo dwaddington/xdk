@@ -35,9 +35,11 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 
-void grant_file(std::string& path, uid_t owner);
+void grant_files(std::string& path, uid_t owner);
 
 int main(int argc, char * argv[])
 {
@@ -80,13 +82,13 @@ int main(int argc, char * argv[])
 
   std::string path = "/sys/bus/pci/devices/0000:";
   path += vm["pciaddr"].as<std::string>();
-  grant_file(path, uid);
+  grant_files(path, uid);
 
   return 0;
 }
 
 
-void grant_file(std::string& path, uid_t owner) 
+void grant_files(std::string& path, uid_t owner) 
 {
   std::cout << "Grant path: " << path << std::endl;
   std::cout << "UID: " << owner << std::endl;
@@ -97,8 +99,29 @@ void grant_file(std::string& path, uid_t owner)
   rc = chown(path_config.c_str(), owner, owner);
   if(rc) {
     std::cout << "Unable to chown (" << path_config << "). Running as root?\n";
+    return;
   }
-  else {
-    std::cout << "Chowned " << path_config << " OK." << std::endl;
-  }
+
+  /* resource files */
+  boost::filesystem::path fsDirectoryPath =
+    boost::filesystem::system_complete(boost::filesystem::path(path));
+  boost::filesystem::directory_iterator end_iter;
+
+  for (boost::filesystem::directory_iterator dir_itr(fsDirectoryPath);
+       dir_itr != end_iter; ++dir_itr) {
+    if (boost::contains((*dir_itr).path().native(), "resource")) {
+      const char * filename = (*dir_itr).path().c_str();
+      
+      rc = chown(filename, owner, owner);
+      if(rc) {
+        std::cout << "Unable to chown (" << path_config << "). Running as root?\n";
+        return;
+      }
+
+    }
+  } 
+  
+
+
+
 }
