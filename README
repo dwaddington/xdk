@@ -6,6 +6,14 @@ The project uses code developed and released by Samsung Research America.
 History:
 --------
 
+20-11-2014:
+
+The AHCI test driver now operates without root permissions.  This is
+quite a milestone since running device drivers as non-priviledged 
+processes is a cornerstone of the exokernel concept.  Root permission
+is needed to load the kernel module and also to "grant" permissions
+to a user (uid) for a specific device. See tools/devgrant/
+
 12-11-2014:  
 
 XDK seed code released as open source.  At this point much of
