@@ -56,6 +56,7 @@ static struct miscdevice pk_miscdev = {
 	.minor = MISC_DYNAMIC_MINOR,
 	.name = "parasite",
 	.fops = &pk_fops,
+  .mode = S_IRUGO | S_IWUGO,
 };
 
 
