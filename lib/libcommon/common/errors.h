@@ -38,6 +38,7 @@
 #include <iostream>
 #include <string>
 
+#ifndef ERROR_ENUMS
 #define ERROR_ENUMS   enum {                                            \
     S_OK = 0,                                                           \
     E_FAIL = -1,                                                        \
@@ -68,6 +69,7 @@
     E_INVALID_ARG = -25,                                                \
     E_ERROR_BASE = -50,                                                 \
   };
+#endif
 
 ERROR_ENUMS; /* add to global namespace also */
 
