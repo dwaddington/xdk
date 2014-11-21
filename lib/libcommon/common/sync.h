@@ -39,6 +39,7 @@
 #include "errors.h"
 #include <pthread.h>
 #include <semaphore.h>
+#include <assert.h>
 
 /** 
  * Wrapper class for semaphores
@@ -90,7 +91,7 @@ public:
   Mutex(int kind = PTHREAD_MUTEX_FAST_NP) {
     pthread_mutexattr_init(&_attr);
     if(pthread_mutexattr_settype(&_attr,kind)!=0) 
-      throw Exokernel::Exception("bad mutex kind");
+      throw Exception("bad mutex kind");
 
     pthread_mutex_init(&_mutex, &_attr);
   }
@@ -157,7 +158,7 @@ public:
       rc = pthread_cond_wait(&_cond_var, &_var_lock);
     pthread_mutex_unlock(&_var_lock);
 
-    return rc==0 ? Exokernel::S_OK : Exokernel::E_FAIL;
+    return rc==0 ? S_OK : E_FAIL;
   }
 
   /** 
@@ -173,7 +174,7 @@ public:
       rc = pthread_cond_wait(&_cond_var, &_var_lock);
     pthread_mutex_unlock(&_var_lock);
 
-    return rc==0 ? Exokernel::S_OK : Exokernel::E_FAIL;
+    return rc==0 ? S_OK : E_FAIL;
   }
 
   /** 
@@ -190,7 +191,7 @@ public:
     _var = false;
     pthread_mutex_unlock(&_var_lock);
 
-    return rc==0 ? Exokernel::S_OK : Exokernel::E_FAIL;
+    return rc==0 ? S_OK : E_FAIL;
   }
 
   /** 
@@ -207,7 +208,7 @@ public:
     assert(rc==0);
     pthread_mutex_unlock(&_var_lock);
       
-    return rc==0 ? Exokernel::S_OK : Exokernel::E_FAIL;
+    return rc==0 ? S_OK : E_FAIL;
   }
 
 
@@ -224,7 +225,7 @@ public:
     rc = pthread_cond_broadcast(&_cond_var);
     pthread_mutex_unlock(&_var_lock);
       
-    return rc==0 ? Exokernel::S_OK : Exokernel::E_FAIL;
+    return rc==0 ? S_OK : E_FAIL;
   }
 
 
