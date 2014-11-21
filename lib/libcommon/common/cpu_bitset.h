@@ -29,34 +29,17 @@
 
 /*
   Authors:
-  Copyright (C) 2014, Daniel G. Waddington <daniel.waddington@acm.org>
+  Copyright (C) 2013, Juan A. Colmenares <juan.col@samsung.com>
+  Copyright (C) 2013, Daniel G. Waddington <d.waddington@samsung.com>
 */
 
-#include <stdio.h>
-#include <assert.h>
-#include <stdint.h>
-#include "exo/dump_utils.h"
+#ifndef __CPU_BITSET_H__
+#define __CPU_BITSET_H__
 
-void Exokernel::hexdump(void * data, unsigned len) 
-{
-  printf("HEXDUMP----------------------------------------------\n");
-  assert(len > 0);
-  uint8_t * d = (uint8_t *)data;
-  for(unsigned i=0;i<len;i++) {      
-    if(i % 24 == 0) { printf("\n0x%x:\t",i); }
-    printf("%x%x ",0xf & (d[i] >> 4), 0xf & d[i]);
-  }
-  printf("\n");
-}
+#include "config.h"
+#include <bitset>  
 
-void Exokernel::asciidump(void * data, unsigned len) 
-{
-  printf("ASCIIDUMP----------------------------------------------\n");
-  assert(len > 0);
-  uint8_t * d = (uint8_t *)data;
-  for(unsigned i=0;i<len;i++) {      
-    if(i % 24 == 0) { printf("\n0x%x:\t",i); }
-    printf("%c%c ",0xf & (d[i] >> 4), 0xf & d[i]);
-  }
-  printf("\n");
-}
+
+typedef std::bitset<64> Cpu_bitset;
+
+#endif

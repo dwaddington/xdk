@@ -46,8 +46,8 @@
 #include <unistd.h>
 #include <iostream>
 
-#include "types.h"
-#include "logging.h"
+#include <common/types.h>
+#include <common/logging.h>
 
 namespace Exokernel
 {

@@ -35,8 +35,8 @@
 #ifndef __EXO_ATOMIC_H__
 #define __EXO_ATOMIC_H__
 
-#include "types.h"
-#include "utils.h"
+#include <common/types.h>
+#include <common/utils.h>
 
 #if defined(__x86_64__)
 #if defined(__GCC_HAVE_SYNC_COMPARE_AND_SWAP_8)

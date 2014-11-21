@@ -1,5 +1,8 @@
 XDK_BASE = /home/dwaddington/xdk
 
+XDK_INCLUDES = -I$(XDK_BASE)/lib/libexo -I$(XDK_BASE)/lib/libcomponent -I$(XDK_BASE)/lib/libcommon
+XDK_LIBS = -L$(XDK_BASE)/lib/libexo -L$(XDK_BASE)/lib/libcomponent -L$(XDK_BASE)/lib/libcommon -lcomponent -lexo -lcommon
+
 COBJS   = $(addprefix obj/,$(subst .c,.o,$(filter %.c,$(SOURCES)))) 
 CXXOBJS = $(addprefix obj/,$(subst .cc,.o,$(filter %.cc,$(SOURCES))))
 OBJS = $(CXXOBJS) $(COBJS)

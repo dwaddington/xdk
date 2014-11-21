@@ -35,6 +35,7 @@
 #include <assert.h>
 #include <unistd.h>
 #include <fstream>
+#include <common/cycles.h>
 
 #include "libexo.h"
 
@@ -51,7 +52,7 @@ public:
     while(!go_flag);
 
     /* quiver */
-    { unsigned cycles = ((unsigned)Exokernel::rdtsc()) & 0xFF; while(cycles-- > 0) cpu_relax(); }
+    { unsigned cycles = ((unsigned)rdtsc()) & 0xFF; while(cycles-- > 0) cpu_relax(); }
 
     for(unsigned i=1;i<ITERATIONS;i++) {
       GQ->push(i);
@@ -75,7 +76,7 @@ public:
       }
 
       /* quiver */
-      { unsigned cycles = ((unsigned)Exokernel::rdtsc()) & 0xFF; while(cycles-- > 0) cpu_relax(); }
+      { unsigned cycles = ((unsigned)rdtsc()) & 0xFF; while(cycles-- > 0) cpu_relax(); }
         
       assert(v==i);
       if(v % 1000 == 0)

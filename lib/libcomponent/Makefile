@@ -1,4 +1,4 @@
-CXX_FLAGS+=-I./
+CXX_FLAGS+=-I./ -I../libcommon
 
 all: libcomponent.a
 

@@ -32,8 +32,8 @@
   Copyright (C) 2013, Daniel G. Waddington <d.waddington@samsung.com>
 */
 
-#ifndef __EXO_UTILS_H__
-#define __EXO_UTILS_H__
+#ifndef __UTILS_H__
+#define __UTILS_H__
 
 #include <stdarg.h>
 #include <unistd.h>
@@ -45,6 +45,15 @@
 #include <numa.h>
 
 #define INLINE inline __attribute__((always_inline))
+
+#ifndef SUPPRESS_NOT_USED_WARN
+#define SUPPRESS_NOT_USED_WARN __attribute__((unused))
+#endif
+
+#define PAGE_SIZE (4096UL)
+#define HUGE_PAGE_SIZE (2 * 1024 * 1024UL)
+#define HUGE_MAGIC 0x0fabf00dUL
+
 
 #if defined(__cplusplus)
 extern "C" 
@@ -245,8 +254,8 @@ INLINE unsigned get_cpu_id(struct bitmask * mask, unsigned n) {
  * @param numa_node ID of the NUMA node. 
  * @return bitset with actual system affinities. 
  */
-Exokernel::Cpu_bitset 
-get_actual_affinities(const Exokernel::Cpu_bitset& logical_affinities, 
+Cpu_bitset 
+get_actual_affinities(const Cpu_bitset& logical_affinities, 
                       const int numa_node);
 
 

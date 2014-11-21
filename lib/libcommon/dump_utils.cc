@@ -29,28 +29,34 @@
 
 /*
   Authors:
-  Copyright (C) 2013, Daniel G. Waddington <d.waddington@samsung.com>
+  Copyright (C) 2014, Daniel G. Waddington <daniel.waddington@acm.org>
 */
 
-#ifndef __EXO_BITS_H__
-#define __EXO_BITS_H__
-
+#include <stdio.h>
+#include <assert.h>
 #include <stdint.h>
+#include "common/dump_utils.h"
 
-inline unsigned leftmost_set_bit(uint8_t value) {  
-  return (8 - __builtin_clz(value));   
+void hexdump(void * data, unsigned len) 
+{
+  printf("HEXDUMP----------------------------------------------\n");
+  assert(len > 0);
+  uint8_t * d = (uint8_t *)data;
+  for(unsigned i=0;i<len;i++) {      
+    if(i % 24 == 0) { printf("\n0x%x:\t",i); }
+    printf("%x%x ",0xf & (d[i] >> 4), 0xf & d[i]);
+  }
+  printf("\n");
 }
 
-inline unsigned leftmost_set_bit(uint16_t value) {  
-  return (16 - __builtin_clz(value));  
+void asciidump(void * data, unsigned len) 
+{
+  printf("ASCIIDUMP----------------------------------------------\n");
+  assert(len > 0);
+  uint8_t * d = (uint8_t *)data;
+  for(unsigned i=0;i<len;i++) {      
+    if(i % 24 == 0) { printf("\n0x%x:\t",i); }
+    printf("%c%c ",0xf & (d[i] >> 4), 0xf & d[i]);
+  }
+  printf("\n");
 }
-
-inline unsigned leftmost_set_bit(uint32_t value) {  
-  return (31 - __builtin_clz(value));  
-}
-
-inline unsigned leftmost_set_bit(uint64_t value) {  
-  return (63 - __builtin_clz(value));  
-}
-
-#endif // __EXO_BITS_H__

@@ -38,7 +38,7 @@
 #include "../libexo.h"
 #include "config.h"
 #include "fast_slab.h"
-#include "cpu_bitset.h"
+#include <common/cpu_bitset.h>
 #include "shm_table.h"
 
 #include "numa.h"

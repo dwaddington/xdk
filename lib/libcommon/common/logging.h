@@ -32,8 +32,8 @@
   @author Daniel Waddington (d.waddington@samsung.com)
 */
 
-#ifndef __EXO_LOGGING_H__
-#define __EXO_LOGGING_H__
+#ifndef __COMMON_LOGGING_H__
+#define __COMMON_LOGGING_H__
 
 #include <stdio.h>
 
@@ -73,6 +73,6 @@
 #define PERR(f, a...)   fprintf( stderr, "[XDK]: ERROR %s:" f "\n",  __func__ , ## a); 
 
 
-#define EXOLIB_TRACE()  fprintf( stderr, "[XDK]: %s\n", __FUNCTION__)
+#define TRACE()  fprintf( stderr, "[XDK]: %s\n", __FUNCTION__)
 
-#endif // __EXO_INTERNAL_H__
+#endif // __COMMON_LOGGING_H__

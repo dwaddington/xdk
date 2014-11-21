@@ -35,7 +35,7 @@
 #ifndef __EXO_SPAN_H__
 #define __EXO_SPAN_H__
 
-#include <assert.h>
+#include <common/assert.h>
 #include <exo/memory.h>
 
 #define CONFIG_BUILD_DEBUG

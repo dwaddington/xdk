@@ -34,10 +34,9 @@
 
 #include <stdio.h>
 
-#include "exo/memory.h"
-#include "exo/utils.h"
-#include "exo/assert.h"
-#include "exo/logging.h"
+#include <common/utils.h>
+#include <common/assert.h>
+#include <common/logging.h>
 
 extern "C" void panic(const char *fmt, ...) {
   printf("\033[31m Panic: ");
@@ -86,8 +85,8 @@ void touch_pages(void * addr, size_t size) {
 }
 
 
-Exokernel::Cpu_bitset 
-get_actual_affinities(const Exokernel::Cpu_bitset& logical_affinities, 
+Cpu_bitset 
+get_actual_affinities(const Cpu_bitset& logical_affinities, 
                       const int numa_node) {
 
   assert(numa_node >= 0 && numa_node < numa_num_configured_nodes());
@@ -113,7 +112,7 @@ get_actual_affinities(const Exokernel::Cpu_bitset& logical_affinities,
   assert(bitcnt >= la_bitcnt);
   
 
-  Exokernel::Cpu_bitset cpu_bitset; 
+  Cpu_bitset cpu_bitset; 
 
   size_t cnt = 0;
   size_t l = 0;

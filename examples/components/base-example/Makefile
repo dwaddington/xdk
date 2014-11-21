@@ -1,8 +1,8 @@
 include ../../../mk/global.mk
 
-CXXFLAGS += -g -I$(XDK_BASE)/lib/libexo -I$(XDK_BASE)/lib/libcomponent
+CXXFLAGS += -g $(XDK_INCLUDES)
 BOOST_LIBS = -lboost_thread
-LIBS = -L$(XDK_BASE)/lib/libexo -lexo -L$(XDK_BASE)/lib/libcomponent -lcomponent -ldl $(BOOST_LIBS)
+LIBS = $(XDK_LIBS) -ldl $(BOOST_LIBS)
 
 all: hello_component example_client
 

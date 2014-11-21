@@ -43,8 +43,9 @@
 #include <sstream>
 #include <errno.h>
 
+#include <common/logging.h>
+
 #include "exo/sysfs.h"
-#include "exo/logging.h"
 #include "exo/memory.h"
 
 /**********************************************************************************

@@ -36,9 +36,8 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "exo/cycles.h"
-#include "exo/logging.h"
-#include "exo/assert.h"
+#include "common/cycles.h"
+#include "common/assert.h"
 
 #include <sys/utsname.h>
 

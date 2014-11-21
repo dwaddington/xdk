@@ -44,6 +44,7 @@
 
 #include "exo/topology.h"
 #include "exo/errors.h"
+#include <common/utils.h>
 
 /** 
  * Convert string of the form "1,2,3" into a vector of signed

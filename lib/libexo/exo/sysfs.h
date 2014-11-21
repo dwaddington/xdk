@@ -41,12 +41,11 @@
 #include <vector>
 #include <map>
 
-#include "utils.h"
-#include "types.h"
+#include <common/utils.h>
+#include <common/types.h>
+#include <common/logging.h>
+
 #include "errors.h"
-#include "logging.h"
-
-
 #include "pci.h"
 
 namespace Exokernel

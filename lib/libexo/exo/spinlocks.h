@@ -35,11 +35,12 @@
 #ifndef __EXO_SPIN_LOCKS_H__
 #define __EXO_SPIN_LOCKS_H__
 
-#include "utils.h"
-#include "errors.h"
-#include "types.h"
+#include <common/utils.h>
+#include <common/types.h>
+#include <common/logging.h>
+
 #include "atomic.h"
-#include "logging.h"
+#include "errors.h"
 
 #include <pthread.h>
 

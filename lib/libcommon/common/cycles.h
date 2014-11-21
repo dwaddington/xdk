@@ -32,17 +32,16 @@
   Copyright (C) 2013, Daniel G. Waddington <d.waddington@samsung.com>
 */
 
-#ifndef __EXO_CYCLES_H__
-#define __EXO_CYCLES_H__
+#ifndef __CYCLES_H__
+#define __CYCLES_H__
+
+#include "types.h"
 
 #ifndef INLINE 
 #define INLINE inline __attribute__((always_inline))
 #endif 
 
 #if defined(__i386__) || defined(__amd64__)
-
-#include "types.h"
-
 
 #if defined(__amd64__)
 

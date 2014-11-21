@@ -2,8 +2,8 @@ include ../../mk/global.mk
 
 TARGET = ahci_drv
 SOURCES = main.cc ahci_device.cc ahci_port.cc debug.cc
-CXXFLAGS += -g -I$(XDK_BASE)/lib/libexo
-LIBS = -L$(XDK_BASE)/lib/libexo -lexo -lpthread -lrt -lnuma
+CXXFLAGS += -g -I$(XDK_BASE)/lib/libexo -I$(XDK_BASE)/lib/libcommon
+LIBS = -L$(XDK_BASE)/lib/libexo -L$(XDK_BASE)/lib/libcommon -L$(XDK_BASE)/lib/libcomponent -lcommon -lcomponent -lexo -lpthread -lrt -lnuma
 
 all: exotest
 

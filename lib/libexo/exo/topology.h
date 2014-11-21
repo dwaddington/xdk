@@ -36,7 +36,7 @@
 #define __EXOKERNEL_TOPOLOGY_H__
 
 #include <numa.h>
-#include "types.h"
+#include <common/types.h>
 
 /* 
    Wrappers and APIs to consolidate CPU, memory and device topology discovery

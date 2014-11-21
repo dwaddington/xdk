@@ -38,6 +38,8 @@
 #include <time.h>
 
 #include <libexo.h>
+#include <common/dump_utils.h>
+#include <common/cycles.h>
 
 #include "ahci_device.h"
 
@@ -64,7 +66,7 @@ void do_basic_read_test(AHCI_uddk_device * dev, unsigned port, void * vbuff, add
   
   assert(hr == Exokernel::S_OK);
 
-  Exokernel::hexdump((void *)vbuff, 512);
+  hexdump((void *)vbuff, 512);
   PLOG("Block dump OK.");
 }
 

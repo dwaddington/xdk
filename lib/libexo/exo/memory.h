@@ -40,7 +40,7 @@
  * see Linux kernel Documentation/vm/hugetlbpage.txt
  */
 
-#include "types.h"
+#include <common/types.h>
 
 #include <stdio.h>
 #include <stdint.h>

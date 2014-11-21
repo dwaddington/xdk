@@ -32,30 +32,25 @@
   Copyright (C) 2013, Daniel G. Waddington <d.waddington@samsung.com>
 */
 
-#ifndef __EXO_TYPES_H__
-#define __EXO_TYPES_H__
+#ifndef __COMMON_BITS_H__
+#define __COMMON_BITS_H__
 
 #include <stdint.h>
 
-typedef unsigned                status_t;
+inline unsigned leftmost_set_bit(uint8_t value) {  
+  return (8 - __builtin_clz(value));   
+}
 
-typedef unsigned long           addr_t;
-typedef unsigned long           umword_t;
-typedef signed long             mword_t;
+inline unsigned leftmost_set_bit(uint16_t value) {  
+  return (16 - __builtin_clz(value));  
+}
 
-typedef uint32_t                addr32_t;
-typedef unsigned long long int  addr64_t;
+inline unsigned leftmost_set_bit(uint32_t value) {  
+  return (31 - __builtin_clz(value));  
+}
 
-typedef unsigned char           byte;
-typedef uint16_t                word;
-typedef uint32_t                dword;
-typedef void *                  handle_t;
-typedef uint32_t                core_id_t;
+inline unsigned leftmost_set_bit(uint64_t value) {  
+  return (63 - __builtin_clz(value));  
+}
 
-typedef uint64_t                atomic_t;
-
-typedef uint64_t                cpu_time_t;
-
-typedef int                     numa_node_t;
-
-#endif
+#endif // __COMMON_BITS_H__

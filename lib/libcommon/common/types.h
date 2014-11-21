@@ -35,10 +35,33 @@
 #ifndef __COMP_TYPES_H__
 #define __COMP_TYPES_H__
 
+#include <stdint.h>
+
+typedef int                     status_t;
+typedef uint64_t                cpu_mask_t;
+
+typedef unsigned long           addr_t;
+typedef unsigned long           umword_t;
+typedef signed long             mword_t;
+
+typedef uint32_t                addr32_t;
+typedef unsigned long long int  addr64_t;
+
+typedef unsigned char           byte;
+typedef uint16_t                word;
+typedef uint32_t                dword;
+typedef void *                  handle_t;
+typedef uint32_t                core_id_t;
+
+typedef uint64_t                atomic_t;
+
+typedef uint64_t                cpu_time_t;
+
+typedef int                     numa_node_t;
+
+
 namespace Component
 {
-  typedef int status_t;
-
   typedef void * interface_t;
   typedef void * device_handle_t;
   typedef void * allocator_handle_t;
@@ -47,6 +70,5 @@ namespace Component
   typedef void * params_config_t;
   typedef unsigned allocator_t;
   typedef unsigned state_t;
-  typedef uint64_t cpu_mask_t;
 }
 #endif

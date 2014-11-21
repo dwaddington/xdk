@@ -1,7 +1,7 @@
 include ../../../mk/global.mk
 
 SOURCES = main.cc
-CXXFLAGS += -g -I$(XDK_BASE)/lib/libexo
+CXXFLAGS += -g -I$(XDK_BASE)/lib/libexo -I$(XDK_BASE)/lib/libcommon
 LIBS = -L$(XDK_BASE)/lib/libexo -lexo -lnuma
 
 all: test-client-3

@@ -43,10 +43,12 @@
 #include <sys/prctl.h>
 #include <string.h>
 
-#include "sync.h"
+#include <common/sync.h>
+#include <common/types.h>
+#include <common/logging.h>
 #include "errors.h"
-#include "types.h"
-#include "logging.h"
+
+
 
 #ifndef SUPPRESS_NOT_USED_WARN
 #define SUPPRESS_NOT_USED_WARN __attribute__((unused))
@@ -61,7 +63,7 @@ namespace Exokernel
     cpu_set_t _affinity;
     bool _exit;
     void* _arg;
-    Exokernel::Event _start_event;
+    Event _start_event;
 
     struct Thread_params {
       void* _param;
