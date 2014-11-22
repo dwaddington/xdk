@@ -71,7 +71,9 @@ namespace Component
     }
 
     IBase* comp = (IBase*) factory_createInstance(component_id);
+    assert(comp);
     comp->set_dll_handle(dll); /* record so we can call dlclose() */
+    comp->add_ref();
 
     return comp;
   }
