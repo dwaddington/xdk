@@ -45,17 +45,18 @@
 #include <sstream>
 #include <iomanip>
 
+
 #define DECLARE_UUID(name,f1,f2,f3,f4,f5,f6,f7) \
   const Component::uuid_t name = {f1,f2,f3,f4,{f5,f6,f7}};
 
 #define DECLARE_INTERFACE_UUID(f1,f2,f3,f4,f5,f6,f7)              \
-  static Component::uuid_t& uuid() {                              \
+  static Component::uuid_t& iid() {                              \
     static Component::uuid_t itf_uuid = {f1,f2,f3,f4,{f5,f6,f7}}; \
     return itf_uuid;                                              \
   }
 
 #define DECLARE_COMPONENT_UUID(f1,f2,f3,f4,f5,f6,f7)                \
-  Component::uuid_t component_id() {                                \
+  static Component::uuid_t component_id() {                                \
     static Component::uuid_t comp_uuid = {f1,f2,f3,f4,{f5,f6,f7}};  \
     return comp_uuid;                                               \
   }
@@ -110,7 +111,6 @@ namespace Component
      * 
      */
     virtual void * query_interface(Component::uuid_t& itf) = 0;
-    virtual Component::uuid_t component_id(void) = 0;
 
     /* optional unload */
     virtual void unload() {}
@@ -151,8 +151,10 @@ namespace Component
    * 
    * @return Pointer to IBase interface
    */
-  IBase * load_component(const char * dllname, Component::uuid_t& component_id);
+  IBase * load_component(const char * dllname, Component::uuid_t component_id);
 
 };
+
+
 
 #endif

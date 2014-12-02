@@ -22,7 +22,7 @@ public:
 
 public:
   void * query_interface(Component::uuid_t& itf_uuid) {
-    if(itf_uuid == IHello::uuid()) {
+    if(itf_uuid == IHello::iid()) {
       add_ref(); // implicitly add reference
       return (void *) static_cast<IHello *>(this);
     }

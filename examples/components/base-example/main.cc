@@ -37,9 +37,9 @@
 int main()
 {
   Component::IBase * hello_comp = Component::load_component("./libhello.so.1",
-                                                            MyComponent::uuid());
+                                                            MyComponent::component_id());
 
-  IHello * hello_itf = (IHello *) hello_comp->query_interface(IHello::uuid());
+  IHello * hello_itf = (IHello *) hello_comp->query_interface(IHello::iid());
   printf("hello_itf=%p\n",hello_itf);
 
   hello_itf->sayHello(10);

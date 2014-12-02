@@ -51,7 +51,7 @@ namespace Component
     * Called by the client to load the component from a DLL file
     * 
     */
-  IBase * load_component(const char * dllname, Component::uuid_t& component_id) {
+  IBase * load_component(const char * dllname, Component::uuid_t component_id) {
 
     void * (*factory_createInstance)(Component::uuid_t&);
     char * error;

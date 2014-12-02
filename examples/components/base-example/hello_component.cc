@@ -43,7 +43,7 @@ void IHello_impl::sayHello(unsigned x) {
 
 extern "C" void * factory_createInstance(Component::uuid_t& component_id)
 {
-  if(component_id == MyComponent::uuid()) {
+  if(component_id == MyComponent::component_id()) {
     printf("Creating 'MyComponent' component.\n");
     return static_cast<void*>(new MyComponent());
   }

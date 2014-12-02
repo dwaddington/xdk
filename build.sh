@@ -19,5 +19,5 @@ build_dir "libcommon" lib/libcommon
 build_dir "libcomponent" lib/libcomponent
 build_dir "libexo" lib/libexo
 build_dir "AHCI device driver" drivers/ahci
-
+build_dir "Base example component" examples/components/base-example
 
