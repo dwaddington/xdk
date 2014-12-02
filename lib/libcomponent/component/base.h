@@ -41,6 +41,8 @@
 #include <dlfcn.h>
 #include <stdio.h>
 #include <common/types.h>
+#include <string>
+#include <sstream>
 
 #define DECLARE_UUID(name,f1,f2,f3,f4,f5,f6,f7) \
   const Component::uuid_t name = {f1,f2,f3,f4,{f5,f6,f7}};
@@ -70,6 +72,13 @@ namespace Component
     uint16_t uuid2;
     uint16_t uuid3;
     uint16_t uuid4[3];
+
+    std::string toString() {
+      std::stringstream ss;
+      ss << std::hex << uuid0 << "-" << uuid1 << "-" << uuid2 << "-" << uuid3 << "-" 
+         << uuid4[0] << uuid4[1] << uuid4[2];
+      return ss.str();
+    }
   };
 
   bool operator==(const Component::uuid_t& lhs, const Component::uuid_t& rhs);
