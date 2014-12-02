@@ -43,6 +43,7 @@
 #include <common/types.h>
 #include <string>
 #include <sstream>
+#include <iomanip>
 
 #define DECLARE_UUID(name,f1,f2,f3,f4,f5,f6,f7) \
   const Component::uuid_t name = {f1,f2,f3,f4,{f5,f6,f7}};
@@ -75,8 +76,13 @@ namespace Component
 
     std::string toString() {
       std::stringstream ss;
-      ss << std::hex << uuid0 << "-" << uuid1 << "-" << uuid2 << "-" << uuid3 << "-" 
-         << uuid4[0] << uuid4[1] << uuid4[2];
+      ss << std::hex << std::setfill('0') << std::setw(8) << uuid0 << "-" 
+         << std::setfill('0') << std::setw(4) << uuid1 << "-" 
+         << std::setfill('0') << std::setw(4) << uuid2 << "-" 
+         << std::setfill('0') << std::setw(4) << uuid3 << "-" 
+         << std::setfill('0') << std::setw(4) << uuid4[0] 
+         << std::setfill('0') << std::setw(4) << uuid4[1] 
+         << std::setfill('0') << std::setw(4) << uuid4[2];
       return ss.str();
     }
   };
