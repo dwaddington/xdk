@@ -143,6 +143,7 @@ public:
    */
   status_t call(unsigned slot, unsigned command_id) {
     assert(canary==0xbeeffeed);
+    PLOG("Calling callback slot=%u command_id=%u", slot, command_id);
     //    Exokernel::Spin_lock_guard g(_lock);
     if(!_callbacks[slot & 0xffff]) {
       PWRN("call on callback (slot=%x) that is empty.",slot);

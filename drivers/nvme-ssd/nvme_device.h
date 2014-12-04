@@ -36,7 +36,6 @@
 #define __NVME_DEVICE_H__
 
 #include <libexo.h>
-#include <exo/bits.h>
 #include "nvme_common.h"
 #include "nvme_registers_wrappers.h"
 #include "nvme_queue.h"
@@ -49,7 +48,7 @@
  * Devices that this driver works with
  * 
  */
-static Exokernel::device_vendor_pair_t dev_tbl[] = {{0x8086,0x5845}, // Intel SSD
+static Exokernel::device_vendor_pair_t dev_tbl[] = {{0x8086,0x5845}, // Intel SSD (QEMU)
                                                     {0x144d,0xa820}, // Samsung XS1715
                                                     {0,0}};
 

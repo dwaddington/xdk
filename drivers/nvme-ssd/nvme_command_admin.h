@@ -27,16 +27,11 @@
    in files containing the exception.  
 */
 
-
-
-
-
-
 #ifndef __NVME_COMMAND_ADMIN_H__
 #define __NVME_COMMAND_ADMIN_H__
 
 #include <vector>
-#include <exo/types.h>
+#include <common/types.h>
 
 #include "nvme_command_structs.h"
 #include "nvme_device.h"

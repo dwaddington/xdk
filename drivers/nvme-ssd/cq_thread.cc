@@ -27,11 +27,6 @@
    in files containing the exception.  
 */
 
-
-
-
-
-
 #include <signal.h>
 #include <libexo.h>
 

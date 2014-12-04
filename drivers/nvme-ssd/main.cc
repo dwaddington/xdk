@@ -27,22 +27,18 @@
    in files containing the exception.  
 */
 
-
-
-
-
-
 #include <stdio.h>
 #include <sys/time.h>
 #include <sched.h>
 #include <sys/types.h>
 #include <sys/resource.h>
 #include <unistd.h>
+#include <common/cycles.h>
 
 #include "nvme_device.h"
 
 #define COUNT (1000000)
-#define NUM_QUEUES (4)
+#define NUM_QUEUES (1)
 #define SLAB_SIZE (1000)
 #define NUM_BLOCKS (8)
 
@@ -119,7 +115,7 @@ private:
                                    (i*512)+(_qid*COUNT), /* offset */
                                    NUM_BLOCKS); /* num blocks */
       
-      //      PLOG("sent (Q:%u) %lu...",_qid,send_id);
+      PLOG("sent (Q:%u) %lu...",_qid,send_id);
       /* collect stats */
       cpu_time_t delta = rdtsc() - start;
 
@@ -210,18 +206,10 @@ int main()
     asm("int3");
   }
 
-  NVME_INFO("Issuing test read and write test...press enter\n");
-
-#if 0
-  for(unsigned i=0;i<10;i++) {
-    byte r = test_read(dev);
-    test_write(dev,r+1);
-    test_read(dev);
-  }
-#endif
+  NVME_INFO("Issuing test read and write test...");
+  
 
   {
-#if 1
 
     Read_thread * thr[NUM_QUEUES];
 
@@ -269,8 +257,6 @@ int main()
     PLOG("gettimeofday delta %.2g sec (rate=%.2f KIOPS)",
          gtod_secs,
          1000.0 / gtod_secs);
-
-#endif
 
   }
 

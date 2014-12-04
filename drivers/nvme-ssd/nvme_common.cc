@@ -32,49 +32,21 @@
 
 
 
-#ifndef __NVME_NOTIFY_H__
-#define __NVME_NOTIFY_H__
+#include <stdio.h>
+#include <stdarg.h>
+#include <common/logging.h>
 
-#include <queue>
+#include "nvme_common.h"
 
-/** 
- * WARNING: this class has issues with wrapping around the count
- * 
- */
-class Notify_object
-{
-private:
-  Exokernel::Semaphore _sem;
-  Exokernel::Atomic _next_when;
-  Exokernel::Atomic _count;
-
-  void notify(unsigned command_id) {
-    atomic_t p = _count.increment_and_fetch();
-    if(p == _next_when.read()) {
-      _sem.post();
-    }
-  }
-
-
-public:
-
-  void set_when(atomic_t when) {
-    _next_when.init_value(when);
-  }
-
-  /** 
-   * Wait for counting event to occur
-   * 
-   */
-  void wait() {
-    _sem.wait();
-  }
-
-public:
-  static void notify_callback(unsigned command_id, void * p) {
-    Notify_object * pThis = (Notify_object *)p;
-    pThis->notify(command_id);
-  }
-};    
-
+#ifdef NVME_VERBOSE
+void NVME_INFO(const char *fmt, ...) {
+  printf(NORMAL_MAGENTA);
+  va_list list;
+        va_start(list, fmt);
+  printf("[NVME]:");
+        vprintf(fmt, list);
+        va_end(list);
+        printf(RESET);
+}
 #endif
+
