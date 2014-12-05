@@ -35,7 +35,7 @@
 #include "nvme_device.h"
 
 #undef CONFIG_FORMAT_ON_INIT
-#define CONFIG_IRQ_COAL
+#undef CONFIG_IRQ_COAL
 
 /** 
  * Destructor

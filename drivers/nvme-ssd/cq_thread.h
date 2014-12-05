@@ -117,7 +117,7 @@ public:
     if(slot > _max_callbacks) {
       panic("exceed max slot capacity in callback manager (slot=%u)",slot);
     }
-    assert(_callbacks[slot] == 0);
+
     _callbacks[slot] = cf;
     _callback_params[slot] = param;
   }

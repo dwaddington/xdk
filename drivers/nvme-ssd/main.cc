@@ -44,6 +44,10 @@
 
 Exokernel::Pagemap pm;
 
+void basic_block_read(NVME_device * dev, size_t num_blocks);
+void basic_block_write(NVME_device * dev, size_t num_blocks);
+
+
 class Read_thread : public Exokernel::Base_thread
 {
 private:
@@ -96,14 +100,12 @@ private:
 
     unsigned long long mean_cycles = 0;
     unsigned long long sample_count = 0;
-    unsigned long long * stable = (unsigned long long *) malloc(sizeof(unsigned long long) * COUNT);
-    assert(stable);
 
     _dev->io_queue(_qid)->callback_manager()->register_callback(1,
                                                                 &Notify_object::notify_callback,
                                                                 (void*)&nobj);
 
-    unsigned long threshold = _dev->io_queue(_qid)->queue_length() * 0.3;
+    unsigned long threshold = _dev->io_queue(_qid)->queue_length() * 0.8;
     PLOG("threshold = %lu", threshold);
     atomic_t send_id = 0;
     uint16_t cid;
@@ -127,8 +129,6 @@ private:
         mean_cycles = delta;
       }
 
-      //      stable[i] = delta;
-
       if(i%100000==0) PLOG("(_QID:%u) i=%lu", _qid, i);     
       if(i==COUNT) break;
 
@@ -151,9 +151,6 @@ private:
     // }
     // PLOG("end c = %x",c);
     
-    // for(unsigned i=0;i<COUNT;i++) {
-    //   PLOG("%llu",stable[i]);
-    // }
     
     ioq->dump_stats();
 
@@ -162,7 +159,6 @@ private:
 
 
     //    Memory::huge_shmem_free(virt_array[0],h);
-    free(stable);
   }
 
 
@@ -206,9 +202,12 @@ int main()
     asm("int3");
   }
 
+  basic_block_write(dev,24);
+  basic_block_read(dev,24);
+
+#if 0
   NVME_INFO("Issuing test read and write test...");
   
-
   {
 
     Read_thread * thr[NUM_QUEUES];
@@ -259,7 +258,7 @@ int main()
          1000.0 / gtod_secs);
 
   }
-
+#endif
   
   NVME_INFO("done tests.\n");
   sleep(100);

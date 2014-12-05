@@ -44,9 +44,13 @@ private:
   Exokernel::Atomic _count;
 
   void notify(unsigned command_id) {
+    TRACE();
     atomic_t p = _count.increment_and_fetch();
     if(p >= _next_when.read()) {
       _sem.post();
+    }
+    else {
+      PLOG("p=%lu",p);
     }
   }
 
@@ -67,6 +71,7 @@ public:
 
 public:
   static void notify_callback(unsigned command_id, void * p) {
+    TRACE();
     Notify_object * pThis = (Notify_object *)p;
     pThis->notify(command_id);
   }

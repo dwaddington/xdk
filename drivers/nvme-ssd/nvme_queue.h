@@ -424,19 +424,15 @@ public:
    * @param prp1 Physical destination address
    * @param offset LBA offset to read from
    * @param num_blocks Size of read in 512b blocks
-   * @param callback Callback function
-   * @param callback_param Cookie for callback
    * @param sequential Hint to whether this is part of a sequential read or not
    * @param access_freq Hint to access frequency for this data
    * @param access_lat Hint to access latency for this data
    * 
    * @return S_OK on success otherwise E_FAIL
    */
-  status_t issue_async_write(addr_t prp1, 
+  uint16_t issue_async_write(addr_t prp1, 
                              off_t offset,
                              size_t num_blocks,
-                             notify_callback_t callback,
-                             void * callback_param,
                              bool sequential=false, 
                              unsigned access_freq=0, 
                              unsigned access_lat=0,

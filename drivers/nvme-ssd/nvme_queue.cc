@@ -144,18 +144,33 @@ unsigned NVME_queues_base::increment_completion_head() {
  */
 Completion_command_slot * NVME_queues_base::get_next_completion() 
 {
+  __sync_synchronize();
   unsigned curr_head = _cq_head;
 
-  if((_comp_cmd[curr_head].phase_tag != _cq_phase) ||
-     (_comp_cmd[curr_head].status == 0xB)) {
-    return NULL;
+  while(_comp_cmd[curr_head].phase_tag != _cq_phase) {
+     __sync_synchronize();
   }
+
+  PLOG("completion head: slot=%u phase=0x%x status=0x%x",
+       curr_head,
+       _comp_cmd[curr_head].phase_tag,
+       _comp_cmd[curr_head].status);
+
+
+  // if((_comp_cmd[curr_head].phase_tag != _cq_phase) ||
+  //    (_comp_cmd[curr_head].status == 0xB)) {
+  
+  // if(_comp_cmd[curr_head].phase_tag != _cq_phase) {
+  //   PLOG("get_next_completion returning NULL");
+  //   return NULL;
+  // }
 
   increment_completion_head();
 
   if(verbose)
     PDBG("CURR_HEAD = %u",curr_head);
 
+  PLOG("get_next_completion returning %u",curr_head);
   return &_comp_cmd[curr_head];
 }
 
@@ -696,11 +711,9 @@ uint16_t NVME_IO_queues::issue_async_read(addr_t prp1,
 
 
 
-status_t NVME_IO_queues::issue_async_write(addr_t prp1, 
+uint16_t NVME_IO_queues::issue_async_write(addr_t prp1, 
                                            off_t offset, 
                                            size_t num_blocks,
-                                           notify_callback_t callback,
-                                           void * callback_param,
                                            bool sequential, 
                                            unsigned access_freq, 
                                            unsigned access_lat,
@@ -709,7 +722,6 @@ status_t NVME_IO_queues::issue_async_write(addr_t prp1,
   signed slot_id;
   Submission_command_slot * sc = next_sub_slot(&slot_id);
   assert(sc);
-  _callback_manager.register_callback(slot_id,callback,callback_param);
 
   Command_io_rw cmd(sc,
                     slot_id, /* command id */
@@ -724,6 +736,6 @@ status_t NVME_IO_queues::issue_async_write(addr_t prp1,
 
   ring_submission_doorbell();
   
-  return Exokernel::S_OK;
+  return slot_id;
 }
 
