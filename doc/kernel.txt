@@ -1,0 +1,39 @@
+-----------------------
+Parasitic Kernel Module
+-----------------------
+
+The XDK exokernel implementation uses a Linux kernel module to provide
+access to priviledged functions.  We term the module a 'parasitic'
+kernel since it takes away resource from the host kernel.
+
+The module is dynamically loadable and does not require any changes to
+the host kernel.  The source is located in
+xdk/kernel/modules/parasite.
+
+To compile the module:
+
+make clean
+make
+
+To load the module:
+
+sudo insmod pk.ko
+
+Use 'dmesg' to view logging:
+
+dmesg
+
+[196844.124953] [PK]: PARASITIC KERNEL loaded.
+[196844.124953] 
+[196844.124964] [PK]: major init complete.
+[196844.125526] [PK]: Registered misc device OK.
+
+To unload the module:
+
+sudo rmmod pk
+
+dmesg
+
+[196844.125526] [PK]: Registered misc device OK.
+[196890.649974] [PK]: PARASITIC KERNEL unloaded OK.
+
