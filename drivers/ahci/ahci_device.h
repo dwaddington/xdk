@@ -76,7 +76,8 @@ public:
    * Constructor
    * 
    */
-  AHCI_uddk_device() : Exokernel::Pci_device(0, dev_tbl) { 
+  AHCI_uddk_device(unsigned instance = 0) : 
+  Exokernel::Pci_device(instance, dev_tbl) { 
 
     _mmio = pci_memory_region(5);
 
