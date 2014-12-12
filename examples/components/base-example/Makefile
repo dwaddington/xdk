@@ -13,6 +13,6 @@ hello_component:
 	g++ $(CXXFLAGS) -g -shared -fPIC -Wl,-soname,libhello.so.1 -o libhello.so.1 hello_component.cc $(LIBS)
 
 clean:
-	rm -f example *.o
+	rm -f example_client libhello.so.1 *.o
 
 .PHONY: example_client

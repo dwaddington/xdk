@@ -27,11 +27,6 @@
    in files containing the exception.  
 */
 
-
-
-
-
-
 #include <signal.h>
 #include <libexo.h>
 
@@ -72,6 +67,8 @@ void* CQ_thread::entry(void* qb) {
   assert(_queues);
   assert(_irq > 0);
 
+  PLOG("CQ thread started");
+
   /* register Ctrl-C signal handler */
   struct sigaction sh;
   sh.sa_handler = sig_handler;
@@ -101,8 +98,10 @@ void* CQ_thread::entry(void* qb) {
   while(1) {
 
     /* wait for interrupt */
-    if(_queues->device()->wait_for_msix_irq(_irq) != Exokernel::S_OK)
+    if(_queues->device()->wait_for_msix_irq(_irq) != Exokernel::S_OK) {
+      panic("unexpected");
       break;
+    }
 
     // _queues->_wake_cq_thread.wait();
     // _queues->_wake_cq_thread.reset();
@@ -110,6 +109,7 @@ void* CQ_thread::entry(void* qb) {
     //    unsigned woke_reader = false;
 
     g_times_woken++;
+    PLOG("woken! (%lu)",g_times_woken);
 
   retry:
 
@@ -118,12 +118,13 @@ void* CQ_thread::entry(void* qb) {
       
 #ifndef CONFIG_DISABLE_CALLBACK
       /* perform call back */
-      //      PLOG("ccs->command_id=%x",ccs->command_id);
+      PLOG("IRQ handler calling callback ccs->command_id=%x",ccs->command_id);
       s = _queues->callback_manager()->call(1 /* slot */,
                                             ccs->command_id);
       assert(s == Exokernel::S_OK);
 #endif
       /* free slot */
+      PLOG("releasing slot %u",ccs->command_id-1);
       _queues->release_slot(ccs->command_id-1);
 
       // if(!woke_reader) {
@@ -140,6 +141,7 @@ void* CQ_thread::entry(void* qb) {
     //   goto retry;
 
     /* ring completion doorbell for new _cq_head */
+    PLOG("ringing completion doorbell");
     _queues->ring_completion_doorbell();
  
   }

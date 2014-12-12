@@ -27,26 +27,28 @@
    in files containing the exception.  
 */
 
-
-
-
-
-
+#include <component/base.h>
+#include <dlfcn.h>
 #include <stdio.h>
-#include <stdarg.h>
-#include <exo/logging.h>
 
-#include "nvme_common.h"
+#include "dummy_block_device.h"
 
-#ifdef NVME_VERBOSE
-void NVME_INFO(const char *fmt, ...) {
-  printf(NORMAL_MAGENTA);
-  va_list list;
-        va_start(list, fmt);
-  printf("[NVME]:");
-        vprintf(fmt, list);
-        va_end(list);
-        printf(RESET);
+
+int main()
+{
+  Component::IBase * comp = Component::load_component("./libcomp_dummybd.so.1",
+                                                      DummyBlockDeviceComponent::component_id());
+
+  IBlockDevice * itf = (IBlockDevice *) comp->query_interface(IBlockDevice::iid());
+
+  itf->init_device(0);
+  Exokernel::Device * dev = itf->get_device();
+
+  itf->sync_read_block(0,0,0,0,0);
+  itf->sync_write_block(0,0,0,0,0);
+
+  itf->shutdown_device();
+
+  itf->release_ref();
+  return 0;
 }
-#endif
-

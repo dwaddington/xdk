@@ -27,11 +27,6 @@
    in files containing the exception.  
 */
 
-
-
-
-
-
 #ifndef __NVME_NOTIFY_H__
 #define __NVME_NOTIFY_H__
 
@@ -44,14 +39,18 @@
 class Notify_object
 {
 private:
-  Exokernel::Semaphore _sem;
+  Semaphore _sem;
   Exokernel::Atomic _next_when;
   Exokernel::Atomic _count;
 
   void notify(unsigned command_id) {
+    TRACE();
     atomic_t p = _count.increment_and_fetch();
-    if(p == _next_when.read()) {
+    if(p >= _next_when.read()) {
       _sem.post();
+    }
+    else {
+      PLOG("p=%lu",p);
     }
   }
 
@@ -72,6 +71,7 @@ public:
 
 public:
   static void notify_callback(unsigned command_id, void * p) {
+    TRACE();
     Notify_object * pThis = (Notify_object *)p;
     pThis->notify(command_id);
   }

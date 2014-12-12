@@ -108,7 +108,7 @@ public:
     _num_queues++;
     int i = atoi(id);
     int c = atoi(core);    
-    assert(c < sysconf(_SC_NPROCESSORS_ONLN));
+    assert(c <= sysconf(_SC_NPROCESSORS_ONLN));
     
     struct mapping m(i,c);
     _core_qid_mappings.push_back(m);

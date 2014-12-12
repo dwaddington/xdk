@@ -36,8 +36,8 @@
 #define __NVME_COMMAND_IO_H__
 
 #include <vector>
-#include <exo/types.h>
-#include <exo/dump_utils.h>
+#include <common/types.h>
+#include <common/dump_utils.h>
 
 #include "nvme_command_structs.h"
 #include "nvme_command_admin.h"

@@ -36,7 +36,6 @@
 #define __NVME_DEVICE_H__
 
 #include <libexo.h>
-#include <exo/bits.h>
 #include "nvme_common.h"
 #include "nvme_registers_wrappers.h"
 #include "nvme_queue.h"
@@ -49,7 +48,7 @@
  * Devices that this driver works with
  * 
  */
-static Exokernel::device_vendor_pair_t dev_tbl[] = {{0x8086,0x5845}, // Intel SSD
+static Exokernel::device_vendor_pair_t dev_tbl[] = {{0x8086,0x5845}, // Intel SSD (QEMU)
                                                     {0x144d,0xa820}, // Samsung XS1715
                                                     {0,0}};
 
@@ -160,8 +159,6 @@ public:
    * @param prp1 Physical address of memory for DMA
    * @param offset Logical block address
    * @param num_blocks Number of blocks to read
-   * @param callback Callback function for completion notification
-   * @param callback_param Callback parameter (usually this pointer) 
    * @param sequential Hint - this is part of a sequential read
    * @param access_freq Hint - this is a high freqency data item
    * @param access_lat Hint - latency requirements
@@ -178,10 +175,10 @@ public:
                             unsigned access_lat=0,
                             unsigned nsid=1) 
   {
-    // if((queue_id > _num_io_queues)||(queue_id == 0)) {
-    //   assert(0);
-    //   return Exokernel::E_INVAL;
-    // }
+    if((queue_id > _num_io_queues)||(queue_id == 0)) {
+      assert(0);
+      return Exokernel::E_INVAL;
+    }
 
     return _io_queues[queue_id - 1]->issue_async_read(prp1,
                                                       offset,
@@ -202,8 +199,6 @@ public:
    * @param prp1 Physical address of memory for DMA
    * @param offset Logical block address
    * @param num_blocks Number of blocks to write
-   * @param callback Callback function for completion notification
-   * @param callback_param Callback parameter (usually this pointer) 
    * @param sequential Hint - this is part of a sequential read
    * @param access_freq Hint - this is a high freqency data item
    * @param access_lat Hint - latency requirements
@@ -215,8 +210,6 @@ public:
                              addr_t prp1,
                              off_t offset,
                              size_t num_blocks,
-                             notify_callback_t callback,
-                             void * callback_param,
                              bool sequential=false, 
                              unsigned access_freq=0, 
                              unsigned access_lat=0,
@@ -230,8 +223,6 @@ public:
     return _io_queues[queue_id - 1]->issue_async_write(prp1,
                                                        offset,
                                                        num_blocks,
-                                                       callback,
-                                                       callback_param,
                                                        sequential,
                                                        access_freq,
                                                        access_lat,

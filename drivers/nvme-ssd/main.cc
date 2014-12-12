@@ -27,26 +27,26 @@
    in files containing the exception.  
 */
 
-
-
-
-
-
 #include <stdio.h>
 #include <sys/time.h>
 #include <sched.h>
 #include <sys/types.h>
 #include <sys/resource.h>
 #include <unistd.h>
+#include <common/cycles.h>
 
 #include "nvme_device.h"
 
 #define COUNT (1000000)
-#define NUM_QUEUES (4)
+#define NUM_QUEUES (1)
 #define SLAB_SIZE (1000)
 #define NUM_BLOCKS (8)
 
 Exokernel::Pagemap pm;
+
+void basic_block_read(NVME_device * dev, size_t num_blocks);
+void basic_block_write(NVME_device * dev, size_t num_blocks);
+
 
 class Read_thread : public Exokernel::Base_thread
 {
@@ -100,14 +100,12 @@ private:
 
     unsigned long long mean_cycles = 0;
     unsigned long long sample_count = 0;
-    unsigned long long * stable = (unsigned long long *) malloc(sizeof(unsigned long long) * COUNT);
-    assert(stable);
 
     _dev->io_queue(_qid)->callback_manager()->register_callback(1,
                                                                 &Notify_object::notify_callback,
                                                                 (void*)&nobj);
 
-    unsigned long threshold = _dev->io_queue(_qid)->queue_length() * 0.3;
+    unsigned long threshold = _dev->io_queue(_qid)->queue_length() * 0.8;
     PLOG("threshold = %lu", threshold);
     atomic_t send_id = 0;
     uint16_t cid;
@@ -119,7 +117,7 @@ private:
                                    (i*512)+(_qid*COUNT), /* offset */
                                    NUM_BLOCKS); /* num blocks */
       
-      //      PLOG("sent (Q:%u) %lu...",_qid,send_id);
+      PLOG("sent (Q:%u) %lu...",_qid,send_id);
       /* collect stats */
       cpu_time_t delta = rdtsc() - start;
 
@@ -130,8 +128,6 @@ private:
       else {
         mean_cycles = delta;
       }
-
-      //      stable[i] = delta;
 
       if(i%100000==0) PLOG("(_QID:%u) i=%lu", _qid, i);     
       if(i==COUNT) break;
@@ -155,9 +151,6 @@ private:
     // }
     // PLOG("end c = %x",c);
     
-    // for(unsigned i=0;i<COUNT;i++) {
-    //   PLOG("%llu",stable[i]);
-    // }
     
     ioq->dump_stats();
 
@@ -166,7 +159,6 @@ private:
 
 
     //    Memory::huge_shmem_free(virt_array[0],h);
-    free(stable);
   }
 
 
@@ -210,18 +202,13 @@ int main()
     asm("int3");
   }
 
-  NVME_INFO("Issuing test read and write test...press enter\n");
+  basic_block_write(dev,24);
+  basic_block_read(dev,24);
 
 #if 0
-  for(unsigned i=0;i<10;i++) {
-    byte r = test_read(dev);
-    test_write(dev,r+1);
-    test_read(dev);
-  }
-#endif
-
+  NVME_INFO("Issuing test read and write test...");
+  
   {
-#if 1
 
     Read_thread * thr[NUM_QUEUES];
 
@@ -270,10 +257,8 @@ int main()
          gtod_secs,
          1000.0 / gtod_secs);
 
-#endif
-
   }
-
+#endif
   
   NVME_INFO("done tests.\n");
   sleep(100);
