@@ -46,6 +46,8 @@
 #include <sstream>
 #include <fstream>
 
+#include <common/logging.h>
+
 #include "sysfs.h"
 
 namespace Exokernel
@@ -225,9 +227,10 @@ namespace Exokernel
         }
         _cached_fd.vector = vector;
         _cached_fd.handle = fopen(ss.str().c_str(),"r+");
-        assert(_cached_fd.handle);
+        PASSERT(_cached_fd.handle, "unable to open (%s)", ss.str().c_str());	
       }
-      assert(_cached_fd.handle);
+
+
       /* do read - don't forget its a string */
       char tmp[8];
       int ri;

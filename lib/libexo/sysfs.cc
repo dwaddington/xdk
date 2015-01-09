@@ -294,12 +294,19 @@ alloc_dma_pages(size_t num_pages, addr_t * phys_addr, unsigned numa_node, int fl
     int owner, numa, order;
     addr_t paddr;
 
-    if(!(fs >> std::hex >> owner >> std::ws >> numa >> std::ws >> order >> std::ws >> std::hex >> paddr)) {
-      if(errno == 34) 
-        PDBG("DMA allocation order invalid for kernel.");
-      else
+    try {
+      if(!(fs >> std::hex >> owner >> std::ws >> numa >> std::ws >> order >> std::ws >> std::hex >> paddr)) {
+        if(errnocat  == 34) 
+          PDBG("DMA allocation order invalid for kernel.");
+        else
         PDBG("unknown error in dma_page_alloc (%d)",errno);
+      }
     }
+    catch(...) {
+      PERR("unexpected data on (%s)",n.c_str());
+      throw Exokernel::Fatal(__FILE__,__LINE__,"unexpected data from dma_page_alloc - ran out of pages?");
+    }
+
 
     assert(paddr > 0);
     *phys_addr = paddr;
@@ -336,6 +343,9 @@ alloc_dma_pages(size_t num_pages, addr_t * phys_addr, unsigned numa_node, int fl
     _dma_allocations[p] = new memory_mapping_t(paddr, num_pages * PAGE_SIZE, flags);
           
     return p;
+  }
+  catch(Exokernel::Fatal e) {
+    throw e;
   }
   catch(...) {
     throw Exokernel::Fatal(__FILE__,__LINE__,

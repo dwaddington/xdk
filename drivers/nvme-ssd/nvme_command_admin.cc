@@ -27,11 +27,6 @@
    in files containing the exception.  
 */
 
-
-
-
-
-
 #include "nvme_command_admin.h"
 #include "nvme_device.h"
 

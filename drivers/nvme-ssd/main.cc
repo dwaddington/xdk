@@ -197,6 +197,10 @@ int main()
     NVME_INFO("EXCEPTION: error in NVME device initialization (%s) \n",e.cause());
     asm("int3");
   }
+  catch(Exokernel::Fatal e) {
+    NVME_INFO("FATAL: error in NVME device initialization (%s) \n",e.cause());
+    asm("int3");
+  }
   catch(...) {
     NVME_INFO("EXCEPTION: error in NVME device initialization (unknown exception) \n");
     asm("int3");
