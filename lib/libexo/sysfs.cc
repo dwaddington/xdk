@@ -296,7 +296,7 @@ alloc_dma_pages(size_t num_pages, addr_t * phys_addr, unsigned numa_node, int fl
 
     try {
       if(!(fs >> std::hex >> owner >> std::ws >> numa >> std::ws >> order >> std::ws >> std::hex >> paddr)) {
-        if(errnocat  == 34) 
+        if(errno  == 34) 
           PDBG("DMA allocation order invalid for kernel.");
         else
         PDBG("unknown error in dma_page_alloc (%d)",errno);
