@@ -53,8 +53,7 @@ private:
 
 public:
   Semaphore(bool cross_process = false, unsigned int val = 0) {
-    int rc = sem_init(&_sem, cross_process, val);
-    assert(rc == 0);
+    sem_init(&_sem, cross_process, val);
   }
 
   int post() {
@@ -131,12 +130,8 @@ private:
 public:
 
   Event() : _var(false) {
-    int rc;
-    rc = pthread_mutex_init(&_var_lock,NULL);
-    assert(rc==0);
-
-    rc = pthread_cond_init(&_cond_var, NULL);
-    assert(rc==0);
+    pthread_mutex_init(&_var_lock,NULL);
+    pthread_cond_init(&_cond_var, NULL);
   }
 
   ~Event() {

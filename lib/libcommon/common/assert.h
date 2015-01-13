@@ -34,12 +34,11 @@
 */
 
 
-
-
 #ifndef __EXO_ASSERT_H__
 #define __EXO_ASSERT_H__
 
 #include <stdio.h>
+#include "logging.h"
 
 #define CONFIG_BUILD_DEBUG
 
@@ -49,9 +48,9 @@ extern "C"
 void panic(const char *format, ...) __attribute__((format(printf, 1, 2)));
 
 #ifdef CONFIG_BUILD_DEBUG
-#define soft_stop() ::printf("Soft-stop: [%s,%s]", __PRETTY_FUNCTION__,__FILE__); asm("int3")
+#define soft_stop( X ) ::printf("%s[%s:%d] STOP: %s%s\n", ESC_ERR, __FILE__, __LINE__, X, ESC_END ); asm("int3")
 #else
-#define soft_stop()
+#define soft_stop( X )
 #endif
 
 #ifdef CONFIG_BUILD_DEBUG
@@ -64,6 +63,12 @@ void panic(const char *format, ...) __attribute__((format(printf, 1, 2)));
 #define assert_alignment(X,ALIGNMENT) assert(!(((unsigned long)X) & (ALIGNMENT - 1UL) ))
 #else
 #define assert_alignment(X,ALIGNMENT)
+#endif
+
+#ifdef CONFIG_BUILD_DEBUG
+#define ASSERT(X) (assert(X))
+#else
+#define ASSERT(X) (X)
 #endif
 
 #ifdef CONFIG_BUILD_DEBUG
