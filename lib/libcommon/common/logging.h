@@ -36,6 +36,7 @@
 #define __COMMON_LOGGING_H__
 
 #include <stdio.h>
+#include <assert.h>
 
 #define NORMAL_CYAN "\033[36m"
 #define NORMAL_MAGENTA "\033[35m"
@@ -68,10 +69,15 @@
 
 #define PDBG(f, a...)   fprintf( stderr, "[XDK]: %s:" f "\n",  __func__ , ## a)
 #define PLOG(f, a...)   fprintf( stderr, "[XDK]: %s:" f "\n",  __func__ , ## a)
-#define PINF(f, a...)   fprintf( stderr, "" f "\n", ## a)
-#define PWRN(f, a...)   fprintf( stderr, "[XDK]: %s:" f "\n",  __func__ , ## a)
+#define PINF(f, a...)   fprintf( stderr, "%s" f "%s\n", ESC_INF, ## a, ESC_END)
+#define PWRN(f, a...)   fprintf( stderr, "%s[XDK]: %s:" f "%s\n",  ESC_WRN, __func__ , ## a, ESC_END)
 #define PERR(f, a...)   fprintf( stderr, "[XDK]: ERROR %s:" f "\n",  __func__ , ## a); 
 
+#ifdef CONFIG_BUILD_DEBUG
+#define PASSERT(cond, f, a...) if(! cond ) { fprintf( stderr, "%s[XDK]: ASSERT FAIL %s:" f "\n%s",  ESC_ERR,__func__ , ## a, ESC_END); assert(cond); }
+#else
+#define PASSERT(cond, f, a...)
+#endif
 
 #define TRACE()  fprintf( stderr, "[XDK]: %s\n", __FUNCTION__)
 

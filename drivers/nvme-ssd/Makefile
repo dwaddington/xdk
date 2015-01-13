@@ -2,7 +2,9 @@ include ../../mk/global.mk
 
 TARGET = nvme_drv
 SOURCES = $(wildcard *.cc) 
-CXXFLAGS += -g -I$(XDK_BASE)/lib/libexo -I$(XDK_BASE)/lib/libcommon
+
+CXXFLAGS += -g -O2 -DCONFIG_BUILD_DEBUG -I$(XDK_BASE)/lib/libexo -I$(XDK_BASE)/lib/libcommon
+
 LIBS = -L$(XDK_BASE)/lib/libexo -L$(XDK_BASE)/lib/libcommon -L$(XDK_BASE)/lib/libcomponent -lcommon -lcomponent -lexo -lpthread -lrt -lnuma -ltinyxml
 
 all: nvme_drv

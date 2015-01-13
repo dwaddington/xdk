@@ -64,12 +64,15 @@ NVME_device::~NVME_device() {
  */
 void NVME_device::hw_reset() {
 
+  NVME_INFO("HW resetting ..\n");
+
   /* disable device */
   _regs->cc_disable(); 
   while(_regs->csts_ready()) {
     usleep(100000);
     NVME_INFO("waiting for disable...\n");
   }
+  NVME_INFO("device disabled.\n");
 
   /* create admin queues */
   if(_admin_queues)
@@ -77,7 +80,9 @@ void NVME_device::hw_reset() {
   
   assert(_msi_vectors[0] > 0);
   _admin_queues = new NVME_admin_queues(this, _msi_vectors[0]); 
+  NVME_INFO("created admin queues.\n");
   _admin_queues->setup_doorbells();
+  NVME_INFO("doorbells setup.\n");
 
   /* configure CC */
   _regs->cc(0x460001);
@@ -93,11 +98,13 @@ void NVME_device::hw_reset() {
     attempts--;
   }
 
-  if(!_regs->csts_ready())
+  if(!_regs->csts_ready()) {
+    NVME_INFO("failed to initialize controller.\n");
     throw Exokernel::Exception("Failed to initialize controller\n");
+  }
 
+  NVME_INFO("HW reset OK.\n");
   assert(_regs->csts() == 0x1);
-
 }
 
 /** 
@@ -125,10 +132,10 @@ void NVME_device::init_device() {
 
   /* set up steering */
   for(unsigned i=1;i<num_vectors;i++) {
-    NVME_INFO("allocated MSI-X vector to IO queue:   %u\n",_msi_vectors[i]);
 
     /* route interrupt to appropriate core */
     Exokernel::route_interrupt(_msi_vectors[i],_config.get_core(i-1));
+    NVME_INFO("allocated MSI-X vector to IO queue:   %u (routed to core %u)\n",_msi_vectors[i], _config.get_core(i-1));
   }
 
   /* reset and bring up device */
@@ -137,27 +144,29 @@ void NVME_device::init_device() {
   /* set number of queues */
   _admin_queues->set_queue_num(_num_io_queues);
 
-  if(vendor()!=0x8086) { /* exclude QEMU */
-    /* get PCIe MSI and MSIX capabilities - debugging purposes */
-    {
-      int msicap = get_cap(0x5);
-      uint16_t mc = pci_config()->read16(msicap+0x2);
-      NVME_INFO("MSI Capabilities (0x%x)\n",mc);
-      NVME_INFO(" PVM  :      %s\n", mc & (1<<8) ? "yes" : "no");
-      NVME_INFO(" 64bit:      %s\n", mc & (1<<7) ? "yes" : "no");
-      NVME_INFO(" MMC:        %d\n", (mc >> 1) & 0x7);
-      NVME_INFO(" MME:        %d\n", (mc >> 4) & 0x7);
-      NVME_INFO(" MSI Enable: %s\n", mc & 0x1 ? "yes" : "no");
-    }
-    {
-      int msixcap = get_cap(0x11);
-      uint16_t mc = pci_config()->read16(msixcap+0x2);
-      NVME_INFO("MSIX Capabilities (0x%x)\n",mc);
-      NVME_INFO(" FM:              %s\n", mc & (1<<14) ? "yes" : "no");
-      NVME_INFO(" MSIX Enable:     %s\n", mc & (1<<15) ? "yes" : "no");
-      assert(mc & (1<<15));
-    }
-  }
+  // THIS DOES NOT WORK - NEED TO LOOK INTO WHY BUT ITS ONLY FOR DEBUGGING
+  //
+  // if(vendor()!=0x8086) { /* exclude QEMU */
+  //   /* get PCIe MSI and MSIX capabilities - debugging purposes */
+  //   {
+  //     int msicap = get_cap(0x5);
+  //     uint16_t mc = pci_config()->read16(msicap+0x2);
+  //     NVME_INFO("MSI Capabilities (0x%x)\n",mc);
+  //     NVME_INFO(" PVM  :      %s\n", mc & (1<<8) ? "yes" : "no");
+  //     NVME_INFO(" 64bit:      %s\n", mc & (1<<7) ? "yes" : "no");
+  //     NVME_INFO(" MMC:        %d\n", (mc >> 1) & 0x7);
+  //     NVME_INFO(" MME:        %d\n", (mc >> 4) & 0x7);
+  //     NVME_INFO(" MSI Enable: %s\n", mc & 0x1 ? "yes" : "no");
+  //   }
+  //   {
+  //     int msixcap = get_cap(0x11);
+  //     uint16_t mc = pci_config()->read16(msixcap+0x2);
+  //     NVME_INFO("MSIX Capabilities (0x%x)\n",mc);
+  //     NVME_INFO(" FM:              %s\n", mc & (1<<14) ? "yes" : "no");
+  //     NVME_INFO(" MSIX Enable:     %s\n", mc & (1<<15) ? "yes" : "no");
+  //     assert(mc & (1<<15));
+  //   }
+  // }
 
   /* collect device information */
   _admin_queues->issue_identify_device();

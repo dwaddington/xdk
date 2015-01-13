@@ -33,7 +33,6 @@
   Copyright (C) 2014, Daniel G. Waddington <daniel.waddington@acm.org>
 */
 
-
 #ifndef __EXO_ASSERT_H__
 #define __EXO_ASSERT_H__
 

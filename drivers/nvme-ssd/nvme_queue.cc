@@ -247,6 +247,7 @@ Completion_command_slot * NVME_queues_base::curr_comp_slot() {
 NVME_admin_queues::NVME_admin_queues(NVME_device * dev, unsigned irq) : 
   NVME_queues_base(dev, 0 /* admin is queue 0 */, irq, Admin_queue_len)
 {
+  NVME_INFO("creating NVME admin queues.\n");
   size_t num_pages;
   assert(dev);
 
