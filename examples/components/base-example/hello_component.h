@@ -1,4 +1,5 @@
 #include "hello_itf.h"
+#include <common/logging.h>
 
 /** 
  * Interface IHello implementation
@@ -23,7 +24,6 @@ public:
 public:
   void * query_interface(Component::uuid_t& itf_uuid) {
     if(itf_uuid == IHello::iid()) {
-      add_ref(); // implicitly add reference
       return (void *) static_cast<IHello *>(this);
     }
     else 
@@ -31,7 +31,7 @@ public:
   };
 
   void unload() {
-    printf("Unloading component.\n");
+    PLOG("Unloading component.");
     delete this;
   }
 

@@ -41,6 +41,7 @@
 #include <dlfcn.h>
 #include <stdio.h>
 #include <common/types.h>
+#include <common/logging.h>
 #include <string>
 #include <sstream>
 #include <iomanip>
@@ -128,8 +129,8 @@ namespace Component
       int val = _ref_count.fetch_sub(1) - 1;    
       assert(val >= 0);
       if(val == 0) {
+        PLOG("unloading component (%p)",(void*) this);
         this->unload(); /* call virtual unload function */
-        dlclose(_dll_handle);
       }
     }
 
