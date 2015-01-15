@@ -167,7 +167,7 @@ void * Exokernel::Memory::alloc_pages(size_t num_pages, addr_t* phys_addr)
   void * ptr = mmap(NULL, 
                     alloc_size, 
                     PROT_READ | PROT_WRITE,
-                    MAP_PRIVATE | MAP_ANONYMOUS | MAP_LOCKED | MAP_NORESERVE, // MAP_POPULATE
+                    MAP_PRIVATE | MAP_ANONYMOUS | MAP_LOCKED | MAP_NORESERVE | MAP_POPULATE,
                     -1, 0);
 
   if(ptr == MAP_FAILED) {

@@ -87,7 +87,7 @@ public:
     c->slba = offset;
     c->length = num_blocks;
 
-    memcpy(&c->dsmgmt,&dsm,1);
+    __builtin_memcpy(&c->dsmgmt,&dsm,1);
 
     // printf("!!! issuing (%s) command prp1=0x%lx nsid=%d slba=%ld control=0x%x dsmgmt=0x%x!!!\n",
     //        iswrite ? "write" : "read",

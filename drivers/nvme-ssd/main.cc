@@ -231,9 +231,12 @@ int main()
     for(unsigned i=1;i<=NUM_QUEUES;i++)
       thr[i-1]->start();
 
-    for(unsigned i=1;i<=NUM_QUEUES;i++)
+    for(unsigned i=1;i<=NUM_QUEUES;i++) {
+      PLOG("!!!!!!!!!!!!!! joined read thread %d",thr[i-1]);
       thr[i-1]->join();
+    }
 
+    PLOG("All read threads joined.");
 
     getrusage(RUSAGE_SELF,&ru_end);
     gettimeofday(&tv_end, NULL);

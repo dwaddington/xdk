@@ -11,6 +11,7 @@
 
 void basic_block_read(NVME_device * dev, size_t num_blocks) {
 
+  PLOG("running basic_block_read..");
   const unsigned qid = 1;
   assert(num_blocks < 256);
 
@@ -32,7 +33,7 @@ void basic_block_read(NVME_device * dev, size_t num_blocks) {
 
     cid = dev->block_async_read(qid,
                                 phys,
-                                i*512, /* offset */
+                                i, /* LBA */
                                 1); /* num blocks */
     
     PLOG("Block read cid=%u",cid);
@@ -41,13 +42,15 @@ void basic_block_read(NVME_device * dev, size_t num_blocks) {
   }
   nobj.set_when(cid);
   nobj.wait();
-  PLOG("@@@@ Blocks read");
+  PLOG("expected block reads complete.");
 
+  Exokernel::Memory::free_pages(p);
 }
 
 
 void basic_block_write(NVME_device * dev, size_t num_blocks) {
 
+  PLOG("running basic_block_write..");
   //  Exokernel::Memory::huge_system_configure_nrpages(10);
   const unsigned qid = 1;
   assert(num_blocks < 256);
@@ -60,25 +63,32 @@ void basic_block_write(NVME_device * dev, size_t num_blocks) {
                                                             (void*)&nobj);
 
   addr_t phys = 0;
-  void * p = Exokernel::Memory::alloc_pages(1,&phys);
-
+  void * p = Exokernel::Memory::alloc_pages(4,&phys);
+  memset(p,0xfe,4*PAGE_SIZE);
   assert(p);
   assert(phys);
+
+  char * q = (char *) p;
+  for(unsigned i=0;i<num_blocks;i++) {
+    /* write a value in */
+    memset(q,0xA0+i,512);
+    q+=512;
+  }
 
   uint16_t cid;
   for(unsigned i=0;i<num_blocks;i++) {
 
-    /* write a value in */
-    memset(p,i,512);
-
     cid = dev->block_async_write(qid,
-                                 phys,
-                                 i*512, /* offset */
+                                 phys+(7*512),
+                                 i, /* LBA */
                                  1);/* num blocks */
     
     PLOG("*** Block written cid=%u",cid);
   }
+  sleep(1);
   nobj.set_when(cid);
   nobj.wait();
   PLOG("******** Blocks written!!!");
+
+  Exokernel::Memory::free_pages(p);
 }

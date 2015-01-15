@@ -31,6 +31,7 @@
 #define __NVME_NOTIFY_H__
 
 #include <queue>
+#include <boost/atomic.hpp>
 
 /** 
  * WARNING: this class has issues with wrapping around the count
@@ -40,25 +41,49 @@ class Notify_object
 {
 private:
   Semaphore _sem;
-  Exokernel::Atomic _next_when;
-  Exokernel::Atomic _count;
+  boost::atomic<unsigned long> _next_when;
+  //  boost::atomic<unsigned> _count;
 
-  void notify(unsigned command_id) {
-    TRACE();
-    atomic_t p = _count.increment_and_fetch();
-    if(p >= _next_when.read()) {
+  //  Exokernel::Atomic _next_when;
+  //  Exokernel::Atomic _count;
+
+  void notify(unsigned long command_id) {
+
+    if(command_id >= _next_when) {
       _sem.post();
     }
-    else {
-      PLOG("p=%lu",p);
-    }
+
+    // PLOG("notified of command id=%u", command_id);
+    // atomic_t p = _count.increment_and_fetch();
+    // if(_count. >= _next_when.read()) {
+    //   PLOG("!!!!!posting!!!!");
+    //   _sem.post();
+    // }
+    // else {
+    //   PLOG("p=%lu",p);
+    // }
   }
 
 
 public:
+  Notify_object() : _next_when(0) {
+  }
+
 
   void set_when(atomic_t when) {
-    _next_when.init_value(when);
+
+    PLOG("trying to set when to %lu",when);
+    if(when > _next_when.load()) {
+      _next_when.store(when);
+      PLOG("when set=%lu",_next_when.load());      
+    }
+    // TRACE();
+    // if(_count.read() >= when) { /* could have got there already! */
+    //   PLOG("We are there already!!!!!!!!!!!!!!!!!!!!");
+    //   _sem.post();
+    //   return;
+    // }
+    // while(!_next_when.cas_bool(_next_when,when));
   }
 
   /** 

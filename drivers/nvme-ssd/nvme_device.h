@@ -199,7 +199,7 @@ public:
    * @param prp1 Physical address of memory for DMA
    * @param offset Logical block address
    * @param num_blocks Number of blocks to write
-   * @param sequential Hint - this is part of a sequential read
+   * @param sequential Hint - this is part of a sequential write
    * @param access_freq Hint - this is a high freqency data item
    * @param access_lat Hint - latency requirements
    * @param nsid - Namespace identifier

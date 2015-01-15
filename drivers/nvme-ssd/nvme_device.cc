@@ -27,11 +27,6 @@
    in files containing the exception.  
 */
 
-
-
-
-
-
 #include "nvme_device.h"
 
 #undef CONFIG_FORMAT_ON_INIT

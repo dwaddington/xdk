@@ -664,7 +664,7 @@ uint16_t NVME_IO_queues::issue_async_read(addr_t prp1,
                                           unsigned nsid) 
 {
 
-  signed slot_id = -1;
+  signed slot_id;
   Submission_command_slot * sc;
 
   cpu_time_t start = rdtsc();
