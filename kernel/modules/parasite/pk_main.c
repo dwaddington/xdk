@@ -168,6 +168,7 @@ struct pk_device * sysfs_class_register_device(struct pci_dev * pci_dev)
 
   /* create procfs dir */
   ASSERT(pk_proc_dir_root!=NULL);
+
   PLOG("creating /proc/parasite/%s entry.",pkdev->name);
   pkdev->msi_proc_dir_root = proc_mkdir(pkdev->name,pk_proc_dir_root);
 

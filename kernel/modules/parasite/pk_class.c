@@ -47,6 +47,7 @@
 #include <linux/mmzone.h>
 #include <linux/delay.h>
 #include <linux/msi.h>
+#include <linux/cred.h> /* see https://www.kernel.org/doc/Documentation/security/credentials.txt */
 
 #include "pk.h"
 #include "pk_fops.h"
@@ -776,7 +777,7 @@ int setup_msi_handlers(struct pk_device * pkdev)
         
       sprintf(entry_name,"msi-%d",this_vector);
       proc_create_data(entry_name, 
-                       0600, 
+                       0666, 
                        pkdev->msi_proc_dir_root,
                        &msix_proc_fops,
                        (void*)(&pkdev->msi_irq_wait_queue[i])); // pass thru ptr to wait Q
@@ -852,8 +853,10 @@ int setup_msix_handlers(struct pk_device * pkdev)
       char entry_name[16];     
         
       sprintf(entry_name,"msix-%d",this_vector);
+
+      /* TODO: permissions should be locked down to owner */
       proc_create_data(entry_name, 
-                       0600, 
+                       0666, 
                        pkdev->msi_proc_dir_root,
                        &msix_proc_fops,
                        (void*)(&pkdev->msi_irq_wait_queue[i])); // pass thru ptr to wait Q
