@@ -195,10 +195,10 @@ static int fops_mmap(struct file *file, struct vm_area_struct *vma)
 
   {
     unsigned long pfn = vma->vm_pgoff; //(offset >> PAGE_SHIFT);
-    //    struct mm_struct *mm = current->mm;
+    struct mm_struct *mm = current->mm;
 
     /* hold mm semaphore for the process */
-    //    down_write(&mm->mmap_sem);
+    down_write(&mm->mmap_sem);
 
     if (remap_pfn_range(vma, 
                         start, 
@@ -209,7 +209,7 @@ static int fops_mmap(struct file *file, struct vm_area_struct *vma)
       //      up_write(&mm->mmap_sem);
       return -EIO;
     }
-    //    up_write(&mm->mmap_sem);
+        up_write(&mm->mmap_sem);
   }
 
   vma->vm_ops = &pk_dma_mmap_fops;

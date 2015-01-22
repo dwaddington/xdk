@@ -106,16 +106,16 @@ void* CQ_thread::entry(void* qb) {
     // _queues->_wake_cq_thread.wait();
     // _queues->_wake_cq_thread.reset();
     
-    //    unsigned woke_reader = false;
+    unsigned found_completion = false;
 
     g_times_woken++;
-    PLOG("woken! (%lu)",g_times_woken);
+    PLOG("IRQ(%u) !!! WOKEN !!! (times=%lu)",_irq, g_times_woken);
 
   retry:
 
     /* iterate through the completed completion slots (looking at phase tag) */
     while((ccs = _queues->get_next_completion())!=NULL) {
-      
+
 #ifndef CONFIG_DISABLE_CALLBACK
       /* perform call back */
       PLOG("IRQ handler calling callback ccs->command_id=%d",ccs->command_id);
@@ -127,11 +127,13 @@ void* CQ_thread::entry(void* qb) {
       PLOG("releasing slot %u",ccs->command_id-1);
       _queues->release_slot(ccs->command_id-1);
 
+      found_completion = true;
       // if(!woke_reader) {
       //   woke_reader = true;
       //   _queues->_pending_reader.wake_one();
       // }
       g_entries_cleared++;
+
       // if(g_entries_cleared % 1024 == 0) 
       //   PLOG("CQ thread cleared %lu entries",g_entries_cleared);
     }
@@ -139,10 +141,17 @@ void* CQ_thread::entry(void* qb) {
     /* we may not have woken readers yet */
     // if(!woke_reader)
     //   goto retry;
+    PLOG("found completion --> %s",found_completion ? "yes" : "no");
 
     /* ring completion doorbell for new _cq_head */
-    PLOG("ringing completion doorbell");
-    _queues->ring_completion_doorbell();
+
+    if(found_completion) {
+      PLOG("ringing completion doorbell");
+      _queues->ring_completion_doorbell();
+    }
+    // else {
+    //    _queues->dump_queue_info();
+    // }
  
   }
 

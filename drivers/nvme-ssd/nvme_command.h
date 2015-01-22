@@ -27,11 +27,6 @@
    in files containing the exception.  
 */
 
-
-
-
-
-
 #ifndef __NVME_COMMAND_H__
 #define __NVME_COMMAND_H__
 

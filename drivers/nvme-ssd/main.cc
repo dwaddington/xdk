@@ -182,7 +182,7 @@ public:
 
 
 
-int main()
+int main(int argc, char * argv[])
 {
   NVME_device* dev;
   Exokernel::set_thread_name("nvme_drv-main");
@@ -206,8 +206,11 @@ int main()
     asm("int3");
   }
 
-  basic_block_write(dev,24);
-  basic_block_read(dev,24);
+  if(argc > 1) {
+    basic_block_write(dev,8);
+    basic_block_read(dev,8);
+  }
+
 
 #if 0
   NVME_INFO("Issuing test read and write test...");

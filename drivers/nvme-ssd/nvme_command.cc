@@ -27,15 +27,8 @@
    in files containing the exception.  
 */
 
-
-
-
-
-
 #include "nvme_command_admin.h"
 #include "nvme_device.h"
-
-
 
 void Completion_command_slot::dump() {
   NVME_INFO("---- completion command ----\n");

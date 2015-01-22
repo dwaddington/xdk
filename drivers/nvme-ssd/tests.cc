@@ -71,7 +71,7 @@ void basic_block_write(NVME_device * dev, size_t num_blocks) {
   char * q = (char *) p;
   for(unsigned i=0;i<num_blocks;i++) {
     /* write a value in */
-    memset(q,0xA0+i,512);
+    memset(q,i+1,512);
     q+=512;
   }
 
@@ -79,13 +79,13 @@ void basic_block_write(NVME_device * dev, size_t num_blocks) {
   for(unsigned i=0;i<num_blocks;i++) {
 
     cid = dev->block_async_write(qid,
-                                 phys+(7*512),
+                                 phys+(i*512),
                                  i, /* LBA */
                                  1);/* num blocks */
     
     PLOG("*** Block written cid=%u",cid);
   }
-  sleep(1);
+
   nobj.set_when(cid);
   nobj.wait();
   PLOG("******** Blocks written!!!");

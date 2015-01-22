@@ -177,7 +177,7 @@ public:
    * 
    * @return 
    */
-  unsigned irq() const { return _irq; }
+  INLINE unsigned irq() const { return _irq; }
 
 
   /** 
@@ -186,7 +186,7 @@ public:
    * 
    * @return Phase tag
    */
-  INLINE unsigned phase() const { return _cq_phase; }
+  unsigned phase() const { return _cq_phase; }
   
   /** 
    * Debug functions

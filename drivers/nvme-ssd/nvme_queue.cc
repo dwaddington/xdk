@@ -30,6 +30,7 @@
 #include <libexo.h>
 #include <sys/param.h>
 #include <common/cycles.h>
+#include <exo/pagemap.h>
 
 #include "nvme_queue.h"
 #include "nvme_device.h"
@@ -37,6 +38,7 @@
 #include "nvme_command_admin.h"
 #include "nvme_command_io.h"
 
+static Exokernel::Pagemap pm;
 
 using namespace Exokernel;
 
@@ -144,12 +146,14 @@ unsigned NVME_queues_base::increment_completion_head() {
  */
 Completion_command_slot * NVME_queues_base::get_next_completion() 
 {
-  __sync_synchronize();
   unsigned curr_head = _cq_head;
 
-  while(_comp_cmd[curr_head].phase_tag != _cq_phase) {
-     __sync_synchronize();
+  if(_comp_cmd[curr_head].phase_tag != _cq_phase) {
+    PLOG("slot at head=%u is not phase changed",curr_head);
+    return NULL;
   }
+
+  PLOG("get_next_completion looking at head=%u",curr_head);
 
   PLOG("completion head: slot=%u phase=0x%x status=0x%x",
        curr_head,
@@ -181,7 +185,11 @@ Completion_command_slot * NVME_queues_base::get_next_completion()
  * 
  */
 void NVME_queues_base::dump_queue_info() {
+
   PINF("SQ_Tail=%u CQ_Head=%u",_sq_tail,_cq_head);
+  PINF("CQ hd vaddr=%p (paddr=0x%lx)",_comp_cmd, (unsigned long) pm.virt_to_phys(_comp_cmd));
+
+  __sync_synchronize();
 
   for(unsigned i=0;i < 20;i++) { // _queue_items
     PINF("SQCMD[%u][cid=%d](0x%x) CQCMD[%u][cid=%u](status=0x%x)(sct=0x%x)(phase=%u)(sqhd=%u)(result=%x)",
@@ -258,7 +266,7 @@ NVME_admin_queues::NVME_admin_queues(NVME_device * dev, unsigned irq) :
   /* allocate memory for the completion queue */
   num_pages = round_up_page(CQ_entry_size_bytes * Admin_queue_len) / PAGE_SIZE;
   _cq_dma_mem = dev->alloc_dma_pages(num_pages, &_cq_dma_mem_phys);  
-  memset(_cq_dma_mem,0,num_pages * PAGE_SIZE);
+  memset(_cq_dma_mem, 0, num_pages * PAGE_SIZE);
   NVME_INFO("NVME_completion_queue virt=%p phys=0x%lx pages=%lu\n",_cq_dma_mem,_cq_dma_mem_phys,num_pages);
   assert((_cq_dma_mem_phys & 0xfffUL) == 0UL);
 
@@ -381,8 +389,8 @@ status_t NVME_admin_queues::check_command_completion(uint16_t cid)
     unsigned attempts = 0;
     while(cc->command_id != cid) {
       attempts++;
-      if(attempts > 1000000) {
-        PERR("Check command completion timed out.");
+      if(attempts > 10000000) {
+        PERR("!!!! Check command completion timed out.");
         return Exokernel::E_FAIL;
       }
     }
@@ -575,7 +583,7 @@ NVME_IO_queues::NVME_IO_queues(NVME_device * dev,
   _cq_dma_mem = dev->alloc_dma_pages(num_pages, &_cq_dma_mem_phys);  
   assert(_cq_dma_mem);
   assert(_cq_dma_mem_phys);
-  memset(_cq_dma_mem,0,num_pages * PAGE_SIZE);
+  memset(_cq_dma_mem,0,num_pages * PAGE_SIZE); /* important to zero phase bits */
 
   NVME_INFO("creating IO completion queue (%u) virt=%p phys=0x%lx pages=%lu vector=%d\n",
             _queue_id,_cq_dma_mem,_cq_dma_mem_phys,num_pages,vector);
@@ -706,6 +714,8 @@ uint16_t NVME_IO_queues::issue_async_read(addr_t prp1,
   if(delta > 2000) 
     _bad_count++;
   issued++;
+
+  __sync_synchronize();
   return slot_id & 0xffff;
 }
 
@@ -736,7 +746,8 @@ uint16_t NVME_IO_queues::issue_async_write(addr_t prp1,
                     true);
 
   ring_submission_doorbell();
-  
+  __sync_synchronize();
+
   return slot_id;
 }
 

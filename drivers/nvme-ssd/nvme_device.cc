@@ -130,7 +130,7 @@ void NVME_device::init_device() {
 
     /* route interrupt to appropriate core */
     Exokernel::route_interrupt(_msi_vectors[i],_config.get_core(i-1));
-    NVME_INFO("allocated MSI-X vector to IO queue:   %u (routed to core %u)\n",_msi_vectors[i], _config.get_core(i-1));
+    NVME_INFO("allocated MSI-X vector to IO queue: %u (routed to core %u)\n",_msi_vectors[i], _config.get_core(i-1));
   }
 
   /* reset and bring up device */
@@ -153,18 +153,18 @@ void NVME_device::init_device() {
   //     NVME_INFO(" MME:        %d\n", (mc >> 4) & 0x7);
   //     NVME_INFO(" MSI Enable: %s\n", mc & 0x1 ? "yes" : "no");
   //   }
-  //   {
-  //     int msixcap = get_cap(0x11);
-  //     uint16_t mc = pci_config()->read16(msixcap+0x2);
-  //     NVME_INFO("MSIX Capabilities (0x%x)\n",mc);
-  //     NVME_INFO(" FM:              %s\n", mc & (1<<14) ? "yes" : "no");
-  //     NVME_INFO(" MSIX Enable:     %s\n", mc & (1<<15) ? "yes" : "no");
-  //     assert(mc & (1<<15));
-  //   }
+    {
+      int msixcap = get_cap(0x11);
+      uint16_t mc = pci_config()->read16(msixcap+0x2);
+      NVME_INFO("MSIX Capabilities (0x%x)\n",mc);
+      NVME_INFO(" FunctionMask:    %d\n", mc & (1<<14) ? 1 : 0);
+      NVME_INFO(" MSIX Enable:     %s\n", mc & (1<<15) ? "yes" : "no");
+      assert(mc & (1<<15));
+    }
   // }
 
   /* collect device information */
-  _admin_queues->issue_identify_device();
+    //  _admin_queues->issue_identify_device();
 
 #ifdef CONFIG_FORMAT_ON_INIT
   /* format disk */
