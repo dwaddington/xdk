@@ -53,8 +53,6 @@ void basic_block_write(NVME_device * dev, size_t num_blocks) {
   PLOG("running basic_block_write..");
   //  Exokernel::Memory::huge_system_configure_nrpages(10);
   const unsigned qid = 1;
-  assert(num_blocks < 256);
-
   Notify_object nobj;
 
   /* set up call back */
@@ -62,24 +60,31 @@ void basic_block_write(NVME_device * dev, size_t num_blocks) {
                                                             &Notify_object::notify_callback,
                                                             (void*)&nobj);
 
+  unsigned num_data_pages = 4;
+  unsigned num_data_blocks = (PAGE_SIZE * num_data_pages) / 512;
+
+  PLOG("Allocated %d pages, %d blocks",num_data_pages, num_data_blocks);
+
   addr_t phys = 0;
-  void * p = Exokernel::Memory::alloc_pages(4,&phys);
-  memset(p,0xfe,4*PAGE_SIZE);
+  //  void * p = Exokernel::Memory::alloc_pages(num_data_pages,&phys);
+  void * p = dev->alloc_dma_pages(num_data_pages,&phys);
+  memset(p,0xfe,num_data_pages*PAGE_SIZE);
   assert(p);
   assert(phys);
 
   char * q = (char *) p;
-  for(unsigned i=0;i<num_blocks;i++) {
+  for(unsigned i=0;i<num_data_blocks;i++) {
     /* write a value in */
     memset(q,i+1,512);
     q+=512;
   }
 
   uint16_t cid;
-  for(unsigned i=0;i<num_blocks;i++) {
+  //  for(unsigned i=0;i<num_blocks;i++) {
+  for(unsigned i=0;i<1;i++) {
 
     cid = dev->block_async_write(qid,
-                                 phys+(i*512),
+                                 phys+((i+8)*512), //phys+((i%num_data_blocks)*512),
                                  i, /* LBA */
                                  1);/* num blocks */
     

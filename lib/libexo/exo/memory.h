@@ -143,7 +143,7 @@ namespace Exokernel
      * 
      * @return Pointer to allocated memory
      */
-    void * huge_malloc(size_t size, addr_t * phys_addr = NULL);
+    void * huge_malloc(size_t size);
 
     /** 
      * Free a huge page allocation
@@ -183,7 +183,7 @@ namespace Exokernel
      * 
      * @return Virtual address
      */
-    void * alloc_pages(size_t num_pages, addr_t * phys_addr);
+    void * alloc_page(addr_t * phys_addr);
 
     /** 
      * Free all pages associated with a previous alloc_pages call
@@ -192,7 +192,7 @@ namespace Exokernel
      * 
      * @return 0 on success, -1 on error
      */
-    int free_pages(void * ptr);
+    int free_page(void * ptr);
 
 
     /* Note: You need to reserve huge pages in the system
@@ -288,10 +288,7 @@ namespace Exokernel
   public:
     Slab_allocator(Device * device, size_t bs, size_t n);
 
-    ~Slab_allocator() {
-      Exokernel::Memory::free_pages(_virt_base);
-      delete _taken;
-    }
+    ~Slab_allocator();
 
     void * alloc(addr_t * phys) {
       for(unsigned i=0;i<_num_entries;i++) {

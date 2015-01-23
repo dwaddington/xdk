@@ -63,13 +63,8 @@ static std::map<void *, size_t> __huge_page_allocations;
  * 
  * @return Pointer to newly allocated memory
  */
-void * Exokernel::Memory::huge_malloc(size_t alloc_size, addr_t * phys_addr) {
+void * Exokernel::Memory::huge_malloc(size_t alloc_size) {
 
-  /* on-demand static initialization - to do handle ctor errors */
-  static Exokernel::Pagemap __page_map;
-
-  using namespace Exokernel::Memory;
-    
   void * p = mmap(NULL, 
                   alloc_size, 
                   PROT_READ | PROT_WRITE,
@@ -78,11 +73,6 @@ void * Exokernel::Memory::huge_malloc(size_t alloc_size, addr_t * phys_addr) {
 
   assert(p);
   __huge_page_allocations[p] = alloc_size;
-
-  if(phys_addr) {
-    *phys_addr = (__page_map.virt_to_phys(p));
-    assert(phys_addr > 0);
-  }
 
   return p;
 }
@@ -157,31 +147,31 @@ int Exokernel::Memory::huge_free(void * ptr) {
  * 
  * @return Virtual address
  */
-void * Exokernel::Memory::alloc_pages(size_t num_pages, addr_t* phys_addr)
+/* WARNING issue!!! this will not allocate contiguous pages as is */
+void * Exokernel::Memory::alloc_page(addr_t* phys_addr) 
 {
   /* on-demand static initialization - to do handle ctor errors */
   static Exokernel::Pagemap __page_map;
 
-  size_t alloc_size = num_pages * PAGE_SIZE;
-    
   void * ptr = mmap(NULL, 
-                    alloc_size, 
+                    PAGE_SIZE,
                     PROT_READ | PROT_WRITE,
                     MAP_PRIVATE | MAP_ANONYMOUS | MAP_LOCKED | MAP_NORESERVE | MAP_POPULATE,
                     -1, 0);
 
   if(ptr == MAP_FAILED) {
-    PWRN("alloc_pages mmap failed (requested %lu pages)",num_pages);
+    PWRN("alloc_pages mmap failed");
     perror("alloc_pages mmap failed:");
     return NULL;
   }
 
-  __alloc_pages_mappings[ptr] = alloc_size;
+  __alloc_pages_mappings[ptr] = PAGE_SIZE;
   *phys_addr = __page_map.virt_to_phys(ptr);
   assert(phys_addr > 0);
 
   return ptr;
-}
+
+} __attribute__((deprecated))
 
 /** 
  * Free all pages associated with a previous alloc_pages call
@@ -190,7 +180,7 @@ void * Exokernel::Memory::alloc_pages(size_t num_pages, addr_t* phys_addr)
  * 
  * @return 0 on success, -1 on error
  */
-int Exokernel::Memory::free_pages(void * p)
+int Exokernel::Memory::free_page(void * p)
 {
   size_t s = __alloc_pages_mappings[p];
   if(s == 0) {
@@ -241,6 +231,12 @@ Exokernel::Slab_allocator::Slab_allocator(Device * device, size_t bs, size_t n) 
   assert(_phys_base);
   __builtin_memset(_taken,0,sizeof(bool[_num_entries]));
 }
+
+Exokernel::Slab_allocator::~Slab_allocator() {
+  _device->free_dma_pages(_virt_base);
+  delete _taken;
+}
+
 
 
 void Exokernel::Memory::huge_shmem_set_region_max(size_t size)

@@ -207,8 +207,8 @@ int main(int argc, char * argv[])
   }
 
   if(argc > 1) {
-    basic_block_write(dev,8);
-    basic_block_read(dev,8);
+    basic_block_write(dev,9);
+    basic_block_read(dev,2);
   }
 
 
