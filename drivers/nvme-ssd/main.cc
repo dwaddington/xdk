@@ -34,8 +34,10 @@
 #include <sys/resource.h>
 #include <unistd.h>
 #include <common/cycles.h>
+#include <exo/rand.h>
 
 #include "nvme_device.h"
+#include "tests.h"
 
 #define COUNT (1000000)
 #define NUM_QUEUES (1)
@@ -207,8 +209,15 @@ int main(int argc, char * argv[])
   }
 
   if(argc > 1) {
-    basic_block_write(dev,9);
-    basic_block_read(dev,2);
+    //    basic_block_write(dev,9);
+    //    basic_block_read(dev,2);
+    TestBlockWriter tbw(dev,1);
+    unsigned NUM_TEST_WRITES = 20;
+    for(unsigned i=0;i<NUM_TEST_WRITES;i++) {
+      uint8_t value = (uint8_t) i;
+      off_t lba = genrand64_int64() % 1024;
+      tbw.write_and_verify(lba,value);
+    }
   }
 
 

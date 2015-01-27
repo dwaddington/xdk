@@ -8,6 +8,8 @@
 #include <common/dump_utils.h>
 
 #include "nvme_device.h"
+#include "tests.h"
+
 
 void basic_block_read(NVME_device * dev, size_t num_blocks) {
 
@@ -23,7 +25,7 @@ void basic_block_read(NVME_device * dev, size_t num_blocks) {
                                                             (void*)&nobj);
 
   addr_t phys = 0;
-  void * p = Exokernel::Memory::alloc_pages(1,&phys);
+  void * p = dev->alloc_dma_pages(1,&phys);
 
   assert(p);
   assert(phys);
@@ -44,7 +46,7 @@ void basic_block_read(NVME_device * dev, size_t num_blocks) {
   nobj.wait();
   PLOG("expected block reads complete.");
 
-  Exokernel::Memory::free_pages(p);
+  dev->free_dma_pages(p);
 }
 
 
@@ -95,5 +97,5 @@ void basic_block_write(NVME_device * dev, size_t num_blocks) {
   nobj.wait();
   PLOG("******** Blocks written!!!");
 
-  Exokernel::Memory::free_pages(p);
+  dev->free_dma_pages(p);
 }
