@@ -20,8 +20,7 @@ void basic_block_read(NVME_device * dev, size_t num_blocks) {
   Notify_object nobj;
 
   /* set up call back */
-  dev->io_queue(qid)->callback_manager()->register_callback(qid,
-                                                            &Notify_object::notify_callback,
+  dev->io_queue(qid)->callback_manager()->register_callback(&Notify_object::notify_callback,
                                                             (void*)&nobj);
 
   addr_t phys = 0;
@@ -58,8 +57,7 @@ void basic_block_write(NVME_device * dev, size_t num_blocks) {
   Notify_object nobj;
 
   /* set up call back */
-  dev->io_queue(qid)->callback_manager()->register_callback(qid,
-                                                            &Notify_object::notify_callback,
+  dev->io_queue(qid)->callback_manager()->register_callback(&Notify_object::notify_callback,
                                                             (void*)&nobj);
 
   unsigned num_data_pages = 4;

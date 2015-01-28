@@ -103,8 +103,7 @@ private:
     unsigned long long mean_cycles = 0;
     unsigned long long sample_count = 0;
 
-    _dev->io_queue(_qid)->callback_manager()->register_callback(1,
-                                                                &Notify_object::notify_callback,
+    _dev->io_queue(_qid)->callback_manager()->register_callback(&Notify_object::notify_callback,
                                                                 (void*)&nobj);
 
     unsigned long threshold = _dev->io_queue(_qid)->queue_length() * 0.8;

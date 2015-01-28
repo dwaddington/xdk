@@ -252,7 +252,7 @@ Completion_command_slot * NVME_queues_base::curr_comp_slot() {
  * @param reg Pointer to device registers
  * @param dev Pointer to top-level device structure
  */
-NVME_admin_queue::NVME_admin_queues(NVME_device * dev, unsigned irq) : 
+NVME_admin_queue::NVME_admin_queue(NVME_device * dev, unsigned irq) : 
   NVME_queues_base(dev, 0 /* admin is queue 0 */, irq, Admin_queue_len)
 {
   NVME_INFO("creating NVME admin queues.\n");
@@ -558,8 +558,7 @@ NVME_IO_queue::NVME_IO_queue(NVME_device * dev,
                                unsigned core,
                                size_t queue_length) : 
   NVME_queues_base(dev, 0 /* admin is queue 0 */, vector, queue_length),
-  _cq_thread(NULL),
-  _callback_manager(queue_length)
+  _cq_thread(NULL)
   //  _cq_released(0)
 {
   assert(dev);

@@ -27,11 +27,6 @@
    in files containing the exception.  
 */
 
-
-
-
-
-
 #ifndef __CQ_THREAD_H__
 #define __CQ_THREAD_H__
 
@@ -82,8 +77,51 @@ class Callback_manager
 {
 private:
 
+  notify_callback_t _callback;
+  void *           _callback_params;
+
+public:
+  Callback_manager() : _callback(NULL), _callback_params(NULL) {
+  }
+
+  /** 
+   * Register a callback function.
+   * 
+   * @param slot Slot for callback, usually queue id
+   * @param cf Call back function
+   * @param param Parameters for call back
+   */
+  void register_callback(notify_callback_t cf, void * param) {
+    _callback = cf;
+    _callback_params = param;
+  }
+
+
+  /** 
+   * Call callback function assigned to specific slot.
+   * 
+   * @param slot Slot corresponding to the callback function
+   * 
+   * @return E_FAIL if not function assigned to slot.
+   */
+  status_t call(unsigned command_id) {
+    if(!_callback) {
+      PWRN("callback not set");
+      return Exokernel::E_FAIL;
+    }
+    /* make call back */
+    _callback(command_id,_callback_params);
+    return Exokernel::S_OK;
+  }
+
+};
+
+
+class Callback_manager_multislot
+{
+private:
+
   //  Exokernel::Spin_lock _lock;
-  unsigned _hd;
 
   size_t              _max_callbacks;
   notify_callback_t * _callbacks;
@@ -91,7 +129,7 @@ private:
   unsigned canary;
 
 public:
-  Callback_manager(size_t max) : _hd(1), _max_callbacks(max+1) {
+  Callback_manager_multislot(size_t max) : _max_callbacks(max+1) {
     canary = 0xbeeffeed;
 
     _callbacks = new notify_callback_t [_max_callbacks];
@@ -101,7 +139,7 @@ public:
     memset(_callback_params,0,sizeof(void*)*_max_callbacks);
   }
 
-  ~Callback_manager() {
+  ~Callback_manager_multislot() {
     delete _callbacks;
     delete _callback_params;
   }

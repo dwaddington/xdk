@@ -120,8 +120,7 @@ void* CQ_thread::entry(void* qb) {
 #ifndef CONFIG_DISABLE_CALLBACK
       /* perform call back */
       PLOG("IRQ handler calling callback ccs->command_id=%d queue-id=%u",ccs->command_id, _qid);
-      s = _queues->callback_manager()->call(_qid, /* callback slot */
-                                            ccs->command_id);
+      s = _queues->callback_manager()->call(ccs->command_id);
       assert(s == Exokernel::S_OK);
 #endif
       /* free slot */

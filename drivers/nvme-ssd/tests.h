@@ -16,12 +16,10 @@ public:
     assert(dev);
 
     /* set up call back */
-    dev->io_queue(qid)->callback_manager()->register_callback(qid, /* slot */
-                                                              &Notify_object::notify_callback,
+    dev->io_queue(qid)->callback_manager()->register_callback(&Notify_object::notify_callback,
                                                               (void*)&_nobj);
 
-    dev->io_queue(qid+1)->callback_manager()->register_callback(qid+1, /* slot */
-                                                                &Notify_object::notify_callback,
+    dev->io_queue(qid+1)->callback_manager()->register_callback(&Notify_object::notify_callback,
                                                                 (void*)&_nobj2);
 
     _pbuff = 0;
