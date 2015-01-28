@@ -22,6 +22,20 @@ basic Exokernel is operational and the AHCI block device driver can be
 used to demonstrate its capability.
 
 
+---------------------------
+Ubuntu Package Dependencies
+---------------------------
+make
+gcc 
+g++
+libnuma-dev
+tinyxml-dev
+libboost-dev
+libboost-thread-dev
+libboost-system-dev
+libboost-program-options-dev
+libboost-filesystem-dev
+
 
 -------------
 Contributors:

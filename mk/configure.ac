@@ -1,7 +1,7 @@
 AC_INIT([XDK],[0.1])
-
 AC_CHECK_LIB([numa],[numa_available],[],AC_MSG_ERROR([libnuma-dev not installed]))
 AC_CHECK_LIB([tinyxml],[tolower],[],AC_MSG_ERROR([libtinyxml-dev not installed]))
+
 
 # this should work but it doesn't?
 #
