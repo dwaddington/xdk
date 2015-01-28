@@ -74,7 +74,7 @@ void NVME_device::hw_reset() {
     delete _admin_queues;
   
   assert(_msi_vectors[0] > 0);
-  _admin_queues = new NVME_admin_queues(this, _msi_vectors[0]); 
+  _admin_queues = new NVME_admin_queue(this, _msi_vectors[0]); 
   NVME_INFO("created admin queues.\n");
   _admin_queues->setup_doorbells();
   NVME_INFO("doorbells setup.\n");
@@ -202,8 +202,8 @@ void NVME_device::init_device() {
 
     NVME_INFO("Assigning queue id (%u) to core (%u)\n",qid,core);
 
-    NVME_IO_queues * ioq = 
-      new NVME_IO_queues(this,
+    NVME_IO_queue * ioq = 
+      new NVME_IO_queue(this,
                          qid,
                          _msi_vectors[0],   /* base vector as logical is needed */
                          _msi_vectors[i+1], /* vector for this queue */

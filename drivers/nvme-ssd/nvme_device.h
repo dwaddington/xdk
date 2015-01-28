@@ -27,11 +27,6 @@
    in files containing the exception.  
 */
 
-
-
-
-
-
 #ifndef __NVME_DEVICE_H__
 #define __NVME_DEVICE_H__
 
@@ -60,10 +55,10 @@ private:
   Pci_mapped_memory_region * _mmio;
   NVME_registers *           _regs;
 
-  NVME_admin_queues *        _admin_queues;
+  NVME_admin_queue *        _admin_queues;
   std::vector<unsigned>      _msi_vectors;
 
-  NVME_IO_queues *           _io_queues[CONFIG_MAX_IO_QUEUES];
+  NVME_IO_queue *           _io_queues[CONFIG_MAX_IO_QUEUES];
   unsigned                   _num_io_queues;
 
   Config                     _config;
@@ -130,12 +125,12 @@ public:
    * 
    */
   INLINE NVME_registers * regs() const { return _regs; }
-  INLINE NVME_IO_queues * io_queue(unsigned qid) { 
+  INLINE NVME_IO_queue * io_queue(unsigned qid) { 
     assert(qid > 0);
     return _io_queues[qid-1]; 
   }
 
-  NVME_admin_queues * admin_queues() const { return _admin_queues; }
+  NVME_admin_queue * admin_queues() const { return _admin_queues; }
 
 #if 0  
   unsigned register_callback(unsigned queue_id,

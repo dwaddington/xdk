@@ -37,7 +37,7 @@ Command_admin_base::~Command_admin_base() {
 }
 
 
-Single_page_command::Single_page_command(NVME_admin_queues * q) : _q(q) {
+Single_page_command::Single_page_command(NVME_admin_queue * q) : _q(q) {
 
   assert(q);
 
@@ -64,7 +64,7 @@ Single_page_command::~Single_page_command() {
  * @param slot 
  * @param dev 
  */
-Command_admin_identify::Command_admin_identify(NVME_admin_queues * q, 
+Command_admin_identify::Command_admin_identify(NVME_admin_queue * q, 
                                                int nsid) : 
   Command_admin_base(q)
 {
@@ -184,7 +184,7 @@ status_t Command_admin_identify::check_controller_result(NVME_device * dev)
  * 
  */
 
-Command_admin_get_features::Command_admin_get_features(NVME_admin_queues * q, 
+Command_admin_get_features::Command_admin_get_features(NVME_admin_queue * q, 
                                                        feature_t fid, 
                                                        unsigned nsid) :
   Command_admin_base(q)
@@ -225,7 +225,7 @@ status_t Command_admin_get_features::extract_info(NVME_device::ns_info * nsinfo)
  * 
  */
 
-Command_admin_set_features::Command_admin_set_features(NVME_admin_queues * q) 
+Command_admin_set_features::Command_admin_set_features(NVME_admin_queue * q) 
   : Command_admin_base(q)
 {
   signed slot_id;
@@ -281,7 +281,7 @@ status_t Command_admin_set_features::configure_interrupt_coalescing_time(unsigne
  * 
  */
 
-Command_admin_create_io_sq::Command_admin_create_io_sq(NVME_admin_queues * q, 
+Command_admin_create_io_sq::Command_admin_create_io_sq(NVME_admin_queue * q, 
                                                        unsigned queue_id,
                                                        size_t queue_size,
                                                        addr_t prp1,
@@ -312,7 +312,7 @@ Command_admin_create_io_sq::Command_admin_create_io_sq(NVME_admin_queues * q,
 
 
 
-Command_admin_create_io_cq::Command_admin_create_io_cq(NVME_admin_queues * q, 
+Command_admin_create_io_cq::Command_admin_create_io_cq(NVME_admin_queue * q, 
                                                        vector_t vector_offset,
                                                        unsigned queue_id,
                                                        size_t queue_items,
@@ -344,7 +344,7 @@ Command_admin_create_io_cq::Command_admin_create_io_cq(NVME_admin_queues * q,
 
 
 
-Command_admin_delete_io_queue::Command_admin_delete_io_queue(NVME_admin_queues * q, 
+Command_admin_delete_io_queue::Command_admin_delete_io_queue(NVME_admin_queue * q, 
                                                              NVME::queue_type_t type,
                                                              unsigned queue_id)
   : Command_admin_base(q)
@@ -369,7 +369,7 @@ Command_admin_delete_io_queue::Command_admin_delete_io_queue(NVME_admin_queues *
  * FORMAT  -------------------------------------------------------------
  * 
  */
-Command_admin_format::Command_admin_format(NVME_admin_queues * q, 
+Command_admin_format::Command_admin_format(NVME_admin_queue * q, 
                                            unsigned lbaf,
                                            unsigned nsid)
   : Command_admin_base(q)

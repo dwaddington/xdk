@@ -252,7 +252,7 @@ Completion_command_slot * NVME_queues_base::curr_comp_slot() {
  * @param reg Pointer to device registers
  * @param dev Pointer to top-level device structure
  */
-NVME_admin_queues::NVME_admin_queues(NVME_device * dev, unsigned irq) : 
+NVME_admin_queue::NVME_admin_queues(NVME_device * dev, unsigned irq) : 
   NVME_queues_base(dev, 0 /* admin is queue 0 */, irq, Admin_queue_len)
 {
   NVME_INFO("creating NVME admin queues.\n");
@@ -302,7 +302,7 @@ NVME_admin_queues::NVME_admin_queues(NVME_device * dev, unsigned irq) :
  * Destructor
  * 
  */
-NVME_admin_queues::~NVME_admin_queues()
+NVME_admin_queue::~NVME_admin_queue()
 {
   /* free DMA memory */
   _dev->free_dma_pages(_sq_dma_mem);
@@ -314,7 +314,7 @@ NVME_admin_queues::~NVME_admin_queues()
  * issued with an individual doorbell press.
  * 
  */
-void NVME_admin_queues::ring_doorbell_single_completion()
+void NVME_admin_queue::ring_doorbell_single_completion()
 {
   ring_completion_doorbell();   /* current slot is handled */
   increment_completion_head();  /* record next free */
@@ -324,7 +324,7 @@ void NVME_admin_queues::ring_doorbell_single_completion()
  * Issue identify device command
  * 
  */
-void NVME_admin_queues::issue_identify_device()
+void NVME_admin_queue::issue_identify_device()
 {
   /* construct command */
   Command_admin_identify ctrl_cmd(this);
@@ -357,7 +357,7 @@ void NVME_admin_queues::issue_identify_device()
 
 }
 
-void NVME_admin_queues::feature_info()
+void NVME_admin_queue::feature_info()
 {
   assert(!_dev->_ns_ident.empty());
 
@@ -376,7 +376,7 @@ void NVME_admin_queues::feature_info()
   }
 }
 
-status_t NVME_admin_queues::check_command_completion(uint16_t cid)
+status_t NVME_admin_queue::check_command_completion(uint16_t cid)
 {
   Completion_command_slot * cc = curr_comp_slot();
   
@@ -417,7 +417,7 @@ status_t NVME_admin_queues::check_command_completion(uint16_t cid)
   return Exokernel::S_OK;
 }
 
-uint32_t NVME_admin_queues::ring_wait_complete(Command_admin_base& cmd)
+uint32_t NVME_admin_queue::ring_wait_complete(Command_admin_base& cmd)
 {
   /* submit */
   ring_submission_doorbell();
@@ -431,7 +431,7 @@ uint32_t NVME_admin_queues::ring_wait_complete(Command_admin_base& cmd)
   return r;
 }
 
-status_t NVME_admin_queues::create_io_completion_queue(vector_t logical_vector,
+status_t NVME_admin_queue::create_io_completion_queue(vector_t logical_vector,
                                                        unsigned queue_id,
                                                        size_t queue_items,
                                                        addr_t prp1)
@@ -453,7 +453,7 @@ status_t NVME_admin_queues::create_io_completion_queue(vector_t logical_vector,
 }
 
 
-status_t NVME_admin_queues::create_io_submission_queue(unsigned queue_id,
+status_t NVME_admin_queue::create_io_submission_queue(unsigned queue_id,
                                                        size_t queue_size,
                                                        addr_t prp1,
                                                        unsigned cq_id)
@@ -475,7 +475,7 @@ status_t NVME_admin_queues::create_io_submission_queue(unsigned queue_id,
 }
 
 
-status_t NVME_admin_queues::delete_io_queue(NVME::queue_type_t type,
+status_t NVME_admin_queue::delete_io_queue(NVME::queue_type_t type,
                                             unsigned queue_id)
 {
   /* construct command */
@@ -487,7 +487,7 @@ status_t NVME_admin_queues::delete_io_queue(NVME::queue_type_t type,
   return Exokernel::S_OK;
 }
 
-status_t NVME_admin_queues::set_queue_num(unsigned num_queues)
+status_t NVME_admin_queue::set_queue_num(unsigned num_queues)
 {
   Command_admin_set_features cmd(this);
   cmd.configure_num_queues(num_queues);
@@ -500,7 +500,7 @@ status_t NVME_admin_queues::set_queue_num(unsigned num_queues)
 }
 
 
-status_t NVME_admin_queues::set_irq_coal(bool state, vector_t vector)
+status_t NVME_admin_queue::set_irq_coal(bool state, vector_t vector)
 {
   /* construct command */
   Command_admin_set_features cmd(this);
@@ -510,7 +510,7 @@ status_t NVME_admin_queues::set_irq_coal(bool state, vector_t vector)
   return Exokernel::S_OK;
 }
 
-status_t NVME_admin_queues::set_irq_coal_options(unsigned agg, unsigned threshold)
+status_t NVME_admin_queue::set_irq_coal_options(unsigned agg, unsigned threshold)
 {
   /* construct command */
   Command_admin_set_features cmd(this);
@@ -522,7 +522,7 @@ status_t NVME_admin_queues::set_irq_coal_options(unsigned agg, unsigned threshol
 
 
 
-status_t NVME_admin_queues::issue_format(unsigned lbaf, unsigned nsid)
+status_t NVME_admin_queue::issue_format(unsigned lbaf, unsigned nsid)
 {
   assert(nsid==1); 
 
@@ -551,7 +551,7 @@ status_t NVME_admin_queues::issue_format(unsigned lbaf, unsigned nsid)
  * @param vector 
  * @param core 
  */
-NVME_IO_queues::NVME_IO_queues(NVME_device * dev, 
+NVME_IO_queue::NVME_IO_queue(NVME_device * dev, 
                                unsigned queue_id,
                                vector_t base_vector,
                                vector_t vector, 
@@ -571,7 +571,7 @@ NVME_IO_queues::NVME_IO_queues(NVME_device * dev,
 
   NVME_registers * reg = dev->regs();
   assert(reg);
-  NVME_admin_queues * admin = dev->admin_queues();
+  NVME_admin_queue * admin = dev->admin_queues();
   assert(admin);
 
   _queue_items = queue_length;
@@ -621,12 +621,12 @@ NVME_IO_queues::NVME_IO_queues(NVME_device * dev,
   _comp_cmd = (Completion_command_slot *) _cq_dma_mem;
 
   /* finally create CQ thread */
-  _cq_thread = new CQ_thread(this,core,vector);
+  _cq_thread = new CQ_thread(this, core, vector, _queue_id);
 
   NVME_INFO("NVME_IO_queues ctor'ed\n");
 }
 
-void NVME_IO_queues::start_cq_thread()
+void NVME_IO_queue::start_cq_thread()
 {
   assert(_cq_thread);
   _cq_thread->start();
@@ -636,10 +636,10 @@ void NVME_IO_queues::start_cq_thread()
  * Destructor
  * 
  */
-NVME_IO_queues::~NVME_IO_queues() {
+NVME_IO_queue::~NVME_IO_queue() {
 
   status_t rc;
-  NVME_admin_queues * admin = _dev->admin_queues();
+  NVME_admin_queue * admin = _dev->admin_queues();
   assert(admin);
 
   /* cancel waiting threads */
@@ -657,13 +657,13 @@ NVME_IO_queues::~NVME_IO_queues() {
 }
 
 
-void NVME_IO_queues::dump_info() {
+void NVME_IO_queue::dump_info() {
   NVME_INFO("IO QUEUE [%u]\n",_queue_id);
 }
 
 static unsigned issued = 0;
 
-uint16_t NVME_IO_queues::issue_async_read(addr_t prp1, 
+uint16_t NVME_IO_queue::issue_async_read(addr_t prp1, 
                                           off_t offset, 
                                           size_t num_blocks,
                                           bool sequential, 
@@ -722,7 +722,7 @@ uint16_t NVME_IO_queues::issue_async_read(addr_t prp1,
 
 
 
-uint16_t NVME_IO_queues::issue_async_write(addr_t prp1, 
+uint16_t NVME_IO_queue::issue_async_write(addr_t prp1, 
                                            off_t offset, 
                                            size_t num_blocks,
                                            bool sequential, 

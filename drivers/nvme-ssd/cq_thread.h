@@ -40,7 +40,7 @@
 
 #define ACTIVE_CQ_THREAD  
 
-class NVME_IO_queues;
+class NVME_IO_queue;
 
 /** 
  * Class for the CQ thread
@@ -54,8 +54,9 @@ class CQ_thread : public Exokernel::Base_thread
 private:
   unsigned _core;
   unsigned _irq;
+  unsigned _qid;
 
-  NVME_IO_queues * _queues;
+  NVME_IO_queue * _queues;
 
 public:
   /* debugging */
@@ -63,7 +64,7 @@ public:
   unsigned long g_entries_cleared;
 
 public:
-  CQ_thread(NVME_IO_queues * qbase, unsigned core, unsigned vector);
+  CQ_thread(NVME_IO_queue * qbase, unsigned core, unsigned vector, unsigned queue_id);
 
   void* entry(void* qb);
 
@@ -108,10 +109,9 @@ public:
   /** 
    * Register a callback function.
    * 
-   * @param cf Callback function
-   * 
-   * @return Unique 'slot' identifier for the callback which should be 
-   *         used for the command_id of the issued command.
+   * @param slot Slot for callback, usually queue id
+   * @param cf Call back function
+   * @param param Parameters for call back
    */
   void register_callback(unsigned slot, notify_callback_t cf, void * param) {
     if(slot > _max_callbacks) {
@@ -126,7 +126,7 @@ public:
   /** 
    * Clear a previously registered call back
    * 
-   * @param slot 
+   * @param slot Slot to clear
    */
   void deregister_callback(unsigned slot) {    
     //    Exokernel::Spin_lock_guard g(_lock);

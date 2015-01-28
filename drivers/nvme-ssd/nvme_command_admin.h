@@ -38,7 +38,7 @@
 #include "nvme_types.h"
 
 class NVME_device;
-class NVME_admin_queues;
+class NVME_admin_queue;
 
 
 /** 
@@ -52,10 +52,10 @@ class Single_page_command
 protected:
   void * _prp1;
   addr_t _prp1_phys;
-  NVME_admin_queues * _q;
+  NVME_admin_queue * _q;
 
 public:
-  Single_page_command(NVME_admin_queues * q);
+  Single_page_command(NVME_admin_queue * q);
   ~Single_page_command();
 };
 
@@ -69,10 +69,10 @@ class Command_admin_base : public Single_page_command
 {
 protected:
   uint16_t _cid;
-  NVME_admin_queues * _queues;
+  NVME_admin_queue * _queues;
 
 public:
-  Command_admin_base(NVME_admin_queues * q) : Single_page_command(q), _queues(q), _cid(0) {
+  Command_admin_base(NVME_admin_queue * q) : Single_page_command(q), _queues(q), _cid(0) {
   }
 
   ~Command_admin_base();
@@ -115,7 +115,7 @@ class Command_admin_identify : public Command_admin_base
 {
 public:
 
-  Command_admin_identify(NVME_admin_queues * q, int nsid = 0);
+  Command_admin_identify(NVME_admin_queue * q, int nsid = 0);
 
   status_t check_controller_result(NVME_device *);
   status_t check_ns_result(NVME_device * dev, unsigned nsid);
@@ -146,7 +146,7 @@ typedef enum {
 class Command_admin_get_features : public Command_admin_base
 {
 public:
-  Command_admin_get_features(NVME_admin_queues * q, feature_t fid, unsigned nsid);
+  Command_admin_get_features(NVME_admin_queue * q, feature_t fid, unsigned nsid);
 
   status_t extract_info(NVME_device::ns_info * nsinfo);
 };
@@ -163,7 +163,7 @@ private:
   Submission_command_slot * _sc;
 
 public:
-  Command_admin_set_features(NVME_admin_queues * q);
+  Command_admin_set_features(NVME_admin_queue * q);
 
   status_t configure_num_queues(uint32_t num_queues);
   status_t configure_interrupt_coalescing(bool turn_on, vector_t vector);
@@ -196,7 +196,7 @@ public:
   } queue_priority_t;
 
 public:
-  Command_admin_create_io_sq(NVME_admin_queues * q, 
+  Command_admin_create_io_sq(NVME_admin_queue * q, 
                              unsigned queue_id,
                              size_t queue_size,
                              addr_t prp1,
@@ -219,7 +219,7 @@ public:
 class Command_admin_create_io_cq : public Command_admin_base
 {
 public:
-  Command_admin_create_io_cq(NVME_admin_queues * q, 
+  Command_admin_create_io_cq(NVME_admin_queue * q, 
                              vector_t vector,
                              unsigned queue_id,
                              size_t queue_size,
@@ -238,7 +238,7 @@ public:
 class Command_admin_delete_io_queue : public Command_admin_base
 {
 public:
-  Command_admin_delete_io_queue(NVME_admin_queues * q, 
+  Command_admin_delete_io_queue(NVME_admin_queue * q, 
                                 NVME::queue_type_t type,
                                 unsigned queue_id);
 
@@ -255,7 +255,7 @@ public:
 class Command_admin_format : public Command_admin_base
 {
 public:
-  Command_admin_format(NVME_admin_queues * q,
+  Command_admin_format(NVME_admin_queue * q,
                        unsigned lbaf,
                        unsigned nsid);
 };

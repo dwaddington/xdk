@@ -97,7 +97,7 @@ private:
 
 
     cpu_time_t start_ts = rdtsc();
-    NVME_IO_queues * ioq = _dev->io_queue(_qid);
+    NVME_IO_queue * ioq = _dev->io_queue(_qid);
     PLOG("** READ THROUGHPUT AROUND Q:%p (_qid=%u)\n",(void *) ioq, _qid);
 
     unsigned long long mean_cycles = 0;

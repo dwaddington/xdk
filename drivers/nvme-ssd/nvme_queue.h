@@ -252,7 +252,7 @@ class Command_admin_base;
  * 
  * @param reg Pointer to device register access
  */
-class NVME_admin_queues : public NVME_queues_base
+class NVME_admin_queue : public NVME_queues_base
 {
 
 private:
@@ -263,8 +263,8 @@ private:
   void ring_doorbell_single_completion();
   
 public:
-  NVME_admin_queues(NVME_device * dev, unsigned irq);
-  ~NVME_admin_queues();
+  NVME_admin_queue(NVME_device * dev, unsigned irq);
+  ~NVME_admin_queue();
 
   void issue_identify_device();
   void feature_info();
@@ -363,29 +363,29 @@ public:
 };
 
 
-class NVME_IO_queues;
+class NVME_IO_queue;
 
 /**--------------------------------------------------------------------------------------------  
  * Class to support IO queues (submission and completion)
  * 
  * @param reg Pointer to device register access
  */
-class NVME_IO_queues : public NVME_queues_base                       
+class NVME_IO_queue : public NVME_queues_base                       
 {
 private:
 
-  CQ_thread *                            _cq_thread;
-  Callback_manager                       _callback_manager;
+  CQ_thread *      _cq_thread;
+  Callback_manager _callback_manager;
 
 public:
-  NVME_IO_queues(NVME_device * dev, 
+  NVME_IO_queue(NVME_device * dev, 
                  unsigned queue_id, 
                  vector_t base_vector, 
                  vector_t vector, 
                  unsigned core,
                  size_t queue_len);
 
-  ~NVME_IO_queues();
+  ~NVME_IO_queue();
 
   void dump_info();
   void start_cq_thread();

@@ -51,7 +51,7 @@ class NVME_device;
 class Command_io_rw
 {
 protected:
-  NVME_IO_queues * _ioq;
+  NVME_IO_queue * _ioq;
   unsigned _cid;
 
 public:

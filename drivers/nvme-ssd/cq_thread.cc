@@ -40,10 +40,11 @@
 
 std::vector<CQ_thread *> cq_objs;
 
-CQ_thread::CQ_thread(NVME_IO_queues * qbase, unsigned core, unsigned vector) 
+CQ_thread::CQ_thread(NVME_IO_queue * qbase, unsigned core, unsigned vector, unsigned qid) 
   : Exokernel::Base_thread(NULL, core), /* order important */
     g_times_woken(0),
-    g_entries_cleared(0)
+    g_entries_cleared(0),
+    _qid(qid)
 {
   _irq = vector;
   _queues = qbase;
@@ -118,13 +119,12 @@ void* CQ_thread::entry(void* qb) {
 
 #ifndef CONFIG_DISABLE_CALLBACK
       /* perform call back */
-      PLOG("IRQ handler calling callback ccs->command_id=%d",ccs->command_id);
-      s = _queues->callback_manager()->call(1 /* slot */,
+      PLOG("IRQ handler calling callback ccs->command_id=%d queue-id=%u",ccs->command_id, _qid);
+      s = _queues->callback_manager()->call(_qid, /* callback slot */
                                             ccs->command_id);
       assert(s == Exokernel::S_OK);
 #endif
       /* free slot */
-      PLOG("releasing slot %u",ccs->command_id-1);
       _queues->release_slot(ccs->command_id-1);
 
       found_completion = true;
