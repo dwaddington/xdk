@@ -4,7 +4,7 @@ class TestBlockWriter
 {
 private:
   NVME_device * _dev;
-  Notify_object _nobj, _nobj2;
+  Notify_object _nobj;
   void * _vbuff;
   addr_t _pbuff;
   unsigned _qid;
@@ -18,9 +18,6 @@ public:
     /* set up call back */
     dev->io_queue(qid)->callback_manager()->register_callback(&Notify_object::notify_callback,
                                                               (void*)&_nobj);
-
-    dev->io_queue(qid+1)->callback_manager()->register_callback(&Notify_object::notify_callback,
-                                                                (void*)&_nobj2);
 
     _pbuff = 0;
     _vbuff = dev->alloc_dma_pages(1,&_pbuff);
@@ -48,13 +45,13 @@ public:
 
     memset(_vbuff,0,PAGE_SIZE);
 
-    cid = _dev->block_async_read(_qid+1,
+    cid = _dev->block_async_read(_qid,
                                  _pbuff,
                                  offset,
                                  1);
     
-    _nobj2.set_when(cid);
-    _nobj2.wait();
+    _nobj.set_when(cid);
+    _nobj.wait();
     
     uint8_t * p = (uint8_t *) _vbuff;
 
