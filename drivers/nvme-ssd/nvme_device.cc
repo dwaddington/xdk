@@ -164,7 +164,7 @@ void NVME_device::init_device() {
   // }
 
   /* collect device information */
-    //  _admin_queues->issue_identify_device();
+  _admin_queues->issue_identify_device();
 
 #ifdef CONFIG_FORMAT_ON_INIT
   /* format disk */

@@ -11,11 +11,10 @@
 #include "tests.h"
 
 
-void basic_block_read(NVME_device * dev, size_t num_blocks) {
+void basic_block_read(NVME_device * dev, off_t lba) {
 
   PLOG("running basic_block_read..");
   const unsigned qid = 1;
-  assert(num_blocks < 256);
 
   Notify_object nobj;
 
@@ -30,20 +29,17 @@ void basic_block_read(NVME_device * dev, size_t num_blocks) {
   assert(phys);
 
   uint16_t cid;
-  for(unsigned i=0;i<num_blocks;i++) {
 
-    cid = dev->block_async_read(qid,
-                                phys,
-                                i, /* LBA */
-                                1); /* num blocks */
-    
-    PLOG("Block read cid=%u",cid);
-    
-    hexdump(p,512);
-  }
+  cid = dev->block_async_read(qid,
+                              phys,
+                              lba, /* LBA */
+                              1); /* num blocks */
   nobj.set_when(cid);
   nobj.wait();
-  PLOG("expected block reads complete.");
+
+  PLOG("expected block read complete.");
+    
+  hexdump(p,512);
 
   dev->free_dma_pages(p);
 }

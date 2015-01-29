@@ -37,6 +37,7 @@
 
 #include <stdlib.h>
 #include <fcntl.h>
+#include <errno.h>
 #include <sys/mman.h>
 
 #include <string>
@@ -199,9 +200,8 @@ namespace Exokernel
 
       /* do read - don't forget its a string */
       char tmp[8];
-      int ri;
       while(!fgets((char*) tmp,8,_cached_fd.handle)) {
-        PLOG("retrying fread in wait_for_msix_irq ri=%d",ri);
+        PLOG("retrying fread in wait_for_msi_irq ...");
       }
       assert((unsigned) atoi(tmp) == vector);
       return Exokernel::S_OK;
@@ -233,9 +233,8 @@ namespace Exokernel
 
       /* do read - don't forget its a string */
       char tmp[8];
-      int ri;
       while(!fgets((char *)tmp,8,_cached_fd.handle)) {
-        PLOG("retrying fread in wait_for_msix_irq ri=%d",ri);
+        PLOG("retrying fread in wait_for_msix_irq errno=%d",errno);
       }
       assert((unsigned) atoi(tmp) == vector);
       return Exokernel::S_OK;

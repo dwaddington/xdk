@@ -72,10 +72,8 @@ public:
 
   void set_when(atomic_t when) {
 
-    PLOG("trying to set when to %lu",when);
     if(when > _next_when.load()) {
       _next_when.store(when);
-      PLOG("when set=%lu",_next_when.load());      
     }
     // TRACE();
     // if(_count.read() >= when) { /* could have got there already! */
@@ -91,6 +89,7 @@ public:
    * 
    */
   void wait() {
+    PLOG("waiting for notify object to be signalled..");
     _sem.wait();
   }
 

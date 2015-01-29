@@ -323,7 +323,7 @@ alloc_dma_pages(size_t num_pages, addr_t * phys_addr, unsigned numa_node, int fl
       p = mmap(NULL,
                num_pages * PAGE_SIZE, 
                PROT_READ | PROT_WRITE, // prot
-               MAP_SHARED | MAP_LOCKED | MAP_POPULATE | flags,     // flags
+               MAP_SHARED | flags,     // flags
                fd,
                paddr);
         

@@ -46,7 +46,7 @@
 
 Exokernel::Pagemap pm;
 
-void basic_block_read(NVME_device * dev, size_t num_blocks);
+void basic_block_read(NVME_device * dev, off_t lba);
 void basic_block_write(NVME_device * dev, size_t num_blocks);
 
 
@@ -207,16 +207,22 @@ int main(int argc, char * argv[])
     asm("int3");
   }
 
+
   if(argc > 1) {
+    NVME_INFO("****** Round1 : STARTING BLOCK R/W TESTING ********");
+
     //    basic_block_write(dev,9);
-    //    basic_block_read(dev,2);
-    TestBlockWriter tbw(dev,1);
-    unsigned NUM_TEST_WRITES = 20;
-    for(unsigned i=0;i<NUM_TEST_WRITES;i++) {
-      uint8_t value = (uint8_t) i;
-      off_t lba = genrand64_int64() % 1024;
-      tbw.write_and_verify(lba,value);
-    }
+    basic_block_read(dev,1);
+
+    NVME_INFO("****** Round1 : TESTING COMPLETE  ********");
+
+    // TestBlockWriter tbw(dev,1);
+    // unsigned NUM_TEST_WRITES = 20;
+    // for(unsigned i=0;i<NUM_TEST_WRITES;i++) {
+    //   uint8_t value = (uint8_t) i;
+    //   off_t lba = genrand64_int64() % 1024;
+    //   tbw.write_and_verify(lba,value);
+    // }
   }
 
 

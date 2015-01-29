@@ -44,10 +44,10 @@
 #define MAX_PORT_REGIONS 5
 #define MAX_MEMORY_MAPPED_IO_REGIONS 5
 
-#undef CONFIG_DEBUG
+#define CONFIG_DEBUG
 
 #ifdef CONFIG_DEBUG
-#define PDBG(f, a...)	printk( KERN_DEBUG "[PK]: %s:" f "\n",  __func__ , ## a);
+#define PDBG(f, a...)	printk( "[PK]: %s:" f "\n",  __func__ , ## a);
 #else
 #define PDBG(f, a...)
 #endif

@@ -265,6 +265,8 @@ NVME_admin_queue::NVME_admin_queue(NVME_device * dev, unsigned irq) :
 
   /* allocate memory for the completion queue */
   num_pages = round_up_page(CQ_entry_size_bytes * Admin_queue_len) / PAGE_SIZE;
+
+  PLOG("allocating %ld pages for admin completion queue",num_pages);
   _cq_dma_mem = dev->alloc_dma_pages(num_pages, &_cq_dma_mem_phys);  
   memset(_cq_dma_mem, 0, num_pages * PAGE_SIZE);
   NVME_INFO("NVME_completion_queue virt=%p phys=0x%lx pages=%lu\n",_cq_dma_mem,_cq_dma_mem_phys,num_pages);
@@ -273,6 +275,7 @@ NVME_admin_queue::NVME_admin_queue(NVME_device * dev, unsigned irq) :
   /* allocate memory for the submission queue */
   num_pages = round_up_page(SQ_entry_size_bytes * Admin_queue_len) / PAGE_SIZE;
   _sq_dma_mem = dev->alloc_dma_pages(num_pages, &_sq_dma_mem_phys);
+  PLOG("allocating %ld pages for admin submission queue",num_pages);
   memset(_sq_dma_mem,0,num_pages * PAGE_SIZE);
   NVME_INFO("NVME_submission_queue virt=%p phys=0x%lx pages=%lu\n",_sq_dma_mem,_sq_dma_mem_phys,num_pages);
   assert((_sq_dma_mem_phys & 0xfffUL) == 0UL);
@@ -326,6 +329,8 @@ void NVME_admin_queue::ring_doorbell_single_completion()
  */
 void NVME_admin_queue::issue_identify_device()
 {
+  PLOG("Issuing identify device ...");
+
   /* construct command */
   Command_admin_identify ctrl_cmd(this);
 
@@ -341,6 +346,8 @@ void NVME_admin_queue::issue_identify_device()
 
   /* next issue for each namespace */
   for(unsigned n=1; n<=_dev->_ident._nn; n++) {
+
+    PLOG("Identifying namespace %u", n);
 
     Command_admin_identify cmd(this,n);
 
@@ -386,10 +393,10 @@ status_t NVME_admin_queue::check_command_completion(uint16_t cid)
      here with the logic.
   */
   {
-    unsigned attempts = 0;
+    unsigned long long attempts = 0;
     while(cc->command_id != cid) {
       attempts++;
-      if(attempts > 10000000) {
+      if(attempts > 1000000000ULL) {
         PERR("!!!! Check command completion timed out.");
         return Exokernel::E_FAIL;
       }
@@ -579,6 +586,7 @@ NVME_IO_queue::NVME_IO_queue(NVME_device * dev,
 
   /* allocate memory for the completion queue */
   num_pages = round_up_page(CQ_entry_size_bytes * _queue_items)/PAGE_SIZE;
+  PLOG("allocating %ld pages for IO completion queue",num_pages);
   _cq_dma_mem = dev->alloc_dma_pages(num_pages, &_cq_dma_mem_phys);  
   assert(_cq_dma_mem);
   assert(_cq_dma_mem_phys);
@@ -597,6 +605,7 @@ NVME_IO_queue::NVME_IO_queue(NVME_device * dev,
 
   /* allocate memory for the submission queue */
   num_pages = round_up_page(SQ_entry_size_bytes * _queue_items)/PAGE_SIZE;
+  PLOG("allocating %ld pages for IO submission queue",num_pages);
   _sq_dma_mem = dev->alloc_dma_pages(num_pages, &_sq_dma_mem_phys);
   assert(_sq_dma_mem);
   assert(_sq_dma_mem_phys);

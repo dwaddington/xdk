@@ -607,9 +607,6 @@ static irqreturn_t msi_threaded_irq_handler(int irq, void * cookie)
     disable_irq(wq->irq);
   }
 
-  /* trigger the event in /proc/parasite/pkXXX/<vector> */
-  PDBG("threaded interrupt triggered (IRQ=%d) (WQ=%p) (WQ->irq=%u)",irq,(void*)wq, wq->irq);
-
   wq->signalled = 1;
   wake_up_interruptible_all(&wq->q);  
 
@@ -633,7 +630,7 @@ static irqreturn_t msi_primary_irq_handler(int irq, void * dev)
      Return IRQ_NONE if this is not ours.  For the moment
      we disable IRQF_SHARED 
   */  
-  PDBG("primary IRQ (%u)",irq);
+
   return IRQ_WAKE_THREAD;
 }
 
