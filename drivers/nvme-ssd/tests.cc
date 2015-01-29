@@ -65,7 +65,7 @@ void flush_test(NVME_device * dev) {
 void basic_block_write(NVME_device * dev, off_t lba) {
 
   PLOG("running basic_block_write..");
-  //  Exokernel::Memory::huge_system_configure_nrpages(10);
+
   const unsigned qid = 1;
   Notify_object nobj;
 

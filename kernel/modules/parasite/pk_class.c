@@ -320,7 +320,7 @@ static ssize_t dma_alloc_store(struct device * dev,
     UNLOCK_DMA_AREA_LIST;
 
     /* testing purposes */
-    PDBG("allocated %lu pages at %p (phys=%llx) (owner=%x)\n",
+    PDBG("allocated %lu pages at %p (phys=%llx) (owner=%x)",
          num_pages,
          page_address(new_pages),
          virt_to_phys(page_address(new_pages)),
@@ -892,7 +892,6 @@ static ssize_t msi_alloc_store(struct device *dev,
   if(!pkdev->pci_dev) goto error;  
 
   if(pkdev->msi_entry_num > 0) {
-    PWRN("msi_alloc_store can only be called once.");
     return -EIO;
   }
 

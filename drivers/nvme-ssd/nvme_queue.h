@@ -89,9 +89,9 @@ protected:
 
 private:
 
-  uint16_t  _sq_tail  __attribute__((aligned(64)));
-  uint16_t  _cq_head  __attribute__((aligned(64)));
-  uint16_t  _cq_phase __attribute__((aligned(64)));
+  uint16_t  _sq_tail  __attribute__((aligned(8)));
+  uint16_t  _cq_head  __attribute__((aligned(8)));
+  uint16_t  _cq_phase __attribute__((aligned(8)));
 
   unsigned _irq;  
 
