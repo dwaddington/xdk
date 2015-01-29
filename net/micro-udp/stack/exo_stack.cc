@@ -38,11 +38,11 @@
 */
 
 #include "exo_stack.h"
-#include <network_stack/protocol.h>
+#include <net/protocol.h>
 #include <x540/x540_types.h>
 #include <x540/x540_device.h>
 #include <arpa/inet.h>
-#include <exo/cycles.h>
+#include <common/cycles.h>
 
 void Exo_stack::send_udp_pkt_test(unsigned tid) {
 
@@ -1387,6 +1387,7 @@ void Exo_stack::udp_send_pkt(uint8_t *vaddr,
   }
 }
 
+#if 0
 void Exo_stack::udp_send_get_reply(uint8_t *app_hdr_vaddr, 
                                    addr_t app_hdr_paddr, 
                                    uint32_t app_hdr_len,
@@ -1526,3 +1527,5 @@ void Exo_stack::udp_send_get_reply(uint8_t *app_hdr_vaddr,
     sent_num += cnt;
   }
 }
+#endif
+

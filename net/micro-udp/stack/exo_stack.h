@@ -38,7 +38,7 @@
 #include <network/memory_itf.h>
 #include <x540/driver_config.h>
 #include <x540/x540_types.h>
-#include <network_stack/protocol.h>
+#include <net/protocol.h>
 #include "../../msg_processor.h"
 #include <x540/xml_config_parser.h>
 
@@ -174,6 +174,7 @@ public:
   void udp_send_pkt(uint8_t *vaddr, addr_t paddr, unsigned udp_payload_len, unsigned queue, 
                     bool recycle, unsigned allocator_id);
 
+#if 0
   /**
    * To send UDP packets for GET/GET_K reply. This function is application specific.
    *
@@ -184,6 +185,7 @@ public:
    * @param queue The TX queue where the packets are sent.
    */
   void udp_send_get_reply(uint8_t *app_hdr_vaddr, addr_t app_hdr_paddr, uint32_t app_hdr_len, pbuf_t* pbuf_list, unsigned queue);
+#endif
 };
 
 }

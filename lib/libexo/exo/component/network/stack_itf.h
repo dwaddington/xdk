@@ -36,7 +36,7 @@
 
 #include <component.h>
 #include <interface.h>
-#include <network_stack/protocol.h>
+#include <net/protocol.h>
 
 using namespace Exokernel;
 

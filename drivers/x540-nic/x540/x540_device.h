@@ -41,7 +41,7 @@
 #include <network/nic_itf.h>
 #include <network/stack_itf.h>
 #include <network/memory_itf.h>
-#include <network_stack/protocol.h>
+#include <net/protocol.h>
 #include <x540/xml_config_parser.h>
 
 #define PKT_MAX_SIZE                          (2048-64)

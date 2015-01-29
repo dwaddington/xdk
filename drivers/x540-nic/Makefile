@@ -1,24 +1,22 @@
 include ../../mk/global.mk
-
-CXXFLAGS += -g -O3 -I$(SILICA_BASE)/lib/libexo -I$(SILICA_BASE)/app/mcd-binprot -I$(SILICA_BASE)/lib/libexo/exo/component -I$(SILICA_BASE)/drivers/x540-nic/ -I$(SILICA_BASE)/network_stack -I$(SILICA_BASE) -I$(SILICA_BASE)/app/mcd-binprot -I$(SILICA_BASE)/include
+SILICA_BASE = /home/jkuang/xdk
+CXXFLAGS += -g -O3 -I$(SILICA_BASE)/lib/libexo -I$(SILICA_BASE)/app/mcd-binprot -I$(SILICA_BASE)/lib/libexo/exo/component -I$(SILICA_BASE)/drivers/x540-nic/ -I$(SILICA_BASE)/net -I$(SILICA_BASE) -I$(SILICA_BASE)/app/mcd-binprot -I$(SILICA_BASE)/include -I$(SILICA_BASE)/lib/libcommon
 LIBS = -L$(SILICA_BASE)/lib/libexo -lexo -lpthread -lnuma -ldl -lrt -lm -ltinyxml -L$(SILICA_BASE)/app/mcd-binprot/libmcdbinprot 
 
 NIC_COMPONENT_SRC := nic_component.cc \
                      ./x540/x540_device.cc \
-                     ./x540/evict_support.cc \
                      ./x540/xml_config_parser.cc \
-                     $(SILICA_BASE)/network_stack/micro-udp/stack/exo_stack.cc
+                     $(SILICA_BASE)/net/micro-udp/stack/exo_stack.cc
 
 MEM_COMPONENT_SRC := mem_component.cc \
                      ./x540/x540_device.cc \
                      ./x540/xml_config_parser.cc \
-                    $(SILICA_BASE)/network_stack/micro-udp/stack/exo_stack.cc
+                    $(SILICA_BASE)/net/micro-udp/stack/exo_stack.cc
 
-STACK_COMPONENT_SRC := $(SILICA_BASE)/network_stack/micro-udp/stack_component.cc \
+STACK_COMPONENT_SRC := $(SILICA_BASE)/net/micro-udp/stack_component.cc \
                        ./x540/x540_device.cc \
                        ./x540/xml_config_parser.cc \
-                       ./x540/evict_support.cc \
-                       $(SILICA_BASE)/network_stack/micro-udp/stack/exo_stack.cc
+                       $(SILICA_BASE)/net/micro-udp/stack/exo_stack.cc
 
 all: nic_component stack_component mem_component app_main
 
