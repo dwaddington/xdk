@@ -564,9 +564,8 @@ NVME_IO_queue::NVME_IO_queue(NVME_device * dev,
                                vector_t vector, 
                                unsigned core,
                                size_t queue_length) : 
-  NVME_queues_base(dev, 0 /* admin is queue 0 */, vector, queue_length),
+  NVME_queues_base(dev, queue_id, vector, queue_length),
   _cq_thread(NULL)
-  //  _cq_released(0)
 {
   assert(dev);
   assert(vector);

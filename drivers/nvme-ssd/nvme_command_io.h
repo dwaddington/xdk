@@ -89,14 +89,14 @@ public:
 
     __builtin_memcpy(&c->dsmgmt,&dsm,1);
 
-    // printf("!!! issuing (%s) command prp1=0x%lx nsid=%d slba=%ld control=0x%x dsmgmt=0x%x!!!\n",
-    //        iswrite ? "write" : "read",
-    //        c->prp1,
-    //        c->nsid,
-    //        c->slba,
-    //        c->control,
-    //        c->dsmgmt
-    //      );
+    PLOG("!!! issuing (%s) command prp1=0x%lx nsid=%d slba=%ld control=0x%x dsmgmt=0x%x!!!\n",
+           iswrite ? "write" : "read",
+           c->prp1,
+           c->nsid,
+           c->slba,
+           c->control,
+           c->dsmgmt
+         );
   }
 
 };

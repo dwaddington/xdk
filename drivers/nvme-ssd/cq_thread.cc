@@ -54,6 +54,7 @@ CQ_thread::CQ_thread(NVME_IO_queue * qbase, unsigned core, unsigned vector, unsi
 
 void sig_handler(int sig) {
   /* dump stats */
+  printf("\n");
   for(std::vector<CQ_thread*>::iterator i=cq_objs.begin(); i!=cq_objs.end(); i++) {
     printf("CQ thread (irq=%d): times woken = %lu (woken)/%lu (cleared)\n",
            (*i)->irq(),
