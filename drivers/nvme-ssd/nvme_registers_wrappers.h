@@ -274,20 +274,20 @@ public:
    * 
    */
   void check() {
-    NVME_INFO("version: %u\n", version());
+    NVME_INFO("CAP: version: %u\n", version());
     assert(version()==1);
-    NVME_INFO("CAP: max queue entries = %u\n", mqes());
-
-    NVME_INFO("CAP: contiguous queues required = %s\n", NVME_CAP_CQR(_registers->cap) ? "yes" : "no");
-    NVME_INFO("CAP: timeout = %lu ms\n", (NVME_CAP_TIMEOUT(_registers->cap)*500));
+    NVME_INFO("CAP: MQES max queue entries = %u\n", mqes());
+    NVME_INFO("CAP: CQR contiguous memory queues required = %s\n", NVME_CAP_CQR(_registers->cap) ? "yes" : "no");
     /* Doorbell stride specified in (2 ^ (2 + DSTRD)) bytes */
     NVME_INFO("CAP: stride = %lu bytes\n", 1UL << (2 + NVME_CAP_STRIDE(_registers->cap)));
     assert((1UL << (2 + NVME_CAP_STRIDE(_registers->cap)))==4); /* set up for packed stride */
     /* Min/Max Page Size (2 ^ (12 + MPS)) */
-    NVME_INFO("CAP: min memory page size = %lu\n", (1UL << (NVME_CAP_MPSMIN(_registers->cap)+12)));
+    NVME_INFO("CAP: MPSMIN min memory page size = %lu\n", (1UL << (NVME_CAP_MPSMIN(_registers->cap)+12)));
     assert((1UL << (NVME_CAP_MPSMIN(_registers->cap)+12))==4096UL);
-    NVME_INFO("CAP: max memory page size = %lu\n", (1UL << (NVME_CAP_MPSMAX(_registers->cap)+12)));
+    NVME_INFO("CAP: MPSMAX max memory page size = %lu\n", (1UL << (NVME_CAP_MPSMAX(_registers->cap)+12)));
     NVME_INFO("CAP: AMS is %s\n",NVME_CAP_AMS(_registers->cap) == 0x2 ? "weighted RR" : "vendor specific");
+    NVME_INFO("CAP: NSSRS supports sub-system reset is '%s'\n",NVME_CAP_NSSRS(_registers->cap) ? "yes" : "no");
+    NVME_INFO("CAP: TO timeout %d ms\n", NVME_CAP_TIMEOUT(_registers->cap) * 500);
 
     if(_registers->cap & (1UL << 37)) /* CSS is NVMe command set */
       NVME_INFO("confirmed NVMe command set support\n");

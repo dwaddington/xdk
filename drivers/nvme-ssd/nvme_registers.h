@@ -64,7 +64,7 @@ struct NVME_register_map {
 #define NVME_CAP_STRIDE(cap)	(((cap) >> 32) & 0xf)
 #define NVME_CAP_MPSMIN(cap)	(((cap) >> 48) & 0xf)
 #define NVME_CAP_MPSMAX(cap)	(((cap) >> 51) & 0xf)
-#define NVME_CAP_CSS(cap)	    (((cap) >> 36) & 0x1)
+#define NVME_CAP_NSSRS(cap)	    (((cap) >> 36) & 0x1)
 #define NVME_CAP_AMS(cap)	    (unsigned)(((cap) >> 16) & 0x3)
 
 #define NVME_CSTS_RDY(csts)  (csts & 0x1)

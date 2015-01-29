@@ -60,7 +60,8 @@ NVME_queues_base::NVME_queues_base(NVME_device * dev, unsigned queue_id, unsigne
   _cq_dma_mem(NULL), _cq_dma_mem_phys(0), 
   _sq_tail(0),
   _cq_head(0),
-  _cq_phase(1),  _irq(irq)
+  _cq_phase(1),  
+  _irq(irq)
 {
   //   static unsigned stride = NVME_CAP_STRIDE(_registers->cap);
   //   unsigned db_offset = NVME_OFFSET_COMPLETION_DB(cap,queue_id,stride);
@@ -88,7 +89,6 @@ void NVME_queues_base::setup_doorbells()
 
   /* set pointer to CQ doorbell */
   _cq_db = r->offset<uint32_t>(NVME_OFFSET_COMPLETION_DB(r->cap(),_queue_id,stride));
-
 }
 
 
@@ -609,6 +609,7 @@ NVME_IO_queue::NVME_IO_queue(NVME_device * dev,
   assert(_sq_dma_mem);
   assert(_sq_dma_mem_phys);
   memset(_sq_dma_mem,0,num_pages * PAGE_SIZE);
+
   NVME_INFO("create IO_submission_queue (%u) virt=%p phys=0x%lx pages=%lu\n",
             _queue_id,_sq_dma_mem,_sq_dma_mem_phys,num_pages);
   assert((_sq_dma_mem_phys & 0xfffUL) == 0UL);
