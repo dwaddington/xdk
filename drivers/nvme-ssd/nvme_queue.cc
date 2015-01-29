@@ -438,7 +438,7 @@ uint32_t NVME_admin_queue::ring_wait_complete(Command_admin_base& cmd)
   return r;
 }
 
-status_t NVME_admin_queue::create_io_completion_queue(vector_t logical_vector,
+status_t NVME_admin_queue::create_io_completion_queue(vector_t vector_offset,
                                                        unsigned queue_id,
                                                        size_t queue_items,
                                                        addr_t prp1)
@@ -446,7 +446,7 @@ status_t NVME_admin_queue::create_io_completion_queue(vector_t logical_vector,
   assert(prp1);
 
   /* construct command */
-  Command_admin_create_io_cq cmd(this,logical_vector,queue_id,queue_items,prp1);
+  Command_admin_create_io_cq cmd(this,vector_offset,queue_id,queue_items,prp1);
 
   if(ring_wait_complete(cmd)!=0) 
     assert(0);
@@ -454,6 +454,7 @@ status_t NVME_admin_queue::create_io_completion_queue(vector_t logical_vector,
   /* verify result */
   if(cmd.get_status() != 0) {
     PERR("unexpected status from create_io_completion_queue (0x%x)",cmd.get_status());
+    assert(0);
   }
 
   return Exokernel::S_OK;
@@ -473,9 +474,12 @@ status_t NVME_admin_queue::create_io_submission_queue(unsigned queue_id,
   if(ring_wait_complete(cmd)!=0)
     assert(0);
 
-  /* verify result */
+  /* verify result - the specification says that a result of 0 is bad,
+     but its not clear what a good result is in this case.
+   */
   if(cmd.get_status() != 0) {
     PERR("unexpected status from create_io_submission_queue (0x%x)",cmd.get_status());
+    assert(0);
   }
 
   return Exokernel::S_OK;
@@ -596,7 +600,7 @@ NVME_IO_queue::NVME_IO_queue(NVME_device * dev,
   assert((_cq_dma_mem_phys & 0xfffUL) == 0UL);
 
   /* create IO completion queue */  
-  rc = admin->create_io_completion_queue(vector - base_vector,
+  rc = admin->create_io_completion_queue(vector - base_vector, /* this is a vector offset */
                                          _queue_id,
                                          _queue_items,
                                          _cq_dma_mem_phys);
@@ -723,7 +727,6 @@ uint16_t NVME_IO_queue::issue_async_read(addr_t prp1,
     _bad_count++;
   issued++;
 
-  __sync_synchronize();
   return slot_id & 0xffff;
 }
 
@@ -754,8 +757,20 @@ uint16_t NVME_IO_queue::issue_async_write(addr_t prp1,
                     true);
 
   ring_submission_doorbell();
-  __sync_synchronize();
 
   return slot_id;
 }
 
+
+uint16_t NVME_IO_queue::issue_flush() 
+{
+  signed slot_id;
+  Submission_command_slot * sc = next_sub_slot(&slot_id);
+  assert(sc);
+
+  Command_io_flush cmd(sc, slot_id, 1 /* nsid */);
+
+  ring_submission_doorbell();
+
+  return slot_id;
+}

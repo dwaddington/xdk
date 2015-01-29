@@ -44,8 +44,25 @@ void basic_block_read(NVME_device * dev, off_t lba) {
   dev->free_dma_pages(p);
 }
 
+void flush_test(NVME_device * dev) {
 
-void basic_block_write(NVME_device * dev, size_t num_blocks) {
+  uint16_t cid;
+
+  const unsigned qid = 1;
+  Notify_object nobj;
+
+  /* set up call back */
+  dev->io_queue(qid)->callback_manager()->register_callback(&Notify_object::notify_callback,
+                                                            (void*)&nobj);
+
+  PLOG("Issuing flush command..");
+  cid = dev->io_queue(qid)->issue_flush();
+  nobj.set_when(cid);
+  nobj.wait();
+  PLOG("Flushed OK.");
+}
+
+void basic_block_write(NVME_device * dev, off_t lba) {
 
   PLOG("running basic_block_write..");
   //  Exokernel::Memory::huge_system_configure_nrpages(10);
@@ -68,25 +85,17 @@ void basic_block_write(NVME_device * dev, size_t num_blocks) {
   assert(p);
   assert(phys);
 
-  char * q = (char *) p;
-  for(unsigned i=0;i<num_data_blocks;i++) {
-    /* write a value in */
-    memset(q,i+1,512);
-    q+=512;
-  }
+  memset(p,0xea,512);
+
 
   uint16_t cid;
+
   //  for(unsigned i=0;i<num_blocks;i++) {
-  for(unsigned i=0;i<1;i++) {
-
-    cid = dev->block_async_write(qid,
-                                 phys+((i+8)*512), //phys+((i%num_data_blocks)*512),
-                                 i, /* LBA */
-                                 1);/* num blocks */
+  cid = dev->block_async_write(qid,
+                               phys,
+                               lba, /* LBA */
+                               1);/* num blocks */
     
-    PLOG("*** Block written cid=%u",cid);
-  }
-
   nobj.set_when(cid);
   nobj.wait();
   PLOG("******** Blocks written!!!");

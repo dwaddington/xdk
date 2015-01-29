@@ -47,7 +47,8 @@
 Exokernel::Pagemap pm;
 
 void basic_block_read(NVME_device * dev, off_t lba);
-void basic_block_write(NVME_device * dev, size_t num_blocks);
+void basic_block_write(NVME_device * dev, off_t lba);
+void flush_test(NVME_device * dev);
 
 
 class Read_thread : public Exokernel::Base_thread
@@ -211,8 +212,9 @@ int main(int argc, char * argv[])
   if(argc > 1) {
     NVME_INFO("****** Round1 : STARTING BLOCK R/W TESTING ********");
 
-    //    basic_block_write(dev,9);
-    basic_block_read(dev,1);
+    flush_test(dev);
+    basic_block_write(dev,2);
+    basic_block_read(dev,2);
 
     NVME_INFO("****** Round1 : TESTING COMPLETE  ********");
 

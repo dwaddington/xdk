@@ -287,7 +287,7 @@ public:
     NVME_INFO("CAP: MPSMAX max memory page size = %lu\n", (1UL << (NVME_CAP_MPSMAX(_registers->cap)+12)));
     NVME_INFO("CAP: AMS is %s\n",NVME_CAP_AMS(_registers->cap) == 0x2 ? "weighted RR" : "vendor specific");
     NVME_INFO("CAP: NSSRS supports sub-system reset is '%s'\n",NVME_CAP_NSSRS(_registers->cap) ? "yes" : "no");
-    NVME_INFO("CAP: TO timeout %d ms\n", NVME_CAP_TIMEOUT(_registers->cap) * 500);
+    NVME_INFO("CAP: TO timeout %lu ms\n", NVME_CAP_TIMEOUT(_registers->cap) * 500);
 
     if(_registers->cap & (1UL << 37)) /* CSS is NVMe command set */
       NVME_INFO("confirmed NVMe command set support\n");

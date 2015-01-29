@@ -27,11 +27,6 @@
    in files containing the exception.  
 */
 
-
-
-
-
-
 #ifndef __NVME_COMMAND_IO_H__
 #define __NVME_COMMAND_IO_H__
 
@@ -46,6 +41,30 @@
 
 class NVME_device;
 
+
+class Command_io_flush
+{
+protected:
+  NVME_IO_queue * _ioq;
+  unsigned _cid;
+
+public:
+  Command_io_flush(Submission_command_slot * sc,
+                   unsigned command_id,
+                   unsigned nsid) {
+    
+    assert(sc);
+    sc->clear();
+
+    struct nvme_rw_command * c = (struct nvme_rw_command *) sc->raw();
+    
+    c->opcode = nvme_cmd_flush;
+    c->nsid = nsid;
+    c->command_id = _cid = command_id;
+
+    PLOG("!!! issuing flush command");
+  }
+};
 
 
 class Command_io_rw

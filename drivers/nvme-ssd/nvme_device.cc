@@ -125,12 +125,13 @@ void NVME_device::init_device() {
   allocate_msi_vectors(num_vectors,_msi_vectors);
   NVME_INFO("allocated MSI-X vector to admin queue:%u\n",_msi_vectors[0]);
 
-  /* set up steering */
+  /* set up interrupt steering */
   for(unsigned i=1;i<num_vectors;i++) {
 
     /* route interrupt to appropriate core */
     Exokernel::route_interrupt(_msi_vectors[i],_config.get_core(i-1));
-    NVME_INFO("allocated MSI-X vector to IO queue: %u (routed to core %u)\n",_msi_vectors[i], _config.get_core(i-1));
+    NVME_INFO("allocated MSI-X vector to IO queue: %u (routed to core %u)\n",
+              _msi_vectors[i], _config.get_core(i-1));
   }
 
   /* reset and bring up device */

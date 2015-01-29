@@ -186,7 +186,7 @@ public:
    * 
    * @return Phase tag
    */
-  unsigned phase() const { return _cq_phase; }
+  INLINE unsigned phase() const { return _cq_phase; }
   
   /** 
    * Debug functions
@@ -439,6 +439,13 @@ public:
                              unsigned nsid=1);
 
 
+  /** 
+   * Issue flush command
+   * 
+   * 
+   * @return 
+   */
+  uint16_t issue_flush();
 };
 
 #endif // __NVME_QUEUE_H__

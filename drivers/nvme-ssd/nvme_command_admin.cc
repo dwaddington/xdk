@@ -313,7 +313,7 @@ Command_admin_create_io_sq::Command_admin_create_io_sq(NVME_admin_queue * q,
 
 
 Command_admin_create_io_cq::Command_admin_create_io_cq(NVME_admin_queue * q, 
-                                                       vector_t vector_offset,
+                                                       vector_t vector,
                                                        unsigned queue_id,
                                                        size_t queue_items,
                                                        addr_t prp1)
@@ -333,7 +333,7 @@ Command_admin_create_io_cq::Command_admin_create_io_cq(NVME_admin_queue * q,
   c->prp1 = prp1;
   c->qsize = queue_items - 1;
   c->cqid = queue_id;
-  c->irq_vector = vector_offset - 1; /* vector is logical from 0 */
+  c->irq_vector = vector - 1; /* vector is logical from 0 */
   c->cq_flags = 0x3;        /* IEN and PC are set */
 
   PLOG("CREATE CQ size=%u qid=%u vector=%u",c->qsize, c->cqid, c->irq_vector);
