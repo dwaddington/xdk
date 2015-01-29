@@ -74,6 +74,10 @@ void NVME_device::hw_reset() {
     delete _admin_queues;
   
   assert(_msi_vectors[0] > 0);
+
+  /* route admin queue interrupt to core 0 */
+  Exokernel::route_interrupt(_msi_vectors[0],0);
+
   _admin_queues = new NVME_admin_queue(this, _msi_vectors[0]); 
   NVME_INFO("created admin queues.\n");
   _admin_queues->setup_doorbells();
@@ -88,6 +92,8 @@ void NVME_device::hw_reset() {
   NVME_INFO("waiting for controller to ready...\n");
 
   unsigned attempts = _regs->timeout(); /* timeout value is in 500ms units */
+
+  /* check CSTS.RDY status bit */
   while(!_regs->csts_ready() && (attempts > 0))  {
     usleep(50000);
     attempts--;
@@ -154,14 +160,14 @@ void NVME_device::init_device() {
   //     NVME_INFO(" MME:        %d\n", (mc >> 4) & 0x7);
   //     NVME_INFO(" MSI Enable: %s\n", mc & 0x1 ? "yes" : "no");
   //   }
-    {
-      int msixcap = get_cap(0x11);
-      uint16_t mc = pci_config()->read16(msixcap+0x2);
-      NVME_INFO("MSIX Capabilities (0x%x)\n",mc);
-      NVME_INFO(" FunctionMask:    %d\n", mc & (1<<14) ? 1 : 0);
-      NVME_INFO(" MSIX Enable:     %s\n", mc & (1<<15) ? "yes" : "no");
-      assert(mc & (1<<15));
-    }
+  {
+    int msixcap = get_cap(0x11);
+    uint16_t mc = pci_config()->read16(msixcap+0x2);
+    NVME_INFO("MSIX Capabilities (0x%x)\n",mc);
+    NVME_INFO(" FunctionMask:    %d\n", mc & (1<<14) ? 1 : 0);
+    NVME_INFO(" MSIX Enable:     %s\n", mc & (1<<15) ? "yes" : "no");
+    assert(mc & (1<<15));
+  }
   // }
 
   /* collect device information */
@@ -205,11 +211,11 @@ void NVME_device::init_device() {
 
     NVME_IO_queue * ioq = 
       new NVME_IO_queue(this,
-                         qid,
-                         _msi_vectors[0],   /* base vector as logical is needed */
-                         _msi_vectors[i+1], /* vector for this queue */
-                         core,              /* affinity for cq thread */
-                         io_queue_len);     /* length of queue in iterms */
+                        i+1, /* queue id */
+                        _msi_vectors[0],   /* base vector as logical is needed */
+                        _msi_vectors[i+1], /* vector for this queue */
+                        core,              /* affinity for cq thread */
+                        io_queue_len);     /* length of queue in items */
 
     ioq->setup_doorbells();
     ioq->start_cq_thread();
@@ -218,10 +224,9 @@ void NVME_device::init_device() {
     _io_queues[i] = ioq;
 
 #ifdef CONFIG_IRQ_COAL
-    if(vendor() != 0x8086) {
-      /* turn on IRQ coalescing */
-      _admin_queues->set_irq_coal(true,_msi_vectors[i+1]);
-    }
+    /* FAULTY? */
+    /* turn on IRQ coalescing */
+    _admin_queues->set_irq_coal(true,_msi_vectors[i+1]);
 #endif
   }
 

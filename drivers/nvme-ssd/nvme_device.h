@@ -38,7 +38,8 @@
 #include "notify.h"
 #include "config.h"
 
-#define CONFIG_MAX_IO_QUEUES 4
+#define CONFIG_MAX_IO_QUEUES 3 /* increase this to support more queues */
+
 /** 
  * Devices that this driver works with
  * 

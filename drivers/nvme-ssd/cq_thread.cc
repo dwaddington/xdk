@@ -44,7 +44,8 @@ CQ_thread::CQ_thread(NVME_IO_queue * qbase, unsigned core, unsigned vector, unsi
   : Exokernel::Base_thread(NULL, core), /* order important */
     g_times_woken(0),
     g_entries_cleared(0),
-    _qid(qid)
+    _qid(qid),
+    _core(core)
 {
   _irq = vector;
   _queues = qbase;
@@ -111,7 +112,7 @@ void* CQ_thread::entry(void* qb) {
     unsigned found_completion = false;
 
     g_times_woken++;
-    PLOG("IRQ(%u) !!! WOKEN !!! (times=%lu)",_irq, g_times_woken);
+    PLOG("IRQ(%u) !!! WOKEN !!! (core=%u) (times=%lu)",_irq, _core, g_times_woken);
 
   retry:
 

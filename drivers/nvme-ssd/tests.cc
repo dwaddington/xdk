@@ -55,7 +55,7 @@ void flush_test(NVME_device * dev) {
   dev->io_queue(qid)->callback_manager()->register_callback(&Notify_object::notify_callback,
                                                             (void*)&nobj);
 
-  PLOG("Issuing flush command..");
+  PLOG("Issuing flush command (qid=%u)..", qid);
   cid = dev->io_queue(qid)->issue_flush();
   nobj.set_when(cid);
   nobj.wait();

@@ -255,7 +255,7 @@ Completion_command_slot * NVME_queues_base::curr_comp_slot() {
 NVME_admin_queue::NVME_admin_queue(NVME_device * dev, unsigned irq) : 
   NVME_queues_base(dev, 0 /* admin is queue 0 */, irq, Admin_queue_len)
 {
-  NVME_INFO("creating NVME admin queues.\n");
+  NVME_INFO("creating NVME admin queues (IRQ=%u)\n", irq);
   size_t num_pages;
   assert(dev);
 
@@ -563,11 +563,11 @@ status_t NVME_admin_queue::issue_format(unsigned lbaf, unsigned nsid)
  * @param core 
  */
 NVME_IO_queue::NVME_IO_queue(NVME_device * dev, 
-                               unsigned queue_id,
-                               vector_t base_vector,
-                               vector_t vector, 
-                               unsigned core,
-                               size_t queue_length) : 
+                             unsigned queue_id,
+                             vector_t base_vector,
+                             vector_t vector, 
+                             unsigned core,
+                             size_t queue_length) : 
   NVME_queues_base(dev, queue_id, vector, queue_length),
   _cq_thread(NULL)
 {
@@ -600,10 +600,18 @@ NVME_IO_queue::NVME_IO_queue(NVME_device * dev,
   assert((_cq_dma_mem_phys & 0xfffUL) == 0UL);
 
   /* create IO completion queue */  
-  rc = admin->create_io_completion_queue(vector - base_vector, /* this is a vector offset */
-                                         _queue_id,
-                                         _queue_items,
-                                         _cq_dma_mem_phys);
+  if(dev->vendor() == 0x8086 && dev->device_id() == 0x5845) { /* handle QEMU quirk */
+    rc = admin->create_io_completion_queue(vector - base_vector, /* this is a vector offset */
+                                           _queue_id,
+                                           _queue_items,
+                                           _cq_dma_mem_phys);
+  }
+  else {
+    rc = admin->create_io_completion_queue(vector - base_vector + 1, /* this is a vector offset */
+                                           _queue_id,
+                                           _queue_items,
+                                           _cq_dma_mem_phys);
+  }
   assert(rc==Exokernel::S_OK);
 
   /* allocate memory for the submission queue */
