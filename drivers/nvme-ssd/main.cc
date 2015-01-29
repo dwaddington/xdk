@@ -210,21 +210,22 @@ int main(int argc, char * argv[])
 
 
   if(argc > 1) {
-    NVME_INFO("****** Round1 : STARTING BLOCK R/W TESTING ********");
-
+    NVME_INFO("****** Round1 : STARTING SINGLE BLOCK R/W TESTING ********\n");
     flush_test(dev);
     basic_block_write(dev,2);
     basic_block_read(dev,2);
+    NVME_INFO("****** Round1 : TESTING COMPLETE  ********\n");
 
-    NVME_INFO("****** Round1 : TESTING COMPLETE  ********");
-
-    // TestBlockWriter tbw(dev,1);
-    // unsigned NUM_TEST_WRITES = 20;
-    // for(unsigned i=0;i<NUM_TEST_WRITES;i++) {
-    //   uint8_t value = (uint8_t) i;
-    //   off_t lba = genrand64_int64() % 1024;
-    //   tbw.write_and_verify(lba,value);
-    // }
+    NVME_INFO("****** Round2 : STARTING RANDOM BLOCK R/W TESTING ********\n");
+    TestBlockWriter tbw(dev,1);
+    unsigned NUM_TEST_WRITES = 20;
+    for(unsigned i=0;i<NUM_TEST_WRITES;i++) {
+      uint8_t value = (uint8_t) i;
+      off_t lba = genrand64_int64() % 1024;
+      tbw.write_and_verify(lba,value);
+    }
+    NVME_INFO("****** Round2 : TESTING COMPLETE  ********\n");
+    
   }
 
 
