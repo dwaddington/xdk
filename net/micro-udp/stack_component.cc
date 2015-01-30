@@ -37,8 +37,6 @@
 #include <micro-udp/stack/exo_stack.h>
 #include "msg_processor_server.h"
 #include <x540/xml_config_parser.h>
-#include "../../app/kvblaster/trafgen/trafgen_xml_config_parser.h"
-#include "../../app/kvblaster/trafgen/msg_processor_client.h"
 
 /** 
  * Interface IStack implementation
@@ -53,7 +51,6 @@ public:
   IMem * _mem;
   unsigned _nic_num;
   Config_params * _params;
-	KVBlaster::Trafgen_config_params * _trafgen_params;
 
 public:
   IStack_impl() : _count(0) {
@@ -118,9 +115,6 @@ public:
     stack_arg_t * stack_arg = (stack_arg_t *) arg;
 
     _params = (Config_params *) (stack_arg->params);
-		if (stack_arg->app == TRAFGEN) {
-			_trafgen_params = (KVBlaster::Trafgen_config_params *) (stack_arg->app_params);
-		}
     _nic_num = _params->nic_num;
 
     _stack = (Exo_stack **)malloc(_nic_num * sizeof(Exo_stack *));
@@ -134,19 +128,13 @@ public:
       Msg_processor * msg;
       if (stack_arg->app == TERA_CACHE)
         msg = new Msg_processor_server(i, _mem, this, _params);
-      else if (stack_arg->app == TRAFGEN) {
-				KVBlaster::Trafgen_config_params trafgen_params;
-				trafgen_params.client_id = _trafgen_params->key_prefix;;
-				trafgen_params.key_prefix = _trafgen_params->key_prefix;
-        msg = new Msg_processor_client(i, _mem, this, _params, _trafgen_params);
-			}
       else 
-				panic("wrong stack app type");
+	panic("wrong stack app type");
 
       /* Initialize micro UDP stack */
       _stack[i] = new Exo_stack(this, _nic, _mem, i, msg, _params);
 
-      if (stack_arg->app == TERA_CACHE || stack_arg->app == TRAFGEN) msg->create_tx_threads(_stack[i]);
+      if (stack_arg->app == TERA_CACHE) msg->create_tx_threads(_stack[i]);
 
       set_comp_state(STACK_READY_STATE, i);
     }
@@ -168,14 +156,14 @@ public:
  * Definition of the component
  * 
  */
-class StackComponent : public Exokernel::Component_base,
+class StackComponent : public Component::IBase,
                      public IStack_impl
 {
 public:  
   DECLARE_COMPONENT_UUID(0x51a5efbb,0xa76b,0x47a8,0x9fb8,0xe3fe,0x757e,0x155b);
 
-  void * query_interface(Exokernel::uuid_t& itf_uuid) {
-    if(itf_uuid == IStack::uuid()) {
+  void * query_interface(Component::uuid_t& itf_uuid) {
+    if(itf_uuid == IStack::iid()) {
       add_ref(); // implicitly add reference
       return (void *) static_cast<IStack *>(this);
     }

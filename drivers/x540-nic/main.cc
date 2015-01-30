@@ -32,17 +32,14 @@
 
 
 
-#include <component.h>
+#include <component/base.h>
 #include <network/nic_itf.h>
 #include <network/stack_itf.h>
 #include <network/memory_itf.h>
 #include "x540/x540_device.h"
-#include "../../app/kvcache/job_desc.h"
-#include "x540/evict_support.h"
 #include "x540/xml_config_parser.h"
 
 using namespace Exokernel;
-using namespace KVcache;
 
 class Nic_comp_thread : public Exokernel::Base_thread {
 
@@ -107,50 +104,35 @@ private:
     alloc_config[1].alignment = 64;
     alloc_config[1].allocator_id = PACKET_ALLOCATOR;
   
-    alloc_config[2].block_size = sizeof(job_descriptor_t);
-    alloc_config[2].num_blocks = _jd_num_per_core * _rx_threads_per_nic;
+    alloc_config[2].block_size = sizeof(struct exo_mbuf);
+    alloc_config[2].num_blocks = _mbuf_num_per_core * _rx_threads_per_nic;
     alloc_config[2].alignment = 64;
-    alloc_config[2].allocator_id = JOB_DESC_ALLOCATOR;
-
-    alloc_config[3].block_size = sizeof(struct exo_mbuf);
-    alloc_config[3].num_blocks = _mbuf_num_per_core * _rx_threads_per_nic;
-    alloc_config[3].alignment = 64;
-    alloc_config[3].allocator_id = MBUF_ALLOCATOR;
+    alloc_config[2].allocator_id = MBUF_ALLOCATOR;
   
-    alloc_config[4].block_size = sizeof(void *) * IXGBE_TX_MAX_BURST;
-    alloc_config[4].num_blocks = _meta_data_num_per_core * _rx_threads_per_nic;
+    alloc_config[3].block_size = sizeof(void *) * IXGBE_TX_MAX_BURST;
+    alloc_config[3].num_blocks = _meta_data_num_per_core * _rx_threads_per_nic;
+    alloc_config[3].alignment = 64;
+    alloc_config[3].allocator_id = META_DATA_ALLOCATOR;
+
+    alloc_config[4].block_size = sizeof(struct pbuf);
+    alloc_config[4].num_blocks = _pbuf_num_per_core * _rx_threads_per_nic;
     alloc_config[4].alignment = 64;
-    alloc_config[4].allocator_id = META_DATA_ALLOCATOR;
+    alloc_config[4].allocator_id = PBUF_ALLOCATOR;
 
-    alloc_config[5].block_size = sizeof(struct pbuf);
-    alloc_config[5].num_blocks = _pbuf_num_per_core * _rx_threads_per_nic;
+    alloc_config[5].block_size = 64;
+    alloc_config[5].num_blocks = _net_header_num_per_core * _rx_threads_per_nic;
     alloc_config[5].alignment = 64;
-    alloc_config[5].allocator_id = PBUF_ALLOCATOR;
+    alloc_config[5].allocator_id = NET_HEADER_ALLOCATOR;
 
-    alloc_config[6].block_size = 64;
-    alloc_config[6].num_blocks = _net_header_num_per_core * _rx_threads_per_nic;
+    alloc_config[6].block_size = sizeof(struct ip_reassdata);
+    alloc_config[6].num_blocks = _ip_reass_num_per_core * _rx_threads_per_nic;
     alloc_config[6].alignment = 64;
-    alloc_config[6].allocator_id = NET_HEADER_ALLOCATOR;
+    alloc_config[6].allocator_id = IP_REASS_ALLOCATOR;
 
-    alloc_config[7].block_size = sizeof(struct ip_reassdata);
-    alloc_config[7].num_blocks = _ip_reass_num_per_core * _rx_threads_per_nic;
+    alloc_config[7].block_size = sizeof(struct udp_pcb);
+    alloc_config[7].num_blocks = _udp_pcb_num_per_core * _rx_threads_per_nic;
     alloc_config[7].alignment = 64;
-    alloc_config[7].allocator_id = IP_REASS_ALLOCATOR;
-
-    alloc_config[8].block_size = sizeof(struct udp_pcb);
-    alloc_config[8].num_blocks = _udp_pcb_num_per_core * _rx_threads_per_nic;
-    alloc_config[8].alignment = 64;
-    alloc_config[8].allocator_id = UDP_PCB_ALLOCATOR;
-
-    alloc_config[9].block_size = sizeof(Frames_list_node);
-    alloc_config[9].num_blocks = _pbuf_num_per_core * _tx_threads_per_nic;
-    alloc_config[9].alignment = 64;
-    alloc_config[9].allocator_id = FRAME_LIST_ALLOCATOR;
-
-    alloc_config[10].block_size = 64;
-    alloc_config[10].num_blocks = _pbuf_num_per_core * _tx_threads_per_nic;
-    alloc_config[10].alignment = 64;
-    alloc_config[10].allocator_id = APP_HEADER_ALLOCATOR;
+    alloc_config[7].allocator_id = UDP_PCB_ALLOCATOR;
 
     alloc_config_t ** config_list = mem_arg.config_list;
     for (unsigned i = 0; i < mem_arg.num_allocators; i++) {
@@ -170,7 +152,6 @@ public:
     _rx_threads_per_nic = _params->channels_per_nic;
     _tx_threads_per_nic = _params->channels_per_nic;
     _frame_num_per_core = _params->frame_num_per_core;
-    _jd_num_per_core = _params->jd_num_per_core;
     _mbuf_num_per_core = _params->mbuf_num_per_core;
     _meta_data_num_per_core = _params->meta_data_num_per_core;
     _pbuf_num_per_core = _params->pbuf_num_per_core;
@@ -207,9 +188,9 @@ int main(int argc, char* argv[]) {
   __builtin_memcpy(params_ptr, &params, sizeof(Config_params));
 
   /* load the components */
-  Component_base * nic_comp = load_component("./libcomp_nic.so.1");
-  Component_base * stack_comp = load_component("./libcomp_stack.so.1");
-  Component_base * mem_comp = load_component("./libcomp_mem.so.1");
+  Component::IBase * nic_comp = load_component("./libcomp_nic.so.1", NicComponent::componet_id());
+  Component::IBase * stack_comp = load_component("./libcomp_stack.so.1", StackComponent::component_id());
+  Component::IBase * mem_comp = load_component("./libcomp_mem.so.1", MemComponent::component_id());
 
   assert(nic_comp);
   assert(stack_comp);

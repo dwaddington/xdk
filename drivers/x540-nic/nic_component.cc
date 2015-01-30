@@ -40,6 +40,7 @@
 #include "x540/xml_config_parser.h"
 
 using namespace Exokernel;
+using namespace Component;
 
 /** 
  * Interface INic implementation
@@ -152,14 +153,14 @@ public:
  * Definition of the component
  * 
  */
-class NicComponent : public Exokernel::Component_base,
+class NicComponent : public Component::IBase,
                      public INic_impl
 {
 public:  
   DECLARE_COMPONENT_UUID(0x51a5efbb,0xa76b,0x47a8,0x9fb8,0xe3fe,0x757e,0x155b);
 
-  void * query_interface(Exokernel::uuid_t& itf_uuid) {
-    if(itf_uuid == INic::uuid()) {
+  void * query_interface(Component::uuid_t& itf_uuid) {
+    if(itf_uuid == INic::iid()) {
       add_ref(); // implicitly add reference
       return (void *) static_cast<INic *>(this);
     }

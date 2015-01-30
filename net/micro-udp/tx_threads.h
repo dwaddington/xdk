@@ -37,15 +37,14 @@
 #include <libexo.h>
 #include "./stack/exo_stack.h"
 #include <netinet/in.h>
-#include "../../app/kvcache/job_desc.h"
 #include <numa_channel/shm_channel.h>
 #include <x540/xml_config_parser.h>
 #include <x540/driver_config.h>
+#include <common/cycles.h>
 
 using namespace Exokernel;
-using namespace KVcache;
 
-typedef Shm_channel<job_descriptor_t, CHANNEL_SIZE, SPMC_circular_buffer> Shm_channel_t;
+typedef Shm_channel<pbuf_t, CHANNEL_SIZE, SPMC_circular_buffer> Shm_channel_t;
 
 class Tx_thread : public Exokernel::Base_thread {
 
@@ -89,6 +88,7 @@ private:
     }
 
     cpu_time_t start_timer, finish_timer;
+    pbuf_t* pbuf_list;
 
     uint64_t cpu_freq = (uint64_t)(get_tsc_frequency_in_mhz() * 1000000);
 
@@ -99,13 +99,10 @@ private:
       //_stack->send_pkt_test(_local_id);
       //else (sleep(1000));
 
-      while (_net_side_channel->consume(&jd) != E_SPMC_CIRBUFF_OK) {
+      while (_net_side_channel->consume(&pbuf_list) != E_SPMC_CIRBUFF_OK) {
         cpu_relax();
       }
       channel_counter++;
-      
-      pbuf_t* pbuf_list=(pbuf*) jd->protocol_frame;
-
       
 #ifndef RUN_TERACACHE
       assert(pbuf_list);
@@ -132,10 +129,6 @@ private:
 
 #endif
 
-      /* recycle job descriptor */
-      _stack->get_mem_component()->free(jd, JOB_DESC_ALLOCATOR, _nic);
-
-    
       //printf("[TX %d] Sending out an item %lu (frame_num = %d), size = %lu\n",_tid, counter++, jd->num_frames, len);
       //uint8_t * temp = (uint8_t *)pkt_v;
       //for (int i=0;i<22;i++) 

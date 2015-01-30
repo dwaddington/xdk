@@ -42,6 +42,7 @@
 
 using namespace Exokernel;
 using namespace Exokernel::Memory;
+using namespace Component;
 
 /** 
  * Interface IMem implementation
@@ -180,7 +181,7 @@ public:
           per_core_block_quota = NUM_BLOCKS/_rx_threads_per_nic;
 
         //create numa_allocator object
-        if ((id == DESC_ALLOCATOR) || (id == PACKET_ALLOCATOR) || (id == NET_HEADER_ALLOCATOR) || (id == APP_HEADER_ALLOCATOR))
+        if ((id == DESC_ALLOCATOR) || (id == PACKET_ALLOCATOR) || (id == NET_HEADER_ALLOCATOR))
           _allocator[j][i] = new Numa_slab_allocator(space_v,
                                                 total_size,
                                                 per_core_block_quota,
@@ -293,29 +294,3 @@ public:
   }
 
 };
-
-/** 
- * Definition of the component
- * 
- */
-class MemComponent : public Exokernel::Component_base,
-                     public IMem_impl
-{
-public:  
-  DECLARE_COMPONENT_UUID(0xe1ad1bc2,0x63c5,0x4011,0xb877,0xa018,0x89ae,0x463d);
-
-  void * query_interface(Exokernel::uuid_t& itf_uuid) {
-    if(itf_uuid == IMem::uuid()) {
-      add_ref(); // implicitly add reference
-      return (void *) static_cast<IMem *>(this);
-    }
-    else 
-      return NULL; // we don't support this interface
-  }
-};
-
-
-extern "C" void * factory_createInstance()
-{
-  return static_cast<void*>(new MemComponent());
-}

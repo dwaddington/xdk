@@ -5,10 +5,10 @@
 #ifndef _NIC_ITF_H_
 #define _NIC_ITF_H_
 
-#include <component.h>
-#include <interface.h>
+#include "../base.h"
+#include "../interface.h"
 
-using namespace Exokernel;
+using namespace Component;
 
 /**
  * NIC component state type.
@@ -32,7 +32,7 @@ typedef struct {
  * Interface definition for INic.
  * 
  */
-class INic : public Exokernel::Interface_base
+class INic : public Component::Interface_base
 {
 public:
   DECLARE_INTERFACE_UUID(0x211dc467,0x81a0,0x4061,0x90e1,0x8ba7,0x5412,0x03fd);

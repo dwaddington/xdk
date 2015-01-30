@@ -5,10 +5,10 @@
 #ifndef _MEM_ITF_H_
 #define _MEM_ITF_H_
 
-#include "../component.h"
+#include "../base.h"
 #include "../interface.h"
 
-using namespace Exokernel;
+using namespace Component;
 
 /**
  * Slab allocator IDs.
@@ -16,15 +16,12 @@ using namespace Exokernel;
 enum {
   DESC_ALLOCATOR        = 0,  /**< The network ring descriptor allocator. */
   PACKET_ALLOCATOR      = 1,  /**< The packet buffer allocator. */
-  JOB_DESC_ALLOCATOR    = 2,  /**< The job descriptor block allocator. */
-  MBUF_ALLOCATOR        = 3,  /**< The mbuf struct allocator. */
-  META_DATA_ALLOCATOR   = 4,  /**< The meta data allocator for an array of burst packets. */
-  PBUF_ALLOCATOR        = 5,  /**< The pbuf allocator for IP packet meta data. */
-  NET_HEADER_ALLOCATOR  = 6,  /**< The network header allocator (42 bytes). */
-  IP_REASS_ALLOCATOR    = 7,  /**< The IP reassembly data buffer allocator. */
-  UDP_PCB_ALLOCATOR     = 8,  /**< The UDP protocol control block allocator. */
-  FRAME_LIST_ALLOCATOR     = 9,  /**< The frame list allocator. */
-  APP_HEADER_ALLOCATOR     = 10,  /**< The application header allocator. */
+  MBUF_ALLOCATOR        = 2,  /**< The mbuf struct allocator. */
+  META_DATA_ALLOCATOR   = 3,  /**< The meta data allocator for an array of burst packets. */
+  PBUF_ALLOCATOR        = 4,  /**< The pbuf allocator for IP packet meta data. */
+  NET_HEADER_ALLOCATOR  = 5,  /**< The network header allocator (42 bytes). */
+  IP_REASS_ALLOCATOR    = 6,  /**< The IP reassembly data buffer allocator. */
+  UDP_PCB_ALLOCATOR     = 7,  /**< The UDP protocol control block allocator. */
   // Always at the end  
   TOTAL_ALLOCATOR_NUM         /**< Total number of allocators. */
 };
@@ -42,9 +39,6 @@ const char* slab_alloc_2_str(int a) {
   else if (a == NET_HEADER_ALLOCATOR) { return "Net Header Allocator"; }
   else if (a == IP_REASS_ALLOCATOR)  { return "IP Reass. Buffer Allocator"; }
   else if (a == UDP_PCB_ALLOCATOR)   { return "UDP Control Block Allocator"; }
-  else if (a == JOB_DESC_ALLOCATOR)  { return "Job Desc. Allocator"; }
-  else if (a == FRAME_LIST_ALLOCATOR)  { return "Frame List Allocator"; }
-  else if (a == APP_HEADER_ALLOCATOR)  { return "App Header Allocator"; }
   else { return "Unknown slab allocator"; }
 }
 
@@ -72,15 +66,12 @@ enum {
 enum {
   SMT_DESC_ALLOCATOR       = 0,      /**< The network ring descriptor allocator. */
   SMT_PACKET_ALLOCATOR     = 1,      /**< The packet buffer allocator. */
-  SMT_JOB_DESC_ALLOCATOR   = 2,      /**< The job descriptor block allocator */
-  SMT_MBUF_ALLOCATOR       = 3,      /**< The mbuf struct allocator. */
-  SMT_META_DATA_ALLOCATOR  = 4,      /**< The meta data allocator for an array of burst packets. */
-  SMT_PBUF_ALLOCATOR       = 5,      /**< The pbuf allocator for IP packet meta data. */
-  SMT_NET_HEADER_ALLOCATOR = 6,      /**< The network header allocator (42 bytes). */
-  SMT_IP_REASS_ALLOCATOR   = 7,      /**< The ip reassembly data buffer allocator */
-  SMT_UDP_PCB_ALLOCATOR    = 8,      /**< The UDP protocol control block allocator */
-  SMT_FRAME_LIST_ALLOCATOR = 9,      /**< The frame list allocator */
-  SMT_APP_HEADER_ALLOCATOR = 10,     /**< The app header allocator */
+  SMT_MBUF_ALLOCATOR       = 2,      /**< The mbuf struct allocator. */
+  SMT_META_DATA_ALLOCATOR  = 3,      /**< The meta data allocator for an array of burst packets. */
+  SMT_PBUF_ALLOCATOR       = 4,      /**< The pbuf allocator for IP packet meta data. */
+  SMT_NET_HEADER_ALLOCATOR = 5,      /**< The network header allocator (42 bytes). */
+  SMT_IP_REASS_ALLOCATOR   = 6,      /**< The ip reassembly data buffer allocator */
+  SMT_UDP_PCB_ALLOCATOR    = 7,      /**< The UDP protocol control block allocator */
 };
 
 /**
@@ -114,7 +105,7 @@ typedef struct {
  * Interface definition for IMem.
  * 
  */
-class IMem : public Exokernel::Interface_base
+class IMem : public Component::Interface_base
 {
 public:
   DECLARE_INTERFACE_UUID(0xb7343bf4,0x0636,0x47b4,0xb3d2,0xe072,0x5203,0xce45);

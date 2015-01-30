@@ -5,11 +5,11 @@
 #ifndef _STACK_ITF_H_
 #define _STACK_ITF_H_
 
-#include <component.h>
-#include <interface.h>
-#include <network_stack/protocol.h>
+#include "../base.h"
+#include "../interface.h"
+#include <net/protocol.h>
 
-using namespace Exokernel;
+using namespace Component;
 
 /**
  * Stack component state type.
@@ -50,7 +50,7 @@ typedef struct {
  * Interface definition for IStack.
  * 
  */
-class IStack : public Exokernel::Interface_base
+class IStack : public Component::Interface_base
 {
 public:
   DECLARE_INTERFACE_UUID(0x00352b0d,0x81a0,0x4061,0x90e1,0x8ba7,0x5412,0x03fd);

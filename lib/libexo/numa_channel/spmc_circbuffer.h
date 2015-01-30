@@ -36,7 +36,7 @@
 #ifndef __EXO_SPMC_CIRCULAR_BUFFER_H__
 #define __EXO_SPMC_CIRCULAR_BUFFER_H__
 
-#include "../exo/types.h"
+#include "common/types.h"
 
 namespace Exokernel {  
 
@@ -135,7 +135,7 @@ namespace Exokernel {
          * If there are other dequeues in progress that preceded us,
          * we need to wait for them to complete
          */
-        while (unlikely(_cons_tail != cons_head))
+        while (_cons_tail != cons_head)
           cpu_relax();
 
         _cons_tail = cons_next;
