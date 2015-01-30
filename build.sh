@@ -19,6 +19,7 @@ build_dir "libcommon" lib/libcommon
 build_dir "libcomponent" lib/libcomponent
 build_dir "libexo" lib/libexo
 build_dir "AHCI device driver" drivers/ahci
+build_dir "NVME-SSD device driver" drivers/nvme-ssd
 build_dir "Base example component" examples/components/base-example
 build_dir "Dummy block device component" examples/components/block-device
 
