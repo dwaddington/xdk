@@ -27,65 +27,10 @@
    in files containing the exception.  
 */
 
-
-
-
-
-
 #ifndef __NVME_CONFIG_H__
 #define __NVME_CONFIG_H__
 
 #include <tinyxml.h>
-
-
-// class Visitor : public TiXmlVisitor
-// {
-// public:
-// 	virtual ~Visitor() {
-//   }
-
-// 	/// Visit a document.
-// 	bool VisitEnter( const TiXmlDocument& doc )			{ 
-//     return true; 
-//   }
-
-// 	/// Visit a document.
-// 	bool VisitExit( const TiXmlDocument& doc )			{ 
-//     return true; 
-//   }
-
-// 	/// Visit an element.
-// 	bool VisitEnter( const TiXmlElement& element, const TiXmlAttribute* firstAttribute )	{ 
-//     printf("Visiting element %s\n",element
-//     return true; 
-//   }
-
-// 	/// Visit an element.
-// 	bool VisitExit( const TiXmlElement& element )		{ 
-//     return true; 
-//   }
-
-// 	/// Visit a declaration
-// 	bool Visit( const TiXmlDeclaration& declaration )	{ 
-//     return true; 
-//   }
-
-// 	/// Visit a text node
-// 	bool Visit( const TiXmlText& text )	{ 
-//     return true; 
-//   }
-
-// 	/// Visit a comment node
-// 	bool Visit( const TiXmlComment& comment )	{ 
-//     return true; 
-//   }
-
-// 	/// Visit an unknown node
-// 	bool Visit( const TiXmlUnknown& /*unknown*/ )	{ 
-//     return true; 
-//   }
-
-// };
 
 class Config_IO_Queues
 {
@@ -181,7 +126,6 @@ private:
         child = child->NextSiblingElement();
       }
     }    
-    
   }
 
 
