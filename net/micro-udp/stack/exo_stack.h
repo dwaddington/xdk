@@ -104,7 +104,6 @@ public:
 
     stats_num = _params->stats_num;
     client_rx_flow_num = _params->client_rx_flow_num;
-    assert(client_rx_flow_num == 4);
     server_port = _params->server_port;
 
     _inic = inic;

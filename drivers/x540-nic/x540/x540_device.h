@@ -76,7 +76,7 @@ public:
    * 
    */
   Intel_x540_uddk_device(INic * inic, IStack * istack, 
-                         IMem * imem, unsigned index, Config_params * params) : Exokernel::Pci_express_device(index+2, 0x8086, 0x1528) {
+                         IMem * imem, unsigned index, Config_params * params) : Exokernel::Pci_express_device(index, 0x8086, 0x1528) {
     _params = params;
     rx_threads_cpu_mask = _params->rx_threads_cpu_mask;
     cpus_per_nic = _params->cpus_per_nic;

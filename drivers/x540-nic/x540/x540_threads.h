@@ -87,7 +87,7 @@ private:
 
     while(1) {
       _dev->wait_for_msix_irq(_irq);
-      //PINF("\n [Irq_thread %d on Core %d] GOT INTERRUPT !!!!",_tid,_core_id);
+      PINF("\n [Irq_thread %d on Core %d] GOT INTERRUPT !!!!",_tid,_core_id);
       _dev->interrupt_handler(_local_id);
     }
 
