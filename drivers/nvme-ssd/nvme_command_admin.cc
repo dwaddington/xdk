@@ -333,10 +333,10 @@ Command_admin_create_io_cq::Command_admin_create_io_cq(NVME_admin_queue * q,
   c->prp1 = prp1;
   c->qsize = queue_items - 1;
   c->cqid = queue_id;
-  c->irq_vector = vector - 1; /* vector is logical from 0 */
-  c->cq_flags = 0x3;        /* IEN and PC are set */
+  c->irq_vector = vector; /* vector is logical */
+  c->cq_flags = 0x3;      /* IEN and PC are set */
 
-  PLOG("CREATE CQ size=%u qid=%u vector=%u",c->qsize, c->cqid, c->irq_vector);
+  PLOG("CREATE CQ size=%u qid=%u logical vector=%u",c->qsize, c->cqid, c->irq_vector);
   
   /* assign unique command identifier */
   sc->command_id = _cid = slot_id;

@@ -438,15 +438,15 @@ uint32_t NVME_admin_queue::ring_wait_complete(Command_admin_base& cmd)
   return r;
 }
 
-status_t NVME_admin_queue::create_io_completion_queue(vector_t vector_offset,
-                                                       unsigned queue_id,
-                                                       size_t queue_items,
-                                                       addr_t prp1)
+status_t NVME_admin_queue::create_io_completion_queue(vector_t vector,
+                                                      unsigned queue_id,
+                                                      size_t queue_items,
+                                                      addr_t prp1)
 {
   assert(prp1);
 
   /* construct command */
-  Command_admin_create_io_cq cmd(this,vector_offset,queue_id,queue_items,prp1);
+  Command_admin_create_io_cq cmd(this,vector,queue_id,queue_items,prp1);
 
   if(ring_wait_complete(cmd)!=0) 
     assert(0);
@@ -600,10 +600,10 @@ NVME_IO_queue::NVME_IO_queue(NVME_device * dev,
   assert((_cq_dma_mem_phys & 0xfffUL) == 0UL);
 
   /* create IO completion queue */  
-  rc = admin->create_io_completion_queue(vector - base_vector + 1, /* this is a vector offset */
-                                           _queue_id,
-                                           _queue_items,
-                                           _cq_dma_mem_phys);
+  rc = admin->create_io_completion_queue(_queue_id, /* logical vector */
+                                         _queue_id,
+                                         _queue_items,
+                                         _cq_dma_mem_phys);
   assert(rc==Exokernel::S_OK);
 
   /* allocate memory for the submission queue */

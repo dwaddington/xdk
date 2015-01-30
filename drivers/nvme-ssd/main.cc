@@ -217,7 +217,7 @@ int main(int argc, char * argv[])
     NVME_INFO("****** Round1 : TESTING COMPLETE  ********\n");
 
     NVME_INFO("****** Round2 : STARTING RANDOM BLOCK R/W TESTING ********\n");
-    TestBlockWriter tbw(dev,1);
+    TestBlockWriter tbw(dev,2); /* test using queue 2 */
     unsigned NUM_TEST_WRITES = 20;
     for(unsigned i=0;i<NUM_TEST_WRITES;i++) {
       uint8_t value = (uint8_t) i;
