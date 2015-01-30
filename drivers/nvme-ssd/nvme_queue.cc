@@ -600,18 +600,10 @@ NVME_IO_queue::NVME_IO_queue(NVME_device * dev,
   assert((_cq_dma_mem_phys & 0xfffUL) == 0UL);
 
   /* create IO completion queue */  
-  if(dev->vendor() == 0x8086 && dev->device_id() == 0x5845) { /* handle QEMU quirk */
-    rc = admin->create_io_completion_queue(vector - base_vector, /* this is a vector offset */
+  rc = admin->create_io_completion_queue(vector - base_vector + 1, /* this is a vector offset */
                                            _queue_id,
                                            _queue_items,
                                            _cq_dma_mem_phys);
-  }
-  else {
-    rc = admin->create_io_completion_queue(vector - base_vector + 1, /* this is a vector offset */
-                                           _queue_id,
-                                           _queue_items,
-                                           _cq_dma_mem_phys);
-  }
   assert(rc==Exokernel::S_OK);
 
   /* allocate memory for the submission queue */
