@@ -27,52 +27,34 @@
    in files containing the exception.  
 */
 
-
-
-
-#include <libexo.h>
-#include <network/nic_itf.h>
-#include <network/stack_itf.h>
-#include <network/memory_itf.h>
-#include <micro-udp/stack/exo_stack.h>
-#include "msg_processor_server.h"
-#include <x540/xml_config_parser.h>
+#include "stack_component.h"
 
 /** 
  * Interface IStack implementation
  * 
  */
-class IStack_impl : public IStack
-{
-public:
-  unsigned _count;
-  INic * _nic;
-  Exo_stack **  _stack;
-  IMem * _mem;
-  unsigned _nic_num;
-  Config_params * _params;
+IStack_impl::IStack_impl() {
+  _count = 0;
+  component_t t = STACK_COMPONENT;
+  set_comp_type(t);
 
-public:
-  IStack_impl() : _count(0) {
-    component_t t = STACK_COMPONENT;
-    set_comp_type(t);
+  for (unsigned i = 0; i < MAX_INSTANCE; i++)
+    set_comp_state(STACK_INIT_STATE, i);
+}
 
-    for (unsigned i = 0; i < MAX_INSTANCE; i++)
-      set_comp_state(STACK_INIT_STATE, i);
-  }
+status_t
+IStack_impl::receive_packet(pkt_buffer_t p, size_t pktlen, unsigned device, unsigned queue) {
+  status_t t = (status_t) _stack[device]->ethernet_input((uint8_t *)p, pktlen, queue);
+  return t;
+}
 
-  status_t receive_packet(pkt_buffer_t p, size_t pktlen, unsigned device, unsigned queue) {
+void 
+IStack_impl::arp_output(ip_addr_t *ipdst_addr, unsigned device) {
+  _stack[device]->arp_output(ipdst_addr);
+} 
 
-    status_t t = (status_t) _stack[device]->ethernet_input((uint8_t *)p, pktlen, queue);
-
-    return t;
-  }
-
-  void arp_output(ip_addr_t *ipdst_addr, unsigned device) {
-    _stack[device]->arp_output(ipdst_addr);
-  } 
-
-  void udp_send_pkt(uint8_t *vaddr, addr_t paddr, unsigned udp_payload_len,
+void 
+IStack_impl::udp_send_pkt(uint8_t *vaddr, addr_t paddr, unsigned udp_payload_len,
                 bool recycle, unsigned allocator_id, unsigned device, unsigned queue) {
     _stack[device]->udp_send_pkt(vaddr, 
                                  paddr, 
@@ -80,17 +62,20 @@ public:
                                  queue, 
                                  recycle, 
                                  allocator_id);
-  }
+}
 
-  int get_entry_in_arp_table(ip_addr_t* ip_addr, unsigned device) {
+int 
+IStack_impl::get_entry_in_arp_table(ip_addr_t* ip_addr, unsigned device) {
      _stack[device]->get_entry_in_arp_table(ip_addr);
-  }
+}
 
-  void udp_bind(ip_addr_t *ipaddr, uint16_t port, unsigned device) {
+void 
+IStack_impl::udp_bind(ip_addr_t *ipaddr, uint16_t port, unsigned device) {
     _stack[device]->udp_bind(ipaddr, port);
-  }
+}
 
-  status_t bind(interface_t itf) {
+status_t 
+IStack_impl::bind(interface_t itf) {
     assert(itf);
     Interface_base * itf_base = (Interface_base *)itf;
     switch (itf_base->get_comp_type()) {
@@ -106,9 +91,10 @@ public:
     }
     
     return Exokernel::S_OK;
-  }
+}
 
-  status_t init(arg_t arg) {
+status_t
+IStack_impl::init(arg_t arg) {
     assert(arg);
     assert(_nic);
     assert(_mem);
@@ -138,42 +124,25 @@ public:
 
       set_comp_state(STACK_READY_STATE, i);
     }
-  }
+}
 
-  void run() {
+void
+IStack_impl::run() {
     printf("Stack Component is up running...\n");
-  }  
+}  
 
-  status_t cpu_allocation(cpu_mask_t mask) {
+status_t
+IStack_impl::cpu_allocation(cpu_mask_t mask) {
     //TODO
     printf("%s Not implemented yet!\n",__func__);
     return Exokernel::S_OK;
-  }
+}
 
-};
-
-/** 
- * Definition of the component
- * 
- */
-class StackComponent : public Component::IBase,
-                     public IStack_impl
+extern "C" void * factory_createInstance(Component::uuid_t& component_id)
 {
-public:  
-  DECLARE_COMPONENT_UUID(0x51a5efbb,0xa76b,0x47a8,0x9fb8,0xe3fe,0x757e,0x155b);
-
-  void * query_interface(Component::uuid_t& itf_uuid) {
-    if(itf_uuid == IStack::iid()) {
-      add_ref(); // implicitly add reference
-      return (void *) static_cast<IStack *>(this);
-    }
-    else 
-      return NULL; // we don't support this interface
+  if(component_id == StackComponent::component_id()) {
+    printf("Creating 'StackComponent' component.\n");
+    return static_cast<void*>(new StackComponent());
   }
-};
-
-
-extern "C" void * factory_createInstance()
-{
-  return static_cast<void*>(new StackComponent());
+  else return NULL;
 }

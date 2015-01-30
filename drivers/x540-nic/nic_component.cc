@@ -27,17 +27,7 @@
    in files containing the exception.  
 */
 
-
-
-
-
-
-#include <libexo.h>
-#include <network/nic_itf.h>
-#include <network/stack_itf.h>
-#include <network/memory_itf.h>
-#include "x540/x540_device.h"
-#include "x540/xml_config_parser.h"
+#include "nic_component.h"
 
 using namespace Exokernel;
 using namespace Component;
@@ -46,44 +36,38 @@ using namespace Component;
  * Interface INic implementation
  * 
  */
-class INic_impl : public INic
-{
-  state_t _state;
-  IStack * _stack;
-  IMem * _mem;
-  Intel_x540_uddk_device **  _dev;
-  Config_params * _params;
-  unsigned _nic_num;
-
-public:
-  INic_impl() : _stack(NULL) {
-    component_t t = NIC_COMPONENT;
-    set_comp_type(t);
+INic_impl::INic_impl() {
+  _stack = NULL;
+  component_t t = NIC_COMPONENT;
+  set_comp_type(t);
      
-    for (unsigned i = 0; i < MAX_INSTANCE; i++)
-      set_comp_state(NIC_INIT_STATE, i);
+  for (unsigned i = 0; i < MAX_INSTANCE; i++)
+    set_comp_state(NIC_INIT_STATE, i);
 
-    signed nd = query_num_registered_devices();
-    printf("Got %d registered devices\n", nd);
-  }
+  signed nd = query_num_registered_devices();
+  printf("Got %d registered devices\n", nd);
+}
 
-  status_t send_packets(pkt_buffer_t * p, size_t& cnt, unsigned device, unsigned queue) {
+status_t 
+INic_impl::send_packets(pkt_buffer_t * p, size_t& cnt, unsigned device, unsigned queue) {
     cnt = _dev[device]->multi_send((struct exo_mbuf **)p, cnt, queue);
     if (cnt > 0)
       return Exokernel::S_OK;
     else
       return Exokernel::E_FAIL;
-  }
+}
 
-  status_t send_packets_simple(pkt_buffer_t * p, size_t& cnt, unsigned device, unsigned queue) {
+status_t 
+INic_impl::send_packets_simple(pkt_buffer_t * p, size_t& cnt, unsigned device, unsigned queue) {
     cnt = _dev[device]->send((struct exo_mbuf **)p, cnt, queue);
     if (cnt > 0)
       return Exokernel::S_OK;
     else
       return Exokernel::E_FAIL;
-  }
+}
 
-  status_t bind(interface_t itf) {
+status_t 
+INic_impl::bind(interface_t itf) {
     assert(itf);
     Interface_base * itf_base = (Interface_base *)itf;
     switch (itf_base->get_comp_type()) {
@@ -99,13 +83,15 @@ public:
     }
 
     return Exokernel::S_OK;
-  }
+}
 
-  device_handle_t driver(unsigned device) {
+device_handle_t 
+INic_impl::driver(unsigned device) {
     return (device_handle_t) _dev[device];
-  }
+}
 
-  status_t init(arg_t arg) {
+status_t 
+INic_impl::init(arg_t arg) {
     assert(arg);
     assert(_stack);
     assert(_mem);
@@ -132,45 +118,28 @@ public:
     }
   }
 
-  void run() {
+void 
+INic_impl::run() {
     /* Start receiving packets */
     for (int i = 0; i < _nic_num; i++) {
       _dev[i]->rx_start_ok = true;
     }
     printf("Nic Component is up running...\n");
 
-  }
+}
 
-  status_t cpu_allocation(cpu_mask_t mask) {
+status_t 
+INic_impl::cpu_allocation(cpu_mask_t mask) {
     //TODO
     printf("%s Not implemented yet!\n",__func__);
     return Exokernel::S_OK;
-  }
+}
 
-};
-
-/** 
- * Definition of the component
- * 
- */
-class NicComponent : public Component::IBase,
-                     public INic_impl
+extern "C" void * factory_createInstance(Component::uuid_t& component_id)
 {
-public:  
-  DECLARE_COMPONENT_UUID(0x51a5efbb,0xa76b,0x47a8,0x9fb8,0xe3fe,0x757e,0x155b);
-
-  void * query_interface(Component::uuid_t& itf_uuid) {
-    if(itf_uuid == INic::iid()) {
-      add_ref(); // implicitly add reference
-      return (void *) static_cast<INic *>(this);
-    }
-    else 
-      return NULL; // we don't support this interface
+  if(component_id == NicComponent::component_id()) {
+    printf("Creating 'NicComponent' component.\n");
+    return static_cast<void*>(new NicComponent());
   }
-};
-
-
-extern "C" void * factory_createInstance()
-{
-  return static_cast<void*>(new NicComponent());
+  else return NULL;
 }

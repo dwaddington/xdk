@@ -33,9 +33,9 @@
 
 
 #include <component/base.h>
-#include <network/nic_itf.h>
-#include <network/stack_itf.h>
-#include <network/memory_itf.h>
+#include <mem_component.h>
+#include <nic_component.h>
+#include <stack_component.h>
 #include "x540/x540_device.h"
 #include "x540/xml_config_parser.h"
 
@@ -188,7 +188,7 @@ int main(int argc, char* argv[]) {
   __builtin_memcpy(params_ptr, &params, sizeof(Config_params));
 
   /* load the components */
-  Component::IBase * nic_comp = load_component("./libcomp_nic.so.1", NicComponent::componet_id());
+  Component::IBase * nic_comp = load_component("./libcomp_nic.so.1", NicComponent::component_id());
   Component::IBase * stack_comp = load_component("./libcomp_stack.so.1", StackComponent::component_id());
   Component::IBase * mem_comp = load_component("./libcomp_mem.so.1", MemComponent::component_id());
 
@@ -196,9 +196,9 @@ int main(int argc, char* argv[]) {
   assert(stack_comp);
   assert(mem_comp);
 
-  INic * nic = (INic *) nic_comp->query_interface(INic::uuid());
-  IStack * stack = (IStack *) stack_comp->query_interface(IStack::uuid());
-  IMem * memory = (IMem *) mem_comp->query_interface(IMem::uuid());
+  INic * nic = (INic *) nic_comp->query_interface(INic::iid());
+  IStack * stack = (IStack *) stack_comp->query_interface(IStack::iid());
+  IMem * memory = (IMem *) mem_comp->query_interface(IMem::iid());
 
   assert(nic);
   assert(stack);
