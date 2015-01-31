@@ -94,10 +94,10 @@ private:
 
     static uint64_t channel_counter = 0;
     while (1) {
-      //if (_local_id < 1)
-      //_stack->send_udp_pkt_test(_local_id);
+      if (_local_id < 1)
+        _stack->send_udp_pkt_test(_local_id);
       //_stack->send_pkt_test(_local_id);
-      //else (sleep(1000));
+      else (sleep(1000));
 
       while (_net_side_channel->consume(&pbuf_list) != E_SPMC_CIRBUFF_OK) {
         cpu_relax();

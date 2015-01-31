@@ -318,21 +318,6 @@ XML_config_parser::parse(const std::string& filename,
     throw Exokernel::Exception("Invalid value of 'channel_size'.");
   }
 
-  // EVICTION_PERIOD
-  TiXmlElement* eviction_period_elem = root_hdl.FirstChild("eviction_period").ToElement();
-  if (eviction_period_elem == NULL) {
-    throw Exokernel::Exception("Didn't specify EVICTION_PERIOD.");
-  }
-
-  if (verbose) {
-    std::cout << "EVICTION_PERIOD: " << eviction_period_elem->GetText() << std::endl;
-  }
-
-  unsigned eviction_period = str_to_num<unsigned>(eviction_period_elem->GetText());
-  if (eviction_period <= 0) {
-    throw Exokernel::Exception("Invalid value of 'eviction_period'.");
-  }
-
   // REQUEST_RATE
   TiXmlElement* request_rate_elem = root_hdl.FirstChild("request_rate").ToElement();
   if (request_rate_elem == NULL) {
@@ -479,7 +464,6 @@ XML_config_parser::parse(const std::string& filename,
   params.ip_reass_num_per_core = ip_reass_num_per_core;
   params.udp_pcb_num_per_core = udp_pcb_num_per_core;
   params.channel_size = channel_size;
-  params.eviction_period = eviction_period;
   params.request_rate = request_rate;
   params.tx_threads_cpu_mask = tx_threads_cpu_mask;
   params.rx_threads_cpu_mask = rx_threads_cpu_mask;
