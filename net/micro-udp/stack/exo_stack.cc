@@ -942,12 +942,14 @@ pkt_status_t Exo_stack::udp_input(pbuf_t *pbuf_list, unsigned queue) {
 
   remote_port = src;
 
+#if 0
   /* if this udp is not kvcache request, we discard it */
   if (dest != server_port) {
     PINF("Discard non-memcached protocol udp packets!!! (dest port %u)",dest);
     free_packets(pbuf_list, false);
     return t;
   }
+#endif
 
   /* if the arp table does not contain the source IP, we discard it */
   int i;
@@ -1014,7 +1016,7 @@ pkt_status_t Exo_stack::udp_input(pbuf_t *pbuf_list, unsigned queue) {
   }
 #endif
 
-#if 1
+#if 0
   bool pkt_reuse;
   if (_msg_processor->process(pbuf_list, _index, tid, core, pkt_reuse) == S_OK) {
     if (pkt_reuse == true) {
@@ -1031,9 +1033,9 @@ pkt_status_t Exo_stack::udp_input(pbuf_t *pbuf_list, unsigned queue) {
   }
 #endif
 
-  //free_packets(pbuf_list, false);
+  free_packets(pbuf_list, false);
   //return KEEP_THIS_PACKET;
-  //return REUSE_THIS_PACKET;
+  return REUSE_THIS_PACKET;
 }
 
 void Exo_stack::free_packets(pbuf_t* pbuf_list, bool flag) {
