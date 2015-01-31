@@ -214,6 +214,7 @@ Submission_command_slot * NVME_queues_base::next_sub_slot(signed * slot_id) {
   signed slot;
   slot = _bitmap->next_free();
 
+  PLOG("Find slot = %d", slot);
   if(slot < 0) {
     return NULL;
   }

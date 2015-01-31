@@ -38,150 +38,12 @@
 
 #include "nvme_device.h"
 #include "tests.h"
+#include "mt_tests.cc"
 
-#define COUNT (1000000)
-#define NUM_QUEUES (1)
-#define SLAB_SIZE (1000)
-#define NUM_BLOCKS (8)
-
-Exokernel::Pagemap pm;
 
 void basic_block_read(NVME_device * dev, off_t lba);
 void basic_block_write(NVME_device * dev, off_t lba);
 void flush_test(NVME_device * dev);
-
-
-class Read_thread : public Exokernel::Base_thread
-{
-private:
-  NVME_device * _dev;
-  unsigned _qid;
-  Notify_object nobj;
-
-
-  void read_throughput_test()
-  {
-    using namespace Exokernel;
-
-    byte r;
-
-#if 0
-    /* set higher priority */
-    {
-      struct sched_param params;
-      params.sched_priority = sched_get_priority_max(SCHED_FIFO);   
-      pthread_setschedparam(pthread_self(), SCHED_FIFO, &params);
-    }
-#endif
-
-
-    /* set up a simple slab */
-    addr_t phys_array[SLAB_SIZE];
-    void * virt_array[SLAB_SIZE];
-
-    /* allocate slab of memory */
-    Memory::huge_system_configure_nrpages(1000);
-    int h;
-    virt_array[0] = Memory::huge_shmem_alloc(1,PAGE_SIZE * SLAB_SIZE,0,&h);
-    assert(virt_array[0]);
-
-    char * p = (char *) virt_array[0];
-    for(unsigned i=0;i<SLAB_SIZE;i++) {
-      virt_array[i] = p;
-      phys_array[i] = pm.virt_to_phys(virt_array[i]);
-      p+=PAGE_SIZE;
-      assert(virt_array[i]);
-      assert(phys_array[i]);
-    }
-    touch_pages(virt_array[0],PAGE_SIZE*SLAB_SIZE); /* eager map */
-    PLOG("Memory allocated OK!!");
-
-
-    cpu_time_t start_ts = rdtsc();
-    NVME_IO_queue * ioq = _dev->io_queue(_qid);
-    PLOG("** READ THROUGHPUT AROUND Q:%p (_qid=%u)\n",(void *) ioq, _qid);
-
-    unsigned long long mean_cycles = 0;
-    unsigned long long sample_count = 0;
-
-    _dev->io_queue(_qid)->callback_manager()->register_callback(&Notify_object::notify_callback,
-                                                                (void*)&nobj);
-
-    unsigned long threshold = _dev->io_queue(_qid)->queue_length() * 0.8;
-    PLOG("threshold = %lu", threshold);
-    atomic_t send_id = 0;
-    uint16_t cid;
-    for(unsigned long i=0;i<COUNT;i++) {
-      
-      cpu_time_t start = rdtsc();
-      cid = _dev->block_async_read(_qid,
-                                   phys_array[i%SLAB_SIZE],                             
-                                   (i*512)+(_qid*COUNT), /* offset */
-                                   NUM_BLOCKS); /* num blocks */
-      
-      PLOG("sent (Q:%u) %lu...",_qid,send_id);
-      /* collect stats */
-      cpu_time_t delta = rdtsc() - start;
-
-      if(sample_count > 0) {
-        mean_cycles = ((mean_cycles * sample_count)+delta)/(sample_count+1);
-        sample_count++;
-      }
-      else {
-        mean_cycles = delta;
-      }
-
-      if(i%100000==0) PLOG("(_QID:%u) i=%lu", _qid, i);     
-      if(i==COUNT) break;
-
-      /* wait for bursts of IOPs - don't do this too late */
-      if((i % threshold == 0) && (i > 0)) {
-        atomic_t c;
-        
-        nobj.set_when(send_id); /* set wake up at send_id */
-        nobj.wait();
-      } 
-
-
-      send_id++;
-    }
-    PLOG("all sends complete.");
-
-    // /* wait for last command */
-    // uint16_t c;
-    // while((c = nobj.wait()) != cid) {
-    // }
-    // PLOG("end c = %x",c);
-    
-    
-    ioq->dump_stats();
-
-    PLOG("(QID:%u) cycles mean/iteration %llu (%llu IOPS)\n",_qid, mean_cycles, (((unsigned long long)get_tsc_frequency_in_mhz())*1000000)/mean_cycles);
-    cpu_time_t end_ts = rdtsc();
-
-
-    //    Memory::huge_shmem_free(virt_array[0],h);
-  }
-
-
-public:
-  Read_thread(NVME_device * dev, unsigned qid, core_id_t core) : 
-    _qid(qid), _dev(dev), Exokernel::Base_thread(NULL,core) {
-  }
-
-  void* entry(void* param) {
-    assert(_dev);
-
-    std::stringstream str;
-    str << "rt-client-qt-" << _qid;
-    Exokernel::set_thread_name(str.str().c_str());
-
-    read_throughput_test();
-  }
-
-
-};
-
 
 
 int main(int argc, char * argv[])
@@ -215,7 +77,6 @@ int main(int argc, char * argv[])
     basic_block_write(dev,2);
     basic_block_read(dev,2);
     NVME_INFO("****** Round1 : TESTING COMPLETE  ********\n");
-
     NVME_INFO("****** Round2 : STARTING RANDOM BLOCK R/W TESTING ********\n");
     TestBlockWriter tbw(dev,2); /* test using queue 2 */
     unsigned NUM_TEST_WRITES = 20;
@@ -225,9 +86,13 @@ int main(int argc, char * argv[])
       tbw.write_and_verify(lba,value);
     }
     NVME_INFO("****** Round2 : TESTING COMPLETE  ********\n");
-    
-  }
 
+#if 0
+    NVME_INFO("****** Round3 : TESTING MULTI-THREADED ********\n");
+    mt_tests::runTest(dev);
+    NVME_INFO("****** Round3 : TESTING COMPLETE - MULTI-THREADED ********\n");
+#endif
+  }
 
 #if 0
   NVME_INFO("Issuing test read and write test...");
