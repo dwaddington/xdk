@@ -53,7 +53,8 @@
 #include "pk_fops.h"
 
 extern struct proc_dir_entry * pk_proc_dir_root;
-
+extern void free_minor(struct pk_device *dev);
+extern void pk_device_cleanup(struct pk_device * pkdev);
 
 static ssize_t show_name(struct device *dev,
                          struct device_attribute *attr, char *buf)
@@ -1081,6 +1082,73 @@ static ssize_t irq_mode_store(struct device *dev,
   return -EIO;
 }
 
+void free_dma_memory(struct pk_device * pkdev)
+{
+  struct list_head * p, * safetmp;
+  struct pk_dma_area * area;
+  int curr_task_pid = task_pid_nr(current);
+  
+  LOCK_DMA_AREA_LIST;
+  
+  list_for_each_safe(p, safetmp, &pkdev->dma_area_list_head) {
+    
+    area = list_entry(p,struct pk_dma_area, list);
+
+    /* TODO security issue */
+    /* if (area->owner_pid != curr_task_pid)  */
+    /*   continue; */
+
+    PLOG("freeing %d pages at (%lx)",
+         1 << area->order,
+         area->phys_addr);
+
+    /* decrement ref count and free page */
+    atomic_dec(&area->p->_count);
+    __free_pages(area->p,get_order(area->order));
+    
+    /* remove from list */
+    list_del(p);
+       
+    /* free kernel memory for pk_dma_area */
+    kfree(area);
+    
+  }
+  UNLOCK_DMA_AREA_LIST;
+}
+
+
+/** 
+ * Used to detach device from the parasitic kernel
+ * 
+ * @param dev 
+ * @param attr 
+ * @param buf 
+ * @param count 
+ * 
+ * @return 
+ */
+static ssize_t detach_store(struct device * dev,
+                            struct device_attribute *attr, 
+                            const char * buf,
+                            size_t count)
+{
+  struct pk_device * pkdev = (struct pk_device *) dev_get_drvdata(dev);
+  BUG_ON(pkdev==NULL);
+
+  pk_device_cleanup(pkdev);
+  //PLOG("freeing DMA memory");
+  //free_dma_memory(pkdev);
+
+  //  PLOG("freeing minor device");
+  //  free_minor(pkdev);
+
+  return count;
+
+ error:
+  PERR("unload returned a NULL pointer.");
+  return -EIO;
+}
+
 /** 
  * Device attribute declaration
  * 
@@ -1090,9 +1158,11 @@ DEVICE_ATTR(version, S_IRUGO, show_version, NULL);
 DEVICE_ATTR(pci, S_IRUGO, show_pci, NULL);
 DEVICE_ATTR(irq, S_IRUGO, wait_irq, NULL);
 DEVICE_ATTR(irq_mode, S_IRUGO | S_IWUGO, irq_mode_show, irq_mode_store);
+DEVICE_ATTR(detach, S_IWUGO, NULL, detach_store);
 DEVICE_ATTR(dma_mask, S_IRUGO | S_IWUGO, dma_mask_show, dma_mask_store);
 DEVICE_ATTR(dma_page_alloc, S_IRUGO | S_IWUGO, dma_alloc_show, dma_alloc_store);
 DEVICE_ATTR(dma_page_free, S_IWUGO, NULL, dma_free_store);
 DEVICE_ATTR(msi_alloc, S_IRUGO | S_IWUGO, msi_alloc_show, msi_alloc_store);
 DEVICE_ATTR(msi_cap, S_IRUGO, msi_cap_show, NULL);
+
 
