@@ -558,9 +558,9 @@ void free_minor(struct pk_device *dev)
 {
   PLOG("freeing minor device.");
 
-	mutex_lock(&minor_lock); */
-	idr_remove(&pk_idr, dev->minor); */
-	mutex_unlock(&minor_lock); */
+	mutex_lock(&minor_lock); 
+	idr_remove(&pk_idr, dev->minor); 
+	mutex_unlock(&minor_lock); 
 
   /* delete device attributes */
   device_remove_file(dev->dev, &dev_attr_name);
