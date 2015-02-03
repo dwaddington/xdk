@@ -77,6 +77,7 @@ int main(int argc, char * argv[])
     basic_block_write(dev,2);
     basic_block_read(dev,2);
     NVME_INFO("****** Round1 : TESTING COMPLETE  ********\n");
+
     NVME_INFO("****** Round2 : STARTING RANDOM BLOCK R/W TESTING ********\n");
     TestBlockWriter tbw(dev,2); /* test using queue 2 */
     unsigned NUM_TEST_WRITES = 20;
@@ -89,7 +90,7 @@ int main(int argc, char * argv[])
 
 #if 0
     NVME_INFO("****** Round3 : TESTING MULTI-THREADED ********\n");
-    mt_tests::runTest(dev);
+    (new mt_tests())->runTest(dev);
     NVME_INFO("****** Round3 : TESTING COMPLETE - MULTI-THREADED ********\n");
 #endif
   }
