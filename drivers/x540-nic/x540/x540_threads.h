@@ -27,10 +27,10 @@
    in files containing the exception.  
 */
 
-
-
-
-
+/*
+  Author(s):
+  @author Jilong Kuang (jilong.kuang@samsung.com)
+*/
 
 #ifndef __IRQ_THREAD_H__
 #define __IRQ_THREAD_H__

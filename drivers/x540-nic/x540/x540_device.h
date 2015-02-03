@@ -27,10 +27,10 @@
    in files containing the exception.  
 */
 
-
-
-
-
+/*
+  Author(s):
+  @author Jilong Kuang (jilong.kuang@samsung.com)
+*/
 
 #ifndef __X540_DEVICE_H__
 #define __X540_DEVICE_H__

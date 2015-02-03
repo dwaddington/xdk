@@ -27,18 +27,10 @@
    in files containing the exception.  
 */
 
-
-
-
-
-
-
-
 /** 
  * @author Juan A. Colmenares <juan.col@samsung.com>
  * @date March 31, 2014.
  */
-
 
 #ifndef __XML_CONFIG_PARSER_H__
 #define __XML_CONFIG_PARSER_H__

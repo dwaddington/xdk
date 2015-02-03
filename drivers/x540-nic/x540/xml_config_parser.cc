@@ -27,18 +27,10 @@
    in files containing the exception.  
 */
 
-
-
-
-
-
-
-
 /** 
  * @author Juan A. Colmenares <juan.col@samsung.com>
  * @date March 31, 2014.
  */
-
 
 #include "xml_config_parser.h" 
 #include <stdlib.h>

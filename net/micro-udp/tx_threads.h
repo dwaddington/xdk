@@ -27,7 +27,10 @@
    in files containing the exception.  
 */
 
-
+/*
+  Author(s):
+  @author Jilong Kuang (jilong.kuang@samsung.com)
+*/
 
 #ifndef __TX_THREAD_H__
 #define __TX_THREAD_H__
@@ -94,7 +97,7 @@ private:
 
     static uint64_t channel_counter = 0;
     while (1) {
-      if (_local_id < 1)
+      if (_local_id < 4)
         _stack->send_udp_pkt_test(_local_id);
       //_stack->send_pkt_test(_local_id);
       else (sleep(1000));

@@ -27,10 +27,10 @@
    in files containing the exception.  
 */
 
-
-
-
-
+/*
+  Author(s):
+  @author Jilong Kuang (jilong.kuang@samsung.com)
+*/
 
 #include <component/base.h>
 #include <mem_component.h>

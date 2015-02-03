@@ -27,7 +27,10 @@
    in files containing the exception.  
 */
 
-
+/*
+  Author(s):
+  @author Jilong Kuang (jilong.kuang@samsung.com)
+*/
 
 #ifndef __EXO_MSG_PROCESSOR_SERVER_H__
 #define __EXO_MSG_PROCESSOR_SERVER_H__

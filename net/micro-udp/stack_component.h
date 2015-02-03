@@ -27,8 +27,10 @@
    in files containing the exception.  
 */
 
-
-
+/*
+  Author(s):
+  @author Jilong Kuang (jilong.kuang@samsung.com)
+*/
 
 #include <libexo.h>
 #include <network/nic_itf.h>
