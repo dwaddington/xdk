@@ -56,8 +56,9 @@ public:
     uint8_t * p = (uint8_t *) _vbuff;
 
     bool good = true;
-    for(unsigned i=0;i<PAGE_SIZE;i++) {
-      if(p[1] != value) {
+    for(unsigned i=0;i<512 /* block size */;i++) {
+      if(p[i] != value) {
+        PLOG("p[i] is %d not %d (i=%u)",p[i],value,i);
         hexdump(p,512);
         good = false;
         break;

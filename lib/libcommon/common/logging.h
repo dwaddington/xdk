@@ -67,8 +67,14 @@
 #define ESC_END  "\033[0m"
 
 
+#ifdef CONFIG_BUILD_DEBUG
 #define PDBG(f, a...)   fprintf( stderr, "[XDK]: %s:" f "\n",  __func__ , ## a)
 #define PLOG(f, a...)   fprintf( stderr, "[XDK]: %s:" f "\n",  __func__ , ## a)
+#else
+#define PDBG(f, a...)
+#define PLOG(f, a...)
+#endif
+
 #define PINF(f, a...)   fprintf( stderr, "%s" f "%s\n", ESC_INF, ## a, ESC_END)
 #define PWRN(f, a...)   fprintf( stderr, "%s[XDK]: %s:" f "%s\n",  ESC_WRN, __func__ , ## a, ESC_END)
 #define PERR(f, a...)   fprintf( stderr, "[XDK]: ERROR %s:" f "\n",  __func__ , ## a); 

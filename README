@@ -1,10 +1,15 @@
 The eXokernel Development Kit is an open source effort to build exokernel capabilities for the Linux operating system.
 
-The project uses code developed and released by Samsung Research America.
+The project was founded on code developed and released by Samsung Research America, Silicon Valley in 2014.
 
 --------
 History:
 --------
+
+29-01-2015:
+
+Initial version of NVMe SSD driver works on both QEMU and Samsung SSD
+XS1715 hardware.
 
 20-11-2014:
 
