@@ -11,19 +11,19 @@
 #include "nvme_device.h"
 
 //#define COUNT (1000000)
-#define COUNT (64)
-#define NUM_QUEUES (1)
+#define COUNT (32)
+#define NUM_QUEUES (2)
 #define SLAB_SIZE (512)
 #define NUM_BLOCKS (8)
 
-static Exokernel::Pagemap pm;
 
 class Read_thread : public Exokernel::Base_thread {
   private:
     NVME_device * _dev;
     unsigned _qid;
     Notify_object nobj;
-
+    addr_t* _phys_array_local;
+    void ** _virt_array_local;
 
     void read_throughput_test()
     {
@@ -40,29 +40,6 @@ class Read_thread : public Exokernel::Base_thread {
       }
 #endif
 
-
-      /* set up a simple slab */
-      addr_t phys_array[SLAB_SIZE];
-      void * virt_array[SLAB_SIZE];
-
-      /* allocate slab of memory */
-      Memory::huge_system_configure_nrpages(SLAB_SIZE+8);
-      int h;
-      virt_array[0] = Memory::huge_shmem_alloc(1,PAGE_SIZE * SLAB_SIZE,0,&h);
-      assert(virt_array[0]);
-
-      char * p = (char *) virt_array[0];
-      for(unsigned i=0;i<SLAB_SIZE;i++) {
-        virt_array[i] = p;
-        phys_array[i] = pm.virt_to_phys(virt_array[i]);
-        p+=PAGE_SIZE;
-        assert(virt_array[i]);
-        assert(phys_array[i]);
-      }
-      touch_pages(virt_array[0],PAGE_SIZE*SLAB_SIZE); /* eager map */
-      PLOG("Memory allocated OK!!");
-
-
       cpu_time_t start_ts = rdtsc();
       NVME_IO_queue * ioq = _dev->io_queue(_qid);
       PLOG("** READ THROUGHPUT AROUND Q:%p (_qid=%u)\n",(void *) ioq, _qid);
@@ -70,6 +47,10 @@ class Read_thread : public Exokernel::Base_thread {
       unsigned long long mean_cycles = 0;
       unsigned long long total_cycles = 0;
       unsigned long long sample_count = 0;
+      cpu_time_t prev_tsc, diff_tsc, cur_tsc;
+      const cpu_time_t drain_tsc = (unsigned long long)get_tsc_frequency_in_mhz() * 1000000UL;
+      printf("drain_tsc = %llu\n", drain_tsc);
+      prev_tsc = 0;
 
       _dev->io_queue(_qid)->callback_manager()->register_callback(&Notify_object::notify_callback,
           (void*)&nobj);
@@ -80,10 +61,10 @@ class Read_thread : public Exokernel::Base_thread {
       uint16_t cid;
       for(unsigned long i=0;i<COUNT;i++) {
 
-        PLOG("Start to send (Q:%u) %lu...",_qid,send_id);
+        //PLOG("Start to send (Q:%u) %lu...",_qid,send_id);
         cpu_time_t start = rdtsc();
         cid = _dev->block_async_read(_qid,
-            phys_array[i%SLAB_SIZE], 
+            _phys_array_local[i%SLAB_SIZE], 
             (i*PAGE_SIZE)+((_qid-1)*COUNT), /* offset */
             NUM_BLOCKS); /* num blocks */
 
@@ -105,13 +86,18 @@ class Read_thread : public Exokernel::Base_thread {
         if(i % INTERVAL == 0) PLOG("(_QID:%u) i=%lu", _qid, i);     
         if(i==COUNT) break;
 
+        cur_tsc = rdtsc();
+        diff_tsc = cur_tsc - prev_tsc;
         /* wait for bursts of IOPs - don't do this too late */
-        if((i % threshold == 0) && (i > 0)) {
+        if((i % threshold == 0) && (i > 0)
+            || diff_tsc > drain_tsc
+          ) {
           atomic_t c;
+          prev_tsc = cur_tsc;
 
           nobj.set_when(send_id); /* set wake up at send_id */
           nobj.wait();
-        } 
+        }
 
         send_id++;
       }
@@ -129,14 +115,15 @@ class Read_thread : public Exokernel::Base_thread {
       PLOG("(QID:%u) cycles mean/iteration %llu (%llu IOPS)\n",_qid, mean_cycles, (((unsigned long long)get_tsc_frequency_in_mhz())*1000000)/mean_cycles);
       cpu_time_t end_ts = rdtsc();
 
-
+#if 0
       Memory::huge_shmem_free(virt_array[0],h);
+#endif
     }
 
 
   public:
-    Read_thread(NVME_device * dev, unsigned qid, core_id_t core) : 
-      _qid(qid), _dev(dev), Exokernel::Base_thread(NULL,core) {
+    Read_thread(NVME_device * dev, unsigned qid, core_id_t core, addr_t *phys_array_local, void **virt_array_local) : 
+      _qid(qid), _dev(dev), Exokernel::Base_thread(NULL,core), _phys_array_local(phys_array_local), _virt_array_local(virt_array_local) {
       }
 
     void* entry(void* param) {
@@ -154,17 +141,57 @@ class Read_thread : public Exokernel::Base_thread {
 
 class mt_tests {
 
+  int h; /*mem handler*/
+  void* vaddr;
+  /* set up a simple slab */
+  addr_t phys_array[NUM_QUEUES][SLAB_SIZE];
+  void * virt_array[NUM_QUEUES][SLAB_SIZE];
+  Exokernel::Pagemap pm;
+
+  private:
+    void allocMem() {
+
+      using namespace Exokernel;
+      /* allocate slab of memory */
+      int NUM_PAGES = NUM_QUEUES * (SLAB_SIZE+2);
+      Memory::huge_system_configure_nrpages(NUM_PAGES);
+      vaddr = Memory::huge_shmem_alloc(1,PAGE_SIZE * NUM_PAGES,0,&h);
+      assert(vaddr);
+
+      char * p = (char *) vaddr;
+      for(unsigned i=0; i<NUM_QUEUES; i++) {
+        for(unsigned j=0; j<SLAB_SIZE; j++) {
+          virt_array[i][j] = p;
+          phys_array[i][j] = pm.virt_to_phys(virt_array[i][j]);
+          p+=PAGE_SIZE;
+          assert(virt_array[i][j]);
+          assert(phys_array[i][j]);
+          //printf("[%d, %d]: virt = %p, phys = %p\n", i, j, virt_array[i][j], phys_array[i][j]);
+        }
+      }
+      touch_pages(vaddr, PAGE_SIZE*NUM_PAGES); /* eager map */
+      PLOG("Memory allocated OK!!");
+    }
+
+    void freeMem() {
+      Exokernel::Memory::huge_shmem_free(vaddr,h);
+    }
+
   public:
-    static void runTest(NVME_device* dev) {
-      NVME_INFO("Issuing test read and write test...");
+    void runTest(NVME_device* dev) {
+      NVME_INFO("Issuing test read and write test...\n");
+      allocMem();
+
       {
         Read_thread * thr[NUM_QUEUES];
 
         for(unsigned i=1;i<=NUM_QUEUES;i++) {
           thr[i-1] = new Read_thread(dev,
               i, //(2*(i-1))+1, /* qid */
-              i+3); //*2-1); //1,3,5,7 /* core for read thread */
-
+              i+3, //*2-1); //1,3,5,7 /* core for read thread */
+              phys_array[i-1],
+              virt_array[i-1]
+              );
         }
 
         struct rusage ru_start, ru_end;
@@ -209,5 +236,6 @@ class mt_tests {
             1000.0 / gtod_secs);
 
       }
+      freeMem();
     }
 };
