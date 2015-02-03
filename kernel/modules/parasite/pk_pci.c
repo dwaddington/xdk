@@ -283,16 +283,13 @@ void remove(struct pci_dev * dev)
 {
   PLOG("pci:remove");
 
-  /* if(dev->msi_enabled) */
-  /*   pci_disable_msi(dev); */
+  if(dev->msi_enabled) 
+    pci_disable_msi(dev);
 
-  /* if(dev->msix_enabled) */
-  /*   pci_disable_msix(dev); */
-
+  if(dev->msix_enabled) 
+    pci_disable_msix(dev);
 
   pci_clear_master(dev);
-  pci_disable_msix(dev);
   pci_release_regions(dev);
   pci_disable_device(dev);
-
 }

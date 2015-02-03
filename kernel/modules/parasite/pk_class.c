@@ -1117,37 +1117,6 @@ void free_dma_memory(struct pk_device * pkdev)
 }
 
 
-/** 
- * Used to detach device from the parasitic kernel
- * 
- * @param dev 
- * @param attr 
- * @param buf 
- * @param count 
- * 
- * @return 
- */
-static ssize_t detach_store(struct device * dev,
-                            struct device_attribute *attr, 
-                            const char * buf,
-                            size_t count)
-{
-  struct pk_device * pkdev = (struct pk_device *) dev_get_drvdata(dev);
-  BUG_ON(pkdev==NULL);
-
-  pk_device_cleanup(pkdev);
-  //PLOG("freeing DMA memory");
-  //free_dma_memory(pkdev);
-
-  //  PLOG("freeing minor device");
-  //  free_minor(pkdev);
-
-  return count;
-
- error:
-  PERR("unload returned a NULL pointer.");
-  return -EIO;
-}
 
 /** 
  * Device attribute declaration
@@ -1158,7 +1127,6 @@ DEVICE_ATTR(version, S_IRUGO, show_version, NULL);
 DEVICE_ATTR(pci, S_IRUGO, show_pci, NULL);
 DEVICE_ATTR(irq, S_IRUGO, wait_irq, NULL);
 DEVICE_ATTR(irq_mode, S_IRUGO | S_IWUGO, irq_mode_show, irq_mode_store);
-DEVICE_ATTR(detach, S_IWUGO, NULL, detach_store);
 DEVICE_ATTR(dma_mask, S_IRUGO | S_IWUGO, dma_mask_show, dma_mask_store);
 DEVICE_ATTR(dma_page_alloc, S_IRUGO | S_IWUGO, dma_alloc_show, dma_alloc_store);
 DEVICE_ATTR(dma_page_free, S_IWUGO, NULL, dma_free_store);

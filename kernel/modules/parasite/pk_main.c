@@ -48,7 +48,7 @@
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Daniel G. Waddington");
-MODULE_DESCRIPTION("Parasitic kernel module for ExoLib");
+MODULE_DESCRIPTION("Parasitic Kernel Module");
 
 struct class * parasite_class;
 //extern struct class parasite_class;
@@ -66,23 +66,17 @@ extern struct device_attribute dev_attr_dma_page_alloc;
 extern struct device_attribute dev_attr_dma_page_free;
 extern struct device_attribute dev_attr_msi_alloc;
 extern struct device_attribute dev_attr_msi_cap;
-extern struct device_attribute dev_attr_detach;
 
-extern ssize_t pk_grant_store(struct class *class, 
-                              struct class_attribute *attr,
-                              const char *buf, size_t count);
-
-extern ssize_t pk_grant_show(struct class *class,
-                             struct class_attribute *attr, char *buf);
-
+static ssize_t pk_detach_store(struct class *class, 
+                               struct class_attribute *attr,
+                               const char *buf, size_t count);
 
 static int          pk_major;
 
 static status_t major_init(void);
 static void     major_cleanup(void);
 static int      get_minor(struct pk_device *dev);
-
-void     free_minor(struct pk_device *dev);
+void            free_minor(struct pk_device *dev);
 
 static DEFINE_MUTEX(minor_lock);
 static DEFINE_IDR(pk_idr);
@@ -169,7 +163,6 @@ struct pk_device * sysfs_class_register_device(struct pci_dev * pci_dev)
   device_create_file(pkdev->dev, &dev_attr_dma_page_free);
   device_create_file(pkdev->dev, &dev_attr_msi_alloc);
   device_create_file(pkdev->dev, &dev_attr_msi_cap);
-  device_create_file(pkdev->dev, &dev_attr_detach);
 
   /* create procfs dir */
   ASSERT(pk_proc_dir_root!=NULL);
@@ -268,7 +261,7 @@ void pk_device_cleanup(struct pk_device * pkdev)
     struct pk_dma_area * area = list_entry(p, struct pk_dma_area, list);
     ASSERT(area);
 
-    PDBG("freeing DMA area %lx (pages=%d)", 
+    PDBG("freeing DMA area %p (pages=%d)", 
          (void*) area->phys_addr, 1 << area->order);
     
     /* clear reserved bit on DMA pages before we free */
@@ -396,11 +389,74 @@ static ssize_t pk_class_version_show(struct class *class,
   return sprintf(buf, "%s\n", PARASITIC_KERNEL_VER);
 }
 
+/** 
+ * Dettach a device from the parasitic kernel
+ * echo "pk0" > /sys/class/parasite/detach 
+ * 
+ * @param class 
+ * @param attr 
+ * @param buf 
+ * @param count 
+ * 
+ * @return 
+ */
+static ssize_t pk_detach_store(struct class *class, 
+                               struct class_attribute *attr,
+                               const char *buf, size_t count) 
+{
+  char tmp[count];
+
+  BUG_ON(count < 1);
+  memcpy(tmp,buf,count);
+  tmp[count - 1] = '\0';
+
+  PLOG("detach request (%s)", tmp);
+
+  struct pk_device * pkdev, * safetmp;
+  list_for_each_entry_safe(pkdev, safetmp, &g_pkdevice_list, list) {
+
+    if(strcmp(pkdev->name, tmp)==0) {
+      PLOG("removing device (%s)",pkdev->name);
+
+      /* remove device that was created with create_device call */
+      //    device_destroy(class, MKDEV(pk_major, pkdev->minor));
+
+      pk_device_cleanup(pkdev);
+
+      free_minor(pkdev);
+
+      //    list_del(pkdev);
+
+
+      /* PLOG("destroying minor device %d",d->minor); */
+      /* // TO FIX */
+      /* //device_destroy(&pk_device_class, MKDEV(pk_major, d->minor)); */
+    
+      /*   free_minor(d); */
+      
+      /*   /\* clean up PK device *\/ */
+      /*   pk_device_cleanup(d); */
+
+      /*   kfree(d); */
+
+      /*   PLOG("minor device %d cleaned up OK.",d->minor); */
+      pci_clear_master(pkdev->pci_dev);
+      pci_disable_msix(pkdev->pci_dev);
+      pci_release_regions(pkdev->pci_dev);
+      pci_disable_device(pkdev->pci_dev);
+    }
+  }
+  
+  return count;
+}
+
+
+
 static struct class_attribute pk_version =
   __ATTR(version, S_IRUGO, pk_class_version_show, NULL);
 
-static struct class_attribute pk_grant = 
-  __ATTR(grant, S_IRUSR | S_IWUSR, pk_grant_show, pk_grant_store);
+static struct class_attribute pk_detach = 
+  __ATTR(detach, S_IWUSR, NULL, pk_detach_store);
 
 /** 
  * Write handler for /sys/class/parasite/new_id, which is
@@ -496,7 +552,7 @@ status_t class_init(void)
   if(ret)
     goto err_class_create_file;
 
-  ret = class_create_file(parasite_class, &pk_grant);
+  ret = class_create_file(parasite_class, &pk_detach);
   if(ret)
     goto err_class_create_file;
 
@@ -572,7 +628,6 @@ void free_minor(struct pk_device *dev)
   device_remove_file(dev->dev, &dev_attr_dma_page_free);
   device_remove_file(dev->dev, &dev_attr_msi_alloc);
   device_remove_file(dev->dev, &dev_attr_msi_cap);
-  device_remove_file(dev->dev, &dev_attr_detach);
 
   /* clean up device created with device_create API */
   device_destroy(parasite_class, MKDEV(pk_major, dev->minor));
