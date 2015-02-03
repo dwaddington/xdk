@@ -212,8 +212,22 @@ Submission_command_slot * NVME_queues_base::next_sub_slot(signed * slot_id) {
 
   queue_ptr_t curr_ptr;
   signed slot;
-  slot = _bitmap->next_free();
 
+  /*Loop for a while if there is no slot available, before return NULL*/
+  unsigned long long attempts = 0;
+  while((slot = _bitmap->next_free()) < 0) {
+    attempts++;
+    if(attempts%1000 == 0){
+      PLOG("Waiting for available slot (%llu)!!!", attempts);
+    }
+
+    if(attempts > 1000000ULL) {
+      PERR("TIME OUT - no available slot!!");
+      return NULL;
+    }
+  }
+
+  assert(slot != 0);
   PLOG("Find slot = %d", slot);
   if(slot < 0) {
     return NULL;
