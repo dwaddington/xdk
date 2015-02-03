@@ -72,9 +72,11 @@ struct Config_params {
   unsigned flex_byte_pos;
   unsigned server_timestamp;
   unsigned server_port;
+  unsigned client_port;
   std::string tx_threads_cpu_mask;
   std::string rx_threads_cpu_mask;
   std::string server_ip[4];
+  std::string client_ip[4];
 };
 
 

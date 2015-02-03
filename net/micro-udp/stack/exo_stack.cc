@@ -254,6 +254,38 @@ void Exo_stack::send_pkt_test(unsigned tid) {
   }
 }
 
+void Exo_stack::add_ip(char* myip) {
+  int len = strlen(myip);
+  char s[len+1];
+  __builtin_memcpy(s,myip,len);
+  s[len]='\0';
+  parse_ip_format(s,ip);
+  printf("CLIENT IP: %d.%d.%d.%d is added to STACK[%u]\n",ip[0],ip[1],ip[2],ip[3],_index);
+  uint32_t temp=0;
+  temp=(ip[0]<<24)+(ip[1]<<16)+(ip[2]<<8)+ip[3];
+  remote_ip_addr.addr=ntohl(temp);
+}
+
+void Exo_stack::parse_ip_format(char *s, uint8_t * ip) {
+  char* tmp = s;
+  int i=0;
+  while (*tmp) {
+    if (*tmp == '.') {
+       *tmp='\0';
+        ip[i++] = atoi(s);
+        tmp++;
+        s = tmp;
+    }
+    else {
+      tmp++;
+    }
+  }
+  if (i!=3)  {
+    panic("IP address is wrong. [e.g. 105.144.29.xxx]");
+  }
+  ip[i]=atoi(s);
+}
+
 void Exo_stack::init_param() {
   unsigned i,j;
 #ifndef RAW_NIC_TEMP
@@ -279,17 +311,6 @@ void Exo_stack::init_param() {
   ethaddr = ((Raw_device *)(_inic->driver(_index)))->_ethaddr;
   ip_addr = ((Raw_device *)(_inic->driver(_index)))->_ip_addr;
 #endif
-
-  uint8_t client_ip[4];
-  client_ip[0] = 10;
-  client_ip[1] = 0;
-  client_ip[2] = 0;
-  client_ip[3] = 101 + _index;
-  uint32_t temp = 0;
-  temp = (client_ip[0]<<24) + (client_ip[1]<<16) + (client_ip[2]<<8) + client_ip[3];
-  remote_ip_addr.addr = ntohl(temp);
-
-  remote_port = 56789; //default client udp port
 
   for (i = 0; i < NUM_RX_QUEUES; i++) {
     __builtin_memset(&recv_counter[i], 0, sizeof(recv_counter[i]));
@@ -1016,26 +1037,26 @@ pkt_status_t Exo_stack::udp_input(pbuf_t *pbuf_list, unsigned queue) {
   }
 #endif
 
-#if 0
   bool pkt_reuse;
   if (_msg_processor->process(pbuf_list, _index, tid, core, pkt_reuse) == S_OK) {
     if (pkt_reuse == true) {
       free_packets(pbuf_list, false);
       return REUSE_THIS_PACKET;
     }
-    else
+    else {
+      free_packets(pbuf_list, true);
       return KEEP_THIS_PACKET;
+    }
   }
   else {
     //printf("msg_processor returned error!!!");
     free_packets(pbuf_list, false);
     return REUSE_THIS_PACKET;
   }
-#endif
 
-  free_packets(pbuf_list, false);
+  //free_packets(pbuf_list, false);
   //return KEEP_THIS_PACKET;
-  return REUSE_THIS_PACKET;
+  //return REUSE_THIS_PACKET;
 }
 
 void Exo_stack::free_packets(pbuf_t* pbuf_list, bool flag) {

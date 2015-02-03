@@ -112,12 +112,14 @@ namespace Exokernel
       struct udp_hdr *udphdr = (struct udp_hdr *)(pbuf_list->pkt + SIZEOF_ETH_IP_HLEN);
       uint16_t src_port = ntohs(udphdr->src);
 
+#if 0
       /* push the packet into channel */
       while (_net_side_channel[tid]->produce(pbuf_list) != E_SPMC_CIRBUFF_OK) {
         pkt_reuse = true;
         return E_FAIL;
       }
-
+#endif
+      
       pkt_reuse = false;
       return S_OK;
     }

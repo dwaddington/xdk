@@ -105,6 +105,11 @@ public:
     stats_num = _params->stats_num;
     client_rx_flow_num = _params->client_rx_flow_num;
     server_port = _params->server_port;
+    remote_port = _params->client_port;
+
+    std::string client_ip;
+    client_ip = _params->client_ip[index];
+    add_ip((char *)client_ip.c_str());
 
     _inic = inic;
     _istack = istack;
@@ -117,6 +122,8 @@ public:
 
   /* stack functions */
   void init_param();
+  void add_ip(char* myip);
+  void parse_ip_format(char *s, uint8_t * ip);
   void send_pkt_test(unsigned queue);
   void send_udp_pkt_test(unsigned queue);
   ip_addr_t* get_remote_ip() { return &remote_ip_addr; }

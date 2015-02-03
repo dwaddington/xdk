@@ -432,6 +432,21 @@ XML_config_parser::parse(const std::string& filename,
     throw Exokernel::Exception("Invalid value of 'server_port'.");
   }
 
+  // CLIENT_PORT
+  TiXmlElement* client_port_elem = root_hdl.FirstChild("client_port").ToElement();
+  if (client_port_elem == NULL) {
+    throw Exokernel::Exception("Didn't specify CLIENT_PORT.");
+  }
+
+  if (verbose) {
+    std::cout << "CLIENT_PORT: " << client_port_elem->GetText() << std::endl;
+  }
+
+  unsigned client_port = str_to_num<unsigned>(client_port_elem->GetText());
+  if (client_port <= 0) {
+    throw Exokernel::Exception("Invalid value of 'client_port'.");
+  }
+
   // SERVER_IP
   for (unsigned i = 0; i < nic_num; i++) {
     char str[64];
@@ -447,6 +462,23 @@ XML_config_parser::parse(const std::string& filename,
     }
 
     params.server_ip[i] = server_ip_elem->GetText();
+  }
+
+  // CLIENT_IP
+  for (unsigned i = 0; i < nic_num; i++) {
+    char str[64];
+    __builtin_memset(str, 0, 64);
+    sprintf(str, "client_ip%u", i+1);
+    TiXmlElement* client_ip_elem = root_hdl.FirstChild(str).ToElement();
+    if (client_ip_elem == NULL) {
+      throw Exokernel::Exception("Didn't specify CLIENT_IP.");
+    }
+
+    if (verbose) {
+      std::cout << "CLIENT_IP: " << client_ip_elem->GetText() << std::endl;
+    }
+
+    params.client_ip[i] = client_ip_elem->GetText();
   }
 
   params.nic_num = nic_num;
@@ -472,4 +504,5 @@ XML_config_parser::parse(const std::string& filename,
   params.flex_byte_pos = flex_byte_pos;
   params.server_timestamp = server_timestamp;
   params.server_port = server_port;
+  params.client_port = client_port;
 }

@@ -33,9 +33,9 @@
   <tx_desc_per_queue>512</tx_desc_per_queue>                       <!-- same as in driver_config.h. -->
   <rx_desc_per_queue>512</rx_desc_per_queue>                       <!-- same as in driver_config.h. -->
   <nic_num>1</nic_num>                                             
-  <cpus_per_nic>4</cpus_per_nic>                                  
-  <rx_threads_cpu_mask>0001</rx_threads_cpu_mask>
-  <tx_threads_cpu_mask>1000</tx_threads_cpu_mask>
+  <cpus_per_nic>8</cpus_per_nic>                                  
+  <rx_threads_cpu_mask>00000001</rx_threads_cpu_mask>
+  <tx_threads_cpu_mask>00001000</tx_threads_cpu_mask>
   <flex_byte_pos>24</flex_byte_pos>
 
 
@@ -43,12 +43,10 @@
   <!-- APPLICATION CONFIG -->
   <stats_num>1000000</stats_num>
   <client_rx_flow_num>1</client_rx_flow_num>
-  <eviction_period>10</eviction_period>
+  <server_ip1>105.145.68.41</server_ip1>
   <server_port>11211</server_port>
-  <server_ip1>10.0.0.1</server_ip1>
-  <server_ip2>10.0.0.2</server_ip2>
-  <server_ip3>10.0.0.3</server_ip3>
-  <server_ip4>10.0.0.4</server_ip4>
+  <client_ip1>105.145.68.40</client_ip1>
+  <client_port>56788</client_port>
   <!-- 
     Expected peak request rate (in requests per second).
     Used to estimate evition threshold in the IXGBE driver (acting as memory manager) 
