@@ -51,8 +51,7 @@ MODULE_AUTHOR("Daniel G. Waddington");
 MODULE_DESCRIPTION("Parasitic Kernel Module");
 
 struct class * parasite_class;
-//extern struct class parasite_class;
-//extern struct class pk_device_class;
+
 
 /* attributes for each pkXXX device created - defined in pk_class.c */
 extern struct pci_driver pci_driver;
@@ -67,17 +66,15 @@ extern struct device_attribute dev_attr_dma_page_free;
 extern struct device_attribute dev_attr_msi_alloc;
 extern struct device_attribute dev_attr_msi_cap;
 
-static ssize_t pk_detach_store(struct class *class, 
-                               struct class_attribute *attr,
-                               const char *buf, size_t count);
-
-int          pk_major;
-
+static ssize_t  pk_detach_store(struct class *class, 
+                                struct class_attribute *attr,
+                                const char *buf, size_t count);
 static status_t major_init(void);
 static void     major_cleanup(void);
 static int      get_minor(struct pk_device *dev);
 void            free_minor(struct pk_device *dev);
 
+static int          pk_major;
 static DEFINE_MUTEX(minor_lock);
 static DEFINE_IDR(pk_idr);
 
