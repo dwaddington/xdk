@@ -182,7 +182,7 @@ err_kzalloc:
 
 
 /** 
- * Called to free resources associated with a pk_device instance
+ * Called to free MSI vectors and memory resources associated with a pk_device instance
  * 
  * @param d Pointer to pk_device instance
  */
@@ -287,6 +287,9 @@ void pk_device_cleanup(struct pk_device * pkdev)
     kfree(area);
   }
 
+  /* free minor device */
+  free_minor(pkdev);
+
   PLOG("pk_device_cleanup complete.");
 }
 
@@ -299,18 +302,14 @@ void release_all_devices(void)
     PLOG("removing device (%s)",pkdev->name);   
 
     pk_device_cleanup(pkdev);
-    free_minor(pkdev);
+
+    pci_clear_master(pkdev->pci_dev);
+    pci_release_regions(pkdev->pci_dev);
+    pci_disable_device(pkdev->pci_dev);
 
     PLOG("removing from g_pkdevice_list");
     list_del(&pkdev->list); // can't do this in list_for_each_entry_safe
     kfree(pkdev);
-    
-    /* /\*  */
-    /*    remove device that was created with create_device call, this */
-    /*    calls device_unregister  */
-    /* *\/ */
-    /* device_destroy(parasite_class, MKDEV(pk_major, pkdev->minor)); */
-
   }
 
   PLOG("release_all_devices OK.");
@@ -426,12 +425,7 @@ static ssize_t pk_detach_store(struct class *class,
     if(strcmp(pkdev->name, tmp)==0) {
       PLOG("removing device (%s)",pkdev->name);
 
-      /* remove device that was created with create_device call */
-      device_destroy(class, MKDEV(pk_major, pkdev->minor));
-
       pk_device_cleanup(pkdev);
-
-      free_minor(pkdev);
 
       /*   PLOG("minor device %d cleaned up OK.",d->minor); */
       pci_clear_master(pkdev->pci_dev);
