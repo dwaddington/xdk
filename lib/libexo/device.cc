@@ -187,7 +187,7 @@ __locate_device(unsigned instance, unsigned vendor, unsigned device) {
   /* device not found, attempt auto-load */
   if(!auto_load_attempted)
   {
-    PINF("Attemping to auto-load device into PK module.");
+    PINF("Attempting to auto-load device into PK module.");
     try {
       std::ofstream fs;
       
