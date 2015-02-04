@@ -53,14 +53,12 @@
 #include "pk_fops.h"
 
 extern struct proc_dir_entry * pk_proc_dir_root;
-extern void free_minor(struct pk_device *dev);
 extern void pk_device_cleanup(struct pk_device * pkdev);
 
 static ssize_t show_name(struct device *dev,
                          struct device_attribute *attr, char *buf)
 {
-  //  struct pk_device *idev = dev_get_drvdata(dev);
-  return sprintf(buf, "parasite device\n"); //idev->info->name);
+  return sprintf(buf, "XDK parasitic driver\n");
 }
 
 
@@ -136,7 +134,6 @@ static ssize_t wait_irq(struct device *dev,
   
   /* return the IRQ number */
   return sprintf(buf, "%d\n", pkdev->pci_dev->irq);
-
 
  error:
   return sprintf(buf, "error: %s\n",__FUNCTION__);
