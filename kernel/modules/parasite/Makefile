@@ -1,4 +1,4 @@
-SRC = pk_main.c pk_fops.c pk_pci.c pk_class.c pk_grant.c
+SRC = pk_main.c pk_fops.c pk_pci.c pk_class.c
 
 KERNEL_VER = `uname -r`
 

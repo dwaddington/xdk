@@ -278,21 +278,9 @@ err:
 	return err;
 }
 
+extern void release_all_devices(void);
 
 void remove(struct pci_dev * dev)
 {
   PLOG("pci:remove");
-
-  /* if(dev->msi_enabled) */
-  /*   pci_disable_msi(dev); */
-
-  /* if(dev->msix_enabled) */
-  /*   pci_disable_msix(dev); */
-
-
-  pci_clear_master(dev);
-  pci_disable_msix(dev);
-  pci_release_regions(dev);
-  pci_disable_device(dev);
-
 }

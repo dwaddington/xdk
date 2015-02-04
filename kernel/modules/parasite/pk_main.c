@@ -48,11 +48,10 @@
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Daniel G. Waddington");
-MODULE_DESCRIPTION("Parasitic kernel module for ExoLib");
+MODULE_DESCRIPTION("Parasitic Kernel Module");
 
 struct class * parasite_class;
-//extern struct class parasite_class;
-//extern struct class pk_device_class;
+
 
 /* attributes for each pkXXX device created - defined in pk_class.c */
 extern struct pci_driver pci_driver;
@@ -67,19 +66,15 @@ extern struct device_attribute dev_attr_dma_page_free;
 extern struct device_attribute dev_attr_msi_alloc;
 extern struct device_attribute dev_attr_msi_cap;
 
-extern ssize_t pk_grant_store(struct class *class, struct class_attribute *attr,
-                              const char *buf, size_t count);
-extern ssize_t pk_grant_show(struct class *class,
-                             struct class_attribute *attr, char *buf);
-
-
-static int          pk_major;
-
+static ssize_t  pk_detach_store(struct class *class, 
+                                struct class_attribute *attr,
+                                const char *buf, size_t count);
 static status_t major_init(void);
 static void     major_cleanup(void);
 static int      get_minor(struct pk_device *dev);
-static void     free_minor(struct pk_device *dev);
+void            free_minor(struct pk_device *dev);
 
+static int          pk_major;
 static DEFINE_MUTEX(minor_lock);
 static DEFINE_IDR(pk_idr);
 
@@ -191,7 +186,7 @@ err_kzalloc:
  * 
  * @param d Pointer to pk_device instance
  */
-static void pk_device_cleanup(struct pk_device * pkdev)
+void pk_device_cleanup(struct pk_device * pkdev)
 {
   struct list_head * p, * safetmp;
   int msi;
@@ -205,42 +200,59 @@ static void pk_device_cleanup(struct pk_device * pkdev)
 
   /* remove /proc/parasite/pkXXX/NNN entries */
   if (msi & 0x2) {
+
     unsigned i;
     char entry_name[16];
 
     for(i = 0; i < pkdev->msi_proc_dir_entry_num ; i++) {
       sprintf(entry_name,"msix-%d",pkdev->msix_entry[i].vector);
+
       /* remove msix-XXX from /proc/parasite/pkNNN/ */
+      PLOG("removing entry [%s]",entry_name);
       remove_proc_entry(entry_name, pkdev->msi_proc_dir_root);
 
       /* unhook irq handler */
+      PLOG("freeing MSI-X IRQ vector %d", pkdev->msix_entry[i].vector);
       free_irq(pkdev->msix_entry[i].vector, (void*)(&pkdev->msi_irq_wait_queue[i]));
     }
     /* remove /proc/parasite/pkNNN */
+    PLOG("removing (%s) entry in /proc/parasite", pkdev->name);
     remove_proc_entry(pkdev->name, pk_proc_dir_root);
 
     /* release MSIX vectors */
     //pci_msi_off(pkdev->pci_dev);
     pci_disable_msix(pkdev->pci_dev);
+    pci_disable_device(pkdev->pci_dev);
+
+    pkdev->msi_proc_dir_entry_num = 0;
+    pkdev->msix_entry_num = 0;
   }
   else if(msi & 0x1) {
+
     unsigned i, base = pkdev->pci_dev->irq;
     char entry_name[16];
     
     for(i = 0; i < pkdev->msi_proc_dir_entry_num ; i++) {
       sprintf(entry_name,"msi-%d",base+i);
       /* remove msi-XXX from /proc/parasite/pkNNN/ */
+      PLOG("removing entry [%s]",entry_name);
       remove_proc_entry(entry_name, pkdev->msi_proc_dir_root);
 
       /* unhook irq handler */
+      PLOG("free MSI-X IRQ vector %d", pkdev->msix_entry[i].vector);
       free_irq(base+i,(void*)(&pkdev->msi_irq_wait_queue[i]));
     }
+
     /* remove /proc/parasite/pkNNN */
     remove_proc_entry(pkdev->name, pk_proc_dir_root);
 
     /* release MSI vectors */
     //    pci_msi_off(pkdev->pci_dev);
     pci_disable_msi(pkdev->pci_dev);
+    pci_disable_device(pkdev->pci_dev);
+
+    pkdev->msi_proc_dir_entry_num = 0;
+    pkdev->msi_entry_num = 0;
   }
 
 
@@ -252,7 +264,8 @@ static void pk_device_cleanup(struct pk_device * pkdev)
     struct pk_dma_area * area = list_entry(p, struct pk_dma_area, list);
     ASSERT(area);
 
-    PDBG("freeing DMA area %p (order=%d)", (void*) area->phys_addr, area->order);
+    PDBG("freeing DMA area %p (pages=%d)", 
+         (void*) area->phys_addr, 1 << area->order);
     
     /* clear reserved bit on DMA pages before we free */
     {
@@ -273,10 +286,36 @@ static void pk_device_cleanup(struct pk_device * pkdev)
     /* free kernel memory for pk_dma_area */
     kfree(area);
   }
-  PLOG("freed all DMA memory areas");
 
-  /* free other memory */
+  PLOG("pk_device_cleanup complete.");
 }
+
+
+void release_all_devices(void)
+{
+  struct pk_device * pkdev, * safetmp;
+  list_for_each_entry_safe(pkdev, safetmp, &g_pkdevice_list, list) {
+    
+    PLOG("removing device (%s)",pkdev->name);   
+
+    pk_device_cleanup(pkdev);
+    free_minor(pkdev);
+
+    PLOG("removing from g_pkdevice_list");
+    list_del(&pkdev->list); // can't do this in list_for_each_entry_safe
+    kfree(pkdev);
+    
+    /* /\*  */
+    /*    remove device that was created with create_device call, this */
+    /*    calls device_unregister  */
+    /* *\/ */
+    /* device_destroy(parasite_class, MKDEV(pk_major, pkdev->minor)); */
+
+  }
+
+  PLOG("release_all_devices OK.");
+}
+
 
 /** 
  * Called when the module is unloaded.
@@ -286,28 +325,7 @@ static void major_cleanup(void)
 {
   PDBG("cleaning up driver.");
 
-  /* 
-   * Clean up minor (instances) device data 
-   */
-  {
-    struct pk_device * d, * safetmp;
-    list_for_each_entry_safe(d, safetmp, &g_pkdevice_list, list) {
-
-      PLOG("destroying minor device %d",d->minor);
-      // TO FIX
-      //device_destroy(&pk_device_class, MKDEV(pk_major, d->minor));
-
-      free_minor(d);
-
-      /* clean up PK device */
-      pk_device_cleanup(d);
-
-      kfree(d);
-
-      PLOG("minor device %d cleaned up OK.",d->minor);
-    }
-  }
-  list_del(&g_pkdevice_list);
+  release_all_devices();
 
   /* remove /proc/parasite */
   remove_proc_entry(DEVICE_NAME, NULL);
@@ -379,11 +397,64 @@ static ssize_t pk_class_version_show(struct class *class,
   return sprintf(buf, "%s\n", PARASITIC_KERNEL_VER);
 }
 
+/** 
+ * Dettach a device from the parasitic kernel
+ * echo "pk0" > /sys/class/parasite/detach 
+ * 
+ * @param class 
+ * @param attr 
+ * @param buf 
+ * @param count 
+ * 
+ * @return 
+ */
+static ssize_t pk_detach_store(struct class *class, 
+                               struct class_attribute *attr,
+                               const char *buf, size_t count) 
+{
+  char tmp[count];
+  struct pk_device * pkdev, * safetmp;
+
+  BUG_ON(count < 1);
+  memcpy(tmp,buf,count);
+  tmp[count - 1] = '\0';
+
+  PLOG("detach request (%s)", tmp);
+
+  list_for_each_entry_safe(pkdev, safetmp, &g_pkdevice_list, list) {
+
+    if(strcmp(pkdev->name, tmp)==0) {
+      PLOG("removing device (%s)",pkdev->name);
+
+      /* remove device that was created with create_device call */
+      device_destroy(class, MKDEV(pk_major, pkdev->minor));
+
+      pk_device_cleanup(pkdev);
+
+      free_minor(pkdev);
+
+      /*   PLOG("minor device %d cleaned up OK.",d->minor); */
+      pci_clear_master(pkdev->pci_dev);
+      pci_release_regions(pkdev->pci_dev);
+      pci_disable_device(pkdev->pci_dev);
+
+      list_del(&pkdev->list); // can't do this in list_for_each_entry_safe
+      kfree(pkdev);
+      break;
+    }
+  }
+  
+  return count;
+}
+
+
+
 static struct class_attribute pk_version =
   __ATTR(version, S_IRUGO, pk_class_version_show, NULL);
 
-static struct class_attribute pk_grant = 
-  __ATTR(grant, S_IRUSR | S_IWUSR, pk_grant_show, pk_grant_store);
+static struct class_attribute pk_detach = 
+  __ATTR(detach, S_IWUSR, NULL, pk_detach_store);
+
 
 /** 
  * Write handler for /sys/class/parasite/new_id, which is
@@ -479,7 +550,7 @@ status_t class_init(void)
   if(ret)
     goto err_class_create_file;
 
-  ret = class_create_file(parasite_class, &pk_grant);
+  ret = class_create_file(parasite_class, &pk_detach);
   if(ret)
     goto err_class_create_file;
 
@@ -537,25 +608,29 @@ exit:
 	return retval;
 }
 
-static void free_minor(struct pk_device *dev)
+void free_minor(struct pk_device *pkdev)
 {
-	mutex_lock(&minor_lock);
-	idr_remove(&pk_idr, dev->minor);
-	mutex_unlock(&minor_lock);
+  PLOG("freeing minor device.");
 
-  /* create device attributes */
-  device_remove_file(dev->dev, &dev_attr_name);
-  device_remove_file(dev->dev, &dev_attr_version);
-  device_remove_file(dev->dev, &dev_attr_pci);
-  device_remove_file(dev->dev, &dev_attr_irq);
-  device_remove_file(dev->dev, &dev_attr_dma_mask);
-  device_remove_file(dev->dev, &dev_attr_dma_page_alloc);
-  device_remove_file(dev->dev, &dev_attr_dma_page_free);
-  device_remove_file(dev->dev, &dev_attr_msi_alloc);
-  device_remove_file(dev->dev, &dev_attr_msi_cap);
+	mutex_lock(&minor_lock);
+	idr_remove(&pk_idr, pkdev->minor); 
+	mutex_unlock(&minor_lock); 
+
+#if 0
+  /* delete device attributes */
+  device_remove_file(pkdev->dev, &dev_attr_name);
+  device_remove_file(pkdev->dev, &dev_attr_version);
+  device_remove_file(pkdev->dev, &dev_attr_pci);
+  device_remove_file(pkdev->dev, &dev_attr_irq);
+  device_remove_file(pkdev->dev, &dev_attr_dma_mask);
+  device_remove_file(pkdev->dev, &dev_attr_dma_page_alloc);
+  device_remove_file(pkdev->dev, &dev_attr_dma_page_free);
+  device_remove_file(pkdev->dev, &dev_attr_msi_alloc);
+  device_remove_file(pkdev->dev, &dev_attr_msi_cap);
+#endif
 
   /* clean up device created with device_create API */
-  device_destroy(parasite_class, MKDEV(pk_major, dev->minor));
+  device_destroy(parasite_class, MKDEV(pk_major, pkdev->minor));
 }
 
 
