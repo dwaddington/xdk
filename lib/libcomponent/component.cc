@@ -58,7 +58,7 @@ namespace Component
     void * dll = dlopen(dllname,RTLD_LAZY);
 
     if(!dll) {
-      fprintf(stderr,"Invalid DLL name (%s)\n",dllname);
+      fprintf(stderr,"Unable to load library (%s) - check dependencies with ldd tool.\n",dllname);
       return NULL;
     }
 

@@ -1,4 +1,5 @@
 #include <common/dump_utils.h>
+#include "nvme_device.h"
 
 class TestBlockWriter
 {
