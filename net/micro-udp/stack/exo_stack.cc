@@ -60,7 +60,6 @@
 */
 
 #include "exo_stack.h"
-#include <net/protocol.h>
 #include <x540/x540_types.h>
 #include <x540/x540_device.h>
 #include <arpa/inet.h>

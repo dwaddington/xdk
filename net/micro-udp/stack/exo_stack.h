@@ -68,8 +68,8 @@
 #include <network/memory_itf.h>
 #include <x540/driver_config.h>
 #include <x540/x540_types.h>
-#include <net/protocol.h>
-#include "../../msg_processor.h"
+#include <net/udp.h>
+#include <net/msg_processor.h>
 #include <x540/xml_config_parser.h>
 
 using namespace Exokernel;
@@ -209,19 +209,6 @@ public:
    */
   void udp_send_pkt(uint8_t *vaddr, addr_t paddr, unsigned udp_payload_len, unsigned queue, 
                     bool recycle, unsigned allocator_id);
-
-#if 0
-  /**
-   * To send UDP packets for GET/GET_K reply. This function is application specific.
-   *
-   * @param app_hdr_vaddr Virtual address of the application header.
-   * @param app_hdr_paddr Physical address of the application header.
-   * @param app_hdr_len The length of the application header.
-   * @param pbuf_list The frame list for the object.
-   * @param queue The TX queue where the packets are sent.
-   */
-  void udp_send_get_reply(uint8_t *app_hdr_vaddr, addr_t app_hdr_paddr, uint32_t app_hdr_len, pbuf_t* pbuf_list, unsigned queue);
-#endif
 };
 
 }

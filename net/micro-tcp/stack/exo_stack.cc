@@ -61,8 +61,6 @@
 */
 
 #include "exo_stack.h"
-#include <network_stack/protocol.h>
-#include <network_stack/tcp.h>
 #include <x540/x540_types.h>
 #include <x540/x540_device.h>
 #include "tx_threads.h"

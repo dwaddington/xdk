@@ -69,7 +69,7 @@
 #include <network/memory_itf.h>
 #include <x540/driver_config.h>
 #include <x540/x540_types.h>
-#include <network_stack/protocol.h>
+#include <network_stack/udp.h>
 #include <network_stack/tcp.h>
 #include <shm_channel.h>
 

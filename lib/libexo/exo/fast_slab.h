@@ -33,6 +33,7 @@
   Copyright (C) 2013, Juan A. Colmenares <juan.col@samsung.com>
   Copyright (C) 2013, Fengguang Song <f.song@samsung.com>
   Copyright (C) 2013, Daniel G. Waddington <d.waddington@samsung.com>
+  Copyright (C) 2013, Jilong Kuang <jilong.kuang@samsung.com>
 */
 
 #ifndef __EXO_FAST_SLAB_ALLOCATOR__

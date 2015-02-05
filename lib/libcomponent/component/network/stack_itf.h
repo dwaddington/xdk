@@ -37,7 +37,7 @@
 
 #include "../base.h"
 #include "../interface.h"
-#include <net/protocol.h>
+#include <net/udp.h>
 
 using namespace Component;
 
