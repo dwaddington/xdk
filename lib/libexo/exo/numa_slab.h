@@ -149,8 +149,8 @@ namespace Exokernel {
         void* space_v = addr_v;
         for (size_t cpu = 0; cpu < cpu_mask.size(); cpu++) {
           if (cpu_mask.test(cpu)) {
-            //printf("cpu: %lu, block_size: %lu, per_cpu_block_quota: %lu", 
-            //       cpu, block_size, per_cpu_block_quota);
+            PLOG("cpu: %lu, block_size: %lu, per_cpu_block_quota: %lu\n", 
+                   cpu, block_size, per_cpu_block_quota);
 
             size_t per_cpu_total_size = 
               per_cpu_block_quota * Fast_slab_allocator::actual_block_size(block_size); 
