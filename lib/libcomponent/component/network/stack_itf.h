@@ -62,7 +62,7 @@ typedef enum {
  * The supporting app type.
  */
 typedef enum {
-  TERA_CACHE = 0,    /**< The server-side app. */
+  SERVER_APP = 0,    /**< The server-side app. */
   TRAFGEN    = 1,    /**< The client-side traffic generator. */
 } app_type_t;
 

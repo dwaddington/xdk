@@ -107,7 +107,7 @@ private:
       }
       channel_counter++;
       
-#ifndef RUN_TERACACHE
+#ifndef RUN_SERVER_APP
       assert(pbuf_list);
 #define TX_ENABLE
 #ifdef TX_ENABLE

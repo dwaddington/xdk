@@ -117,7 +117,7 @@ IStack_impl::init(arg_t arg) {
 
       /* Initialize msg_processor class based on server or client app */
       Msg_processor * msg;
-      if (stack_arg->app == TERA_CACHE)
+      if (stack_arg->app == SERVER_APP)
         msg = new Msg_processor_server(i, _mem, this, _params);
       else 
 	panic("wrong stack app type");
@@ -125,7 +125,7 @@ IStack_impl::init(arg_t arg) {
       /* Initialize micro UDP stack */
       _stack[i] = new Exo_stack(this, _nic, _mem, i, msg, _params);
 
-      if (stack_arg->app == TERA_CACHE) msg->create_tx_threads(_stack[i]);
+      if (stack_arg->app == SERVER_APP) msg->create_tx_threads(_stack[i]);
 
       set_comp_state(STACK_READY_STATE, i);
     }

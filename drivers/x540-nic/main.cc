@@ -89,6 +89,13 @@ private:
 
   void * entry(void *) {
     /* initialize memroy component */
+
+    /*
+       WARNING: if physical memory address is needed, the following two conditions must be met
+       1. Actual block size (block_len + header) must be no larger than a huge page.
+       2. Huge page size must be multiple of actual block size or the total needed memory size is less than a huge page.
+    */
+
     mem_arg_t mem_arg;
     mem_arg.num_allocators = TOTAL_ALLOCATOR_NUM;
     mem_arg.config_list = (alloc_config_t **) malloc(sizeof(alloc_config_t *) * mem_arg.num_allocators);
@@ -184,9 +191,6 @@ int main(int argc, char* argv[]) {
     exit(-1);
   }
 
-  Config_params * params_ptr = (Config_params *)malloc(sizeof(Config_params));
-  __builtin_memcpy(params_ptr, &params, sizeof(Config_params));
-
   /* load the components */
   Component::IBase * nic_comp = load_component("./libcomp_nic.so.1", NicComponent::component_id());
   Component::IBase * stack_comp = load_component("./libcomp_stack.so.1", StackComponent::component_id());
@@ -214,19 +218,19 @@ int main(int argc, char* argv[]) {
 
   /* create nic component thread */
   Nic_comp_thread* nic_comp_thread;
-  nic_comp_thread = new Nic_comp_thread(nic,params_ptr);
+  nic_comp_thread = new Nic_comp_thread(nic,&params);
   assert(nic_comp_thread);
 
   /* create mem component thread */
   Mem_comp_thread* mem_comp_thread;
-  mem_comp_thread = new Mem_comp_thread(memory,params_ptr);
+  mem_comp_thread = new Mem_comp_thread(memory,&params);
   assert(mem_comp_thread);
 
   /* initialize stack component */
   stack_arg_t stack_arg;
   stack_arg.st = exo_UDP;
-  stack_arg.app = TERA_CACHE;
-  stack_arg.params = (params_config_t) params_ptr;
+  stack_arg.app = SERVER_APP;
+  stack_arg.params = (params_config_t) (&params);
   stack->init((arg_t)&stack_arg);
   stack->run();
 
