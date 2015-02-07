@@ -1065,12 +1065,13 @@ pkt_status_t Exo_stack::udp_input(pbuf_t *pbuf_list, unsigned queue) {
       return REUSE_THIS_PACKET;
     }
     else {
-      free_packets(pbuf_list, true);
+      // packet has been pushed into the channel
+      // free_packets(pbuf_list, true);
       return KEEP_THIS_PACKET;
     }
   }
   else {
-    //printf("msg_processor returned error!!!");
+    printf("msg_processor returned error!!!\n");
     free_packets(pbuf_list, false);
     return REUSE_THIS_PACKET;
   }

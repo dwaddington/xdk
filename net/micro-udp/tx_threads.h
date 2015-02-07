@@ -97,10 +97,10 @@ private:
 
     static uint64_t channel_counter = 0;
     while (1) {
-      if (_local_id < 4)
-        _stack->send_udp_pkt_test(_local_id);
+      //if (_local_id < 1)
+      //  _stack->send_udp_pkt_test(_local_id);
       //_stack->send_pkt_test(_local_id);
-      else (sleep(1000));
+      //else (sleep(1000));
 
       while (_net_side_channel->consume(&pbuf_list) != E_SPMC_CIRBUFF_OK) {
         cpu_relax();
@@ -131,15 +131,13 @@ private:
 #endif
 
 #endif
+      
+      /* send reply */
+      unsigned queue = 2*_local_id+1;
+      udp_send_single_packet(pbuf_list, queue);
 
-      //printf("[TX %d] Sending out an item %lu (frame_num = %d), size = %lu\n",_tid, counter++, jd->num_frames, len);
-      //uint8_t * temp = (uint8_t *)pkt_v;
-      //for (int i=0;i<22;i++) 
-      //{
-      //  printf("[%d]%x ",i,(*temp)&0xff);  
-      //  temp++;
-      //}
-      //printf("\n");
+      /* free memory */
+      _stack->free_packets(pbuf_list, true);
 
 #if 1
       if (counter == 0)
@@ -200,6 +198,14 @@ public:
 
   ~Tx_thread() {
     exit_thread();
+  }
+
+  void udp_send_single_packet(pbuf_t * pbuf_list, unsigned queue) {
+    bool recycle = false;
+    uint8_t * payload_virt = (uint8_t *)(pbuf_list->pkt + SIZEOF_ETH_HDR + IP_HLEN + UDP_HLEN);
+    addr_t payload_phys = _stack->get_mem_component()->get_phys_addr(payload_virt, PACKET_ALLOCATOR, _nic) + SIZEOF_ETH_HDR + IP_HLEN + UDP_HLEN;
+    uint32_t payload_len = pbuf_list->ippayload_len - UDP_HLEN;
+    _stack->udp_send_pkt(payload_virt, payload_phys, payload_len, queue, recycle, PACKET_ALLOCATOR);
   }
 };
 
