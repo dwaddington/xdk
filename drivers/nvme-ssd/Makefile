@@ -1,17 +1,23 @@
 include ../../mk/global.mk
 
 TARGET = nvme_drv
-SOURCES = $(wildcard *.cc) 
+SOURCES = cq_thread.cc nvme_command_admin.cc nvme_common.cc nvme_queue.cc \
+nvme_command.cc nvme_device.cc tests.cc nvme_drv_component.cc
 
-CXXFLAGS += -g -O2 -DCONFIG_BUILD_DEBUG -I$(XDK_BASE)/lib/libexo -I$(XDK_BASE)/lib/libcommon
+INCLUDES = -I$(XDK_BASE)/lib/libexo -I$(XDK_BASE)/lib/libcommon -I$(XDK_BASE)/lib/libcomponent
+CXXFLAGS += -g -O2 -fPIC -DCONFIG_BUILD_DEBUG $(INCLUDES)
 
-LIBS = -L$(XDK_BASE)/lib/libexo -L$(XDK_BASE)/lib/libcommon -L$(XDK_BASE)/lib/libcomponent -lcommon -lcomponent -lexo -lpthread -lrt -lnuma -ltinyxml
+LIBS = -L$(XDK_BASE)/lib/libexo -L$(XDK_BASE)/lib/libcommon -L$(XDK_BASE)/lib/libcomponent -lcommon -lcomponent -lexo -lpthread -lrt -lnuma -ltinyxml 
 
-all: nvme_drv
+RPATHS=-Wl,-rpath=$(XDK_BASE)/lib/libexo -Wl,-rpath=/usr/lib/x86_64-linux-gnu/ -Wl,-rpath=.
+
+all: nvme_drv test_client
 
 nvme_drv: $(OBJS) $(XDK_BASE)/lib/libexo/libexo.so
-	g++ -static -g -Wall $(CXXFLAGS) -o nvme_drv $(OBJS) $(LIBS) -Wl,-rpath=$(XDK_BASE)/lib/libexo
+	g++ -g -shared -fPIC -Wall $(CXXFLAGS) $(RPATHS) -Wl,-soname,nvme_drv.so.1 -o nvme_drv.so.1 $(OBJS) $(LIBS)
 
+test_client: test_client.o
+	g++ $(CXXFLAGS) -o test_client $< $(LIBS) -ldl
 
 $(XDK_BASE)/lib/libexo/libexo.so:
 	make -C $(XDK_BASE)/lib/libexo
