@@ -92,6 +92,7 @@ private:
   uint16_t  _sq_tail  __attribute__((aligned(8)));
   uint16_t  _cq_head  __attribute__((aligned(8)));
   uint16_t  _cq_phase __attribute__((aligned(8)));
+  volatile uint16_t  _sq_head  __attribute__((aligned(8))); /*get update from completion command, which indicates the most recent SQ entry fetched*/
 
   unsigned _irq;  
 

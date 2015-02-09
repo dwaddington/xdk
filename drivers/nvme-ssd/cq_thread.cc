@@ -134,6 +134,7 @@ void* CQ_thread::entry(void* qb) {
       //   _queues->_pending_reader.wake_one();
       // }
       g_entries_cleared++;
+      PLOG("cleared = %lu (Q:%u)", g_entries_cleared, _qid);
 
       // if(g_entries_cleared % 1024 == 0) 
       //   PLOG("CQ thread cleared %lu entries",g_entries_cleared);

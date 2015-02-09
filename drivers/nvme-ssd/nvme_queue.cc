@@ -58,6 +58,7 @@ NVME_queues_base::NVME_queues_base(NVME_device * dev, unsigned queue_id, unsigne
   _dev(dev),  _queue_id(queue_id),
   _sq_dma_mem(NULL), _sq_dma_mem_phys(0), 
   _cq_dma_mem(NULL), _cq_dma_mem_phys(0), 
+  _sq_head(0),
   _sq_tail(0),
   _cq_head(0),
   _cq_phase(1),  
@@ -108,6 +109,11 @@ NVME_queues_base::~NVME_queues_base()
  */
 status_t NVME_queues_base::increment_submission_tail(queue_ptr_t * tptr) {
 
+  /* check if the SQ is full */
+  if(_sq_tail + 1 == _sq_head || _sq_tail == _queue_items && _sq_head == 0 ) {
+    return E_FULL;
+  }
+
   *tptr = _sq_tail++;
 
   /* check for wrap-around */
@@ -149,16 +155,17 @@ Completion_command_slot * NVME_queues_base::get_next_completion()
   unsigned curr_head = _cq_head;
 
   if(_comp_cmd[curr_head].phase_tag != _cq_phase) {
-    PLOG("slot at head=%u is not phase changed",curr_head);
+    PLOG("slot at head=%u is not phase changed (phase=0x%x) (Q:%u)",curr_head, _comp_cmd[curr_head].phase_tag, _queue_id);
     return NULL;
   }
 
-  PLOG("get_next_completion looking at head=%u",curr_head);
+  PLOG("get_next_completion looking at head=%u (Q:%u)",curr_head, _queue_id);
 
-  PLOG("completion head: slot=%u phase=0x%x status=0x%x",
+  PLOG("completion head: slot=%u phase=0x%x status=0x%x (Q:%u)",
        curr_head,
        _comp_cmd[curr_head].phase_tag,
-       _comp_cmd[curr_head].status);
+       _comp_cmd[curr_head].status,
+       _queue_id);
 
 
   // if((_comp_cmd[curr_head].phase_tag != _cq_phase) ||
@@ -214,28 +221,29 @@ Submission_command_slot * NVME_queues_base::next_sub_slot(signed * slot_id) {
   signed slot;
 
   /*Loop for a while if there is no slot available, before return NULL*/
+  //TODO: need to reconsider the way to assign unique ID to submission cmd
   unsigned long long attempts = 0;
   while((slot = _bitmap->next_free()) < 0) {
     attempts++;
-    if(attempts%1000 == 0){
-      PLOG("Waiting for available slot (%llu)!!!", attempts);
+    if(attempts%10000 == 0){
+      PLOG("Waiting for available slot (%llu) (Q:%u)!!!", attempts, _queue_id);
     }
 
-    if(attempts > 1000000ULL) {
+    if(attempts > 1000000000ULL) {
       PERR("TIME OUT - no available slot!!");
       return NULL;
     }
   }
 
   assert(slot != 0);
-  PLOG("Find slot = %d", slot);
+  PLOG("Find slot = %d (Q:%u)", slot, _queue_id);
   if(slot < 0) {
     return NULL;
   }
   *slot_id = slot + 1;
 
   /* if we get here we know there is no overflow possible */
-  increment_submission_tail(&curr_ptr);
+  while ( (st = increment_submission_tail(&curr_ptr)) != S_OK );
 
   return &_sub_cmd[curr_ptr];
 }

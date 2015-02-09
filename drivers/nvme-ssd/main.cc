@@ -72,6 +72,7 @@ int main(int argc, char * argv[])
 
 
   if(argc > 1) {
+#if 0
     NVME_INFO("****** Round1 : STARTING SINGLE BLOCK R/W TESTING ********\n");
     flush_test(dev);
     basic_block_write(dev,2);
@@ -87,12 +88,11 @@ int main(int argc, char * argv[])
       tbw.write_and_verify(lba,value);
     }
     NVME_INFO("****** Round2 : TESTING COMPLETE  ********\n");
+#endif
 
-#if 0
     NVME_INFO("****** Round3 : TESTING MULTI-THREADED ********\n");
     (new mt_tests())->runTest(dev);
     NVME_INFO("****** Round3 : TESTING COMPLETE - MULTI-THREADED ********\n");
-#endif
   }
 
 #if 0

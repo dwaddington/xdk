@@ -11,8 +11,8 @@
 #include "nvme_device.h"
 
 //#define COUNT (1000000)
-#define COUNT (32)
-#define NUM_QUEUES (2)
+#define COUNT (40)
+#define NUM_QUEUES (1)
 #define SLAB_SIZE (512)
 #define NUM_BLOCKS (8)
 
@@ -49,26 +49,26 @@ class Read_thread : public Exokernel::Base_thread {
       unsigned long long sample_count = 0;
       cpu_time_t prev_tsc, diff_tsc, cur_tsc;
       const cpu_time_t drain_tsc = (unsigned long long)get_tsc_frequency_in_mhz() * 1000000UL;
-      printf("drain_tsc = %llu\n", drain_tsc);
-      prev_tsc = 0;
+      //printf("drain_tsc = %lu\n", drain_tsc);
+      prev_tsc = rdtsc();
 
       _dev->io_queue(_qid)->callback_manager()->register_callback(&Notify_object::notify_callback,
           (void*)&nobj);
 
-      unsigned long threshold = _dev->io_queue(_qid)->queue_length() * 0.8;
-      PLOG("threshold = %lu", threshold);
+      unsigned long threshold = _dev->io_queue(_qid)->queue_length() * 0.5;
+      PLOG("threshold = %lu (Q:%u)", threshold, _qid);
       atomic_t send_id = 0;
       uint16_t cid;
       for(unsigned long i=0;i<COUNT;i++) {
 
-        //PLOG("Start to send (Q:%u) %lu...",_qid,send_id);
+        PLOG("Processing to send (Q:%u) %lu...",_qid,send_id);
         cpu_time_t start = rdtsc();
         cid = _dev->block_async_read(_qid,
             _phys_array_local[i%SLAB_SIZE], 
             (i*PAGE_SIZE)+((_qid-1)*COUNT), /* offset */
             NUM_BLOCKS); /* num blocks */
 
-        PLOG("sent (Q:%u) %lu...",_qid,send_id);
+        PLOG("sent (Q:%u) %lu...\n",_qid,send_id);
         /* collect stats */
         cpu_time_t delta = rdtsc() - start;
 
@@ -89,19 +89,22 @@ class Read_thread : public Exokernel::Base_thread {
         cur_tsc = rdtsc();
         diff_tsc = cur_tsc - prev_tsc;
         /* wait for bursts of IOPs - don't do this too late */
-        if((i % threshold == 0) && (i > 0)
+        if((i % threshold == 0) && (i > 0) || i == COUNT-1
             || diff_tsc > drain_tsc
           ) {
           atomic_t c;
           prev_tsc = cur_tsc;
 
           nobj.set_when(send_id); /* set wake up at send_id */
+        printf("\nSEM: set_when done 33333333333\n");
           nobj.wait();
+        printf("\n\nSEM: Done waiting 44444444444444\n\n");
         }
 
         send_id++;
+        PLOG("***********SEM: send_id = %lu", send_id);
       }
-      PLOG("all sends complete.");
+      PLOG("all sends complete (Q:%u).", _qid);
 
       // /* wait for last command */
       // uint16_t c;
@@ -175,6 +178,7 @@ class mt_tests {
 
     void freeMem() {
       Exokernel::Memory::huge_shmem_free(vaddr,h);
+      PLOG("Memory freed OK!!");
     }
 
   public:
