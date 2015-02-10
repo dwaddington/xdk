@@ -106,38 +106,14 @@ private:
         cpu_relax();
       }
       channel_counter++;
-      
-#ifndef RUN_SERVER_APP
-      assert(pbuf_list);
-#define TX_ENABLE
-#ifdef TX_ENABLE
-      
-      addr_t pkt_v = (addr_t)(pbuf_list->pkt);
-      assert(pkt_v);
-      addr_t pkt_p = _stack->get_mem_component()->get_phys_addr((void *)pkt_v, PACKET_ALLOCATOR, _nic);
-      assert(pkt_p);
-      size_t len = 86;//22; //packet size = 22 + 42(network header)
-      unsigned queue = 2*_local_id+1;
-      bool recycle = true;
+     
+      unsigned queue = 2*_local_id+1; 
 
-      _stack->udp_send_pkt((uint8_t *)pkt_v, pkt_p, len, queue, recycle, PACKET_ALLOCATOR);
-
-      _stack->free_packets((pbuf_t *)jd->protocol_frame, false);
-
-#else
-
-      _stack->free_packets((pbuf_t *)jd->protocol_frame, true);
-
-#endif
-
-#endif
-      
       /* send reply */
-      unsigned queue = 2*_local_id+1;
       udp_send_single_packet(pbuf_list, queue);
 
       /* free memory */
-      _stack->free_packets(pbuf_list, true);
+      _stack->free_packets(pbuf_list, false);
 
 #if 1
       if (counter == 0)
@@ -201,9 +177,11 @@ public:
   }
 
   void udp_send_single_packet(pbuf_t * pbuf_list, unsigned queue) {
-    bool recycle = false;
-    uint8_t * payload_virt = (uint8_t *)(pbuf_list->pkt + SIZEOF_ETH_HDR + IP_HLEN + UDP_HLEN);
-    addr_t payload_phys = _stack->get_mem_component()->get_phys_addr(payload_virt, PACKET_ALLOCATOR, _nic) + SIZEOF_ETH_HDR + IP_HLEN + UDP_HLEN;
+    bool recycle = true;
+    //uint8_t * payload_virt = (uint8_t *)(pbuf_list->pkt + SIZEOF_ETH_HDR + IP_HLEN + UDP_HLEN);
+    //addr_t payload_phys = _stack->get_mem_component()->get_phys_addr(pbuf_list->pkt, PACKET_ALLOCATOR, _nic) + SIZEOF_ETH_HDR + IP_HLEN + UDP_HLEN;
+    uint8_t * payload_virt = (uint8_t *)(pbuf_list->pkt);
+    addr_t payload_phys = _stack->get_mem_component()->get_phys_addr(pbuf_list->pkt, PACKET_ALLOCATOR, _nic);
     uint32_t payload_len = pbuf_list->ippayload_len - UDP_HLEN;
     _stack->udp_send_pkt(payload_virt, payload_phys, payload_len, queue, recycle, PACKET_ALLOCATOR);
   }

@@ -1071,7 +1071,7 @@ pkt_status_t Exo_stack::udp_input(pbuf_t *pbuf_list, unsigned queue) {
     }
   }
   else {
-    printf("msg_processor returned error!!!\n");
+    //printf("msg_processor returned error!!!\n");
     free_packets(pbuf_list, false);
     return REUSE_THIS_PACKET;
   }

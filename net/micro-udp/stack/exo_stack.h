@@ -137,15 +137,15 @@ public:
     server_port = _params->server_port;
     remote_port = _params->client_port;
 
-    std::string client_ip;
-    client_ip = _params->client_ip[index];
-    add_ip((char *)client_ip.c_str());
-
     _inic = inic;
     _istack = istack;
     _imem = imem;
     _index = index;
-    _msg_processor = msg;   
+    _msg_processor = msg;
+
+    std::string client_ip;
+    client_ip = _params->client_ip[index];
+    add_ip((char *)client_ip.c_str());
 
     init_param();
   }

@@ -72,21 +72,17 @@ void * app_thread(void * arg) {
   unsigned nic_num = tinfo->nic_num;
 
   /* Create app side channel */
-  printf("%u %u\n",channel_id, nic_idx);
   Shm_channel_t * app_side_channel = new Shm_channel_t(channel_id, false, nic_idx);
 
   pbuf_t * item; 
   unsigned count = 0;
 
-
-  printf("after channel creation!\n");
   while (1) {
     while (app_side_channel->consume(&item) != E_SPMC_CIRBUFF_OK) {
       cpu_relax();   
     }
     count++;
-    //if (count>=1000) printf("app side rx channel[%u] empty...%u\n",channel_id,count);
-    //printf("[Dummy App %d] Consumed an item at %p\n",tinfo->global_id,item);
+    //printf("[Dummy App %d] Consumed an item at %p count = %u\n",tinfo->global_id, item, count);
 
     //calculate address delta based on allocator type. Refer to memory_itf.h for the allocator index;
     //pbuf_t * my_item = (pbuf_t *)((addr_t)item + mapped_delta[nic_idx][PBUF_ALLOCATOR]);
@@ -100,9 +96,7 @@ void * app_thread(void * arg) {
     while (app_side_channel->produce(item) != E_SPMC_CIRBUFF_OK) {
       cpu_relax();
     }
-    //if (count>=1000) printf("app side tx channel[%u] full...%u\n",channel_id, count);
-
-    //printf("[Dummy APP %d] Produced an item (num_frames = %d)!\n", tinfo->global_id, my_item->num_frames);
+    //printf("[Dummy APP %d] Produced an item! count = %u\n", tinfo->global_id, count);
   }
 }
 
