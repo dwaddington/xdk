@@ -72,9 +72,10 @@ public:
 
   void set_when(atomic_t when) {
 
-    if(when > _next_when.load()) {
+    //if(when > _next_when.load()) {
       _next_when.store(when);
-    }
+    //}
+
     // TRACE();
     // if(_count.read() >= when) { /* could have got there already! */
     //   PLOG("We are there already!!!!!!!!!!!!!!!!!!!!");
