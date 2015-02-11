@@ -145,6 +145,14 @@ async_write_block(void * buffer_virt, /* must be 512 byte aligned */
   return S_OK;
 }
 
+status_t async_io_batch(io_descriptor_t* io_desc,
+                        uint64_t length
+                       )
+{
+  //TODO
+  return S_OK;
+}
+
 
 
 extern "C" void * factory_createInstance(Component::uuid_t& component_id)

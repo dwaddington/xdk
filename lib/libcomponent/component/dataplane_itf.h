@@ -3,6 +3,21 @@
 
 #include <common/types.h>
 
+enum ACTION {
+  E_READ = 0, 
+  E_WRITE
+};
+
+typedef struct {
+  ACTION action;
+  void *buffer_virt;
+  void *buffer_phys;
+  off_t offset;
+  size_t num_blocks;
+  unsigned port;
+}__attribute__((aligned(64))) io_descriptor_t;
+
+
 class IBlockData {
 public:
 
@@ -42,7 +57,6 @@ public:
                                     unsigned port       /* device port */
                                     ) = 0;
 
-  /* TODO: add some nice async equivalents */
   virtual status_t async_read_block(void * buffer_virt,
                                    addr_t buffer_phys, 
                                    off_t offset,      
@@ -50,6 +64,7 @@ public:
                                    unsigned port,      
                                    uint16_t *cid
                                    ) = 0;
+
   virtual status_t async_write_block(void * buffer_virt, /* must be 512 byte aligned */
                                     addr_t buffer_phys, 
                                     off_t offset,       /* store offset */
@@ -58,6 +73,13 @@ public:
                                     uint16_t *cid
                                     ) = 0;
 
+
+  /* async batch io operation*/
+  virtual status_t async_io_batch(io_descriptor_t* io_desc,
+                                  uint64_t length
+                                  ) = 0;
+
+  /* TODO: add some nice async equivalents */
 
 };
 

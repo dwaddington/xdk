@@ -72,6 +72,10 @@ public:
                             uint16_t *cid
                             );
 
+  status_t async_io_batch(io_descriptor_t* io_desc,
+                          uint64_t length
+                         );
+
 
 };
 

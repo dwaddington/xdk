@@ -36,6 +36,7 @@
 #define __NVME_QUEUE_H__
 
 #include <exo/spinlocks.h>
+#include <common/cycles.h>
 #include "nvme_registers.h"
 #include "nvme_command.h"
 #include "nvme_types.h"
@@ -135,7 +136,7 @@ public:
   uint16_t alloc_cmdid() {
     //TODO: check availability
     _cmdid_counter++;
-    if(_cmdid_counter == 0) _cmdid_counter++;
+    if( unlikely(_cmdid_counter == 0) ) _cmdid_counter++;
     return _cmdid_counter;
   }
 
