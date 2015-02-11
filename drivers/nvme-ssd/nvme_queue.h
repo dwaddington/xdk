@@ -92,7 +92,8 @@ private:
   uint16_t  _sq_tail  __attribute__((aligned(8)));
   uint16_t  _cq_head  __attribute__((aligned(8)));
   uint16_t  _cq_phase __attribute__((aligned(8)));
-  volatile uint16_t  _sq_head  __attribute__((aligned(8))); /*get update from completion command, which indicates the most recent SQ entry fetched*/
+  volatile uint16_t  _sq_head  __attribute__((aligned(8))); /*get updated from completion command, which indicates the most recent SQ entry fetched*/
+  uint16_t _cmdid_counter;
 
   unsigned _irq;  
 
@@ -131,9 +132,16 @@ public:
 
   void setup_doorbells();
 
-  void release_slot(unsigned slot) {
-    status_t s = _bitmap->mark_free(slot);
-    assert(s==Exokernel::S_OK);
+  uint16_t alloc_cmdid() {
+    //TODO: check availability
+    _cmdid_counter++;
+    if(_cmdid_counter == 0) _cmdid_counter++;
+    return _cmdid_counter;
+  }
+
+  void release_slot(uint16_t slot) {
+    //status_t s = _bitmap->mark_free(slot);
+    //assert(s==Exokernel::S_OK);
   }
 
   unsigned queue_length() const {

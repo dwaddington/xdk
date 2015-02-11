@@ -101,6 +101,50 @@ sync_write_block(void * buffer_virt, /* must be 512 byte aligned */
   return S_OK;
 }
 
+/*async apis*/
+
+status_t
+NVME_driver_component::
+async_read_block(void * buffer_virt, /* must be 512 byte aligned */
+                addr_t buffer_phys,
+                off_t lba,          /* store offset */
+                size_t num_blocks,  /* each block is 512 bytes */
+                unsigned port,      /* device port */
+                uint16_t *cid
+                )
+{
+  const unsigned qid = port; /* do we want to change IBlockDevice? */
+
+  Notify_object nobj;
+
+  *cid = _dev->block_async_read(qid,
+                                        buffer_phys,
+                                        lba,
+                                        num_blocks); /* num blocks */
+  return S_OK;
+}
+
+status_t
+NVME_driver_component::
+async_write_block(void * buffer_virt, /* must be 512 byte aligned */
+                 addr_t buffer_phys,
+                 off_t lba,          /* logical block offset */
+                 size_t num_blocks,  /* each block is 512 bytes */
+                 unsigned port,       /* device port */
+                 uint16_t *cid
+                 )
+{
+  const unsigned qid = port; /* do we want to change IBlockDevice? */
+
+  Notify_object nobj;
+
+  *cid = _dev->block_async_write(qid,
+                                         buffer_phys,
+                                         lba,
+                                         num_blocks); /* num blocks */
+  return S_OK;
+}
+
 
 
 extern "C" void * factory_createInstance(Component::uuid_t& component_id)

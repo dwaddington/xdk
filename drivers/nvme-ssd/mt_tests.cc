@@ -6,19 +6,22 @@
 #include <unistd.h>
 #include <common/cycles.h>
 #include <common/dump_utils.h>
+#include <component/base.h>
 #include <exo/rand.h>
 
+#include "nvme_drv_component.h"
 #include "nvme_device.h"
 
 //#define COUNT (1000000)
-#define COUNT (40)
-#define NUM_QUEUES (1)
+#define COUNT (10240)
+#define NUM_QUEUES (2)
 #define SLAB_SIZE (512)
 #define NUM_BLOCKS (8)
 
 
 class Read_thread : public Exokernel::Base_thread {
   private:
+    IBlockDevice * _itf;
     NVME_device * _dev;
     unsigned _qid;
     Notify_object nobj;
@@ -52,8 +55,7 @@ class Read_thread : public Exokernel::Base_thread {
       //printf("drain_tsc = %lu\n", drain_tsc);
       prev_tsc = rdtsc();
 
-      _dev->io_queue(_qid)->callback_manager()->register_callback(&Notify_object::notify_callback,
-          (void*)&nobj);
+      _dev->io_queue(_qid)->callback_manager()->register_callback(&Notify_object::notify_callback, (void*)&nobj);
 
       unsigned long threshold = _dev->io_queue(_qid)->queue_length() * 0.5;
       PLOG("threshold = %lu (Q:%u)", threshold, _qid);
@@ -63,12 +65,22 @@ class Read_thread : public Exokernel::Base_thread {
 
         PLOG("Processing to send (Q:%u) %lu...",_qid,send_id);
         cpu_time_t start = rdtsc();
+#if 0
         cid = _dev->block_async_read(_qid,
             _phys_array_local[i%SLAB_SIZE], 
             (i*PAGE_SIZE)+((_qid-1)*COUNT), /* offset */
             NUM_BLOCKS); /* num blocks */
+#endif
+        status_t st = _itf->async_read_block(
+            _virt_array_local[i%SLAB_SIZE], 
+            _phys_array_local[i%SLAB_SIZE], 
+            (i*PAGE_SIZE)+((_qid-1)*COUNT), /* offset */
+            NUM_BLOCKS,  /* num blocks */
+            _qid,
+            &cid 
+            );
 
-        PLOG("sent (Q:%u) %lu...\n",_qid,send_id);
+        PLOG("sent (Q:%u) %lu...",_qid,send_id);
         /* collect stats */
         cpu_time_t delta = rdtsc() - start;
 
@@ -95,14 +107,14 @@ class Read_thread : public Exokernel::Base_thread {
           atomic_t c;
           prev_tsc = cur_tsc;
 
-          nobj.set_when(send_id); /* set wake up at send_id */
-        printf("\nSEM: set_when done 33333333333\n");
+          nobj.set_when(cid); /* set wake up at send_id */
+        printf("\nSEM: set_when done (at send_id=%lu, cid=%d) 33333333333\n", send_id, cid);
           nobj.wait();
         printf("\n\nSEM: Done waiting 44444444444444\n\n");
         }
 
+        PLOG("***********SEM: send_id = %lu, cid = %d\n", send_id, cid);
         send_id++;
-        PLOG("***********SEM: send_id = %lu", send_id);
       }
       PLOG("all sends complete (Q:%u).", _qid);
 
@@ -125,8 +137,9 @@ class Read_thread : public Exokernel::Base_thread {
 
 
   public:
-    Read_thread(NVME_device * dev, unsigned qid, core_id_t core, addr_t *phys_array_local, void **virt_array_local) : 
-      _qid(qid), _dev(dev), Exokernel::Base_thread(NULL,core), _phys_array_local(phys_array_local), _virt_array_local(virt_array_local) {
+    Read_thread(IBlockDevice * itf, unsigned qid, core_id_t core, addr_t *phys_array_local, void **virt_array_local) : 
+      _qid(qid), _itf(itf), Exokernel::Base_thread(NULL,core), _phys_array_local(phys_array_local), _virt_array_local(virt_array_local) {
+        _dev = (NVME_device*)(itf->get_device());
       }
 
     void* entry(void* param) {
@@ -182,15 +195,16 @@ class mt_tests {
     }
 
   public:
-    void runTest(NVME_device* dev) {
-      NVME_INFO("Issuing test read and write test...\n");
+    void runTest(IBlockDevice * itf) {
+      //NVME_INFO("Issuing test read and write test...\n");
+
       allocMem();
 
       {
         Read_thread * thr[NUM_QUEUES];
 
         for(unsigned i=1;i<=NUM_QUEUES;i++) {
-          thr[i-1] = new Read_thread(dev,
+          thr[i-1] = new Read_thread(itf,
               i, //(2*(i-1))+1, /* qid */
               i+3, //*2-1); //1,3,5,7 /* core for read thread */
               phys_array[i-1],

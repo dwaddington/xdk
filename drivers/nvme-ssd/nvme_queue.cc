@@ -62,14 +62,15 @@ NVME_queues_base::NVME_queues_base(NVME_device * dev, unsigned queue_id, unsigne
   _sq_tail(0),
   _cq_head(0),
   _cq_phase(1),  
-  _irq(irq)
+  _irq(irq),
+  _cmdid_counter(0)
 {
   //   static unsigned stride = NVME_CAP_STRIDE(_registers->cap);
   //   unsigned db_offset = NVME_OFFSET_COMPLETION_DB(cap,queue_id,stride);
   //   *(offset<uint32_t>(db_offset)) = p;
   
   /* allocate bitmap */
-  _bitmap = new Exokernel::Bitmap_tracker_threadsafe(queue_length);
+  _bitmap = new Exokernel::Bitmap_tracker_threadsafe(queue_length*4);
   assert(_bitmap);
   _bitmap->next_free(); // use first slot to avoid cmdid==0
 
@@ -215,32 +216,12 @@ void NVME_queues_base::dump_queue_info() {
 }
 
 
-Submission_command_slot * NVME_queues_base::next_sub_slot(signed * slot_id) {
+Submission_command_slot * NVME_queues_base::next_sub_slot(signed * cmdid) {
 
   queue_ptr_t curr_ptr;
-  signed slot;
-
-  /*Loop for a while if there is no slot available, before return NULL*/
-  //TODO: need to reconsider the way to assign unique ID to submission cmd
-  unsigned long long attempts = 0;
-  while((slot = _bitmap->next_free()) < 0) {
-    attempts++;
-    if(attempts%10000 == 0){
-      PLOG("Waiting for available slot (%llu) (Q:%u)!!!", attempts, _queue_id);
-    }
-
-    if(attempts > 1000000000ULL) {
-      PERR("TIME OUT - no available slot!!");
-      return NULL;
-    }
-  }
-
-  assert(slot != 0);
-  PLOG("Find slot = %d (Q:%u)", slot, _queue_id);
-  if(slot < 0) {
-    return NULL;
-  }
-  *slot_id = slot + 1;
+  
+  *cmdid = alloc_cmdid();
+  assert(*cmdid > 0);
 
   /* if we get here we know there is no overflow possible */
   status_t st;
