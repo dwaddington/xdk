@@ -36,11 +36,12 @@
 #define __NVME_QUEUE_H__
 
 #include <exo/spinlocks.h>
-#include <common/cycles.h>
+#include <common/utils.h>
 #include "nvme_registers.h"
 #include "nvme_command.h"
 #include "nvme_types.h"
 #include "cq_thread.h"
+#include "nvme_batch_manager.h"
 
 /*
   The maximum size for either an I/O Submission Queue or an I/O
