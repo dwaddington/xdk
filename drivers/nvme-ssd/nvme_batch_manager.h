@@ -163,6 +163,10 @@ class NVME_batch_manager {
 
 
   private:
+    bool _is_complete(size_t idx) {
+      return (array[idx].counter == array[idx].total && array[idx].fixed);
+    }
+
     bool _update_single_loop(uint16_t cmdid) {
       size_t head = buffer.get_head();
       size_t tail = buffer.get_tail(); //may get a stale value, this is fine
@@ -175,17 +179,26 @@ class NVME_batch_manager {
         if(cmdid >= array[idx2].start_cmdid && cmdid <= array[idx2].end_cmdid){
           array[idx2].counter++;
           assert(array[idx2].counter <= array[idx2].total);
-          if(array[idx2].counter == array[idx2].total) {
+          if(_is_complete(idx2)) {
             //TODO: callback
-            batch_info_t bi;
-            buffer.pop(bi);
+
+            //if idx2 is the head, then pop all finished batch info
+            if(idx2++ == head) {
+              batch_info_t bi;
+              while(1) {
+                if(_is_complete(idx2))
+                  buffer.pop(bi);
+                else
+                  break;
+              }
+            }
           }
           return true; //updated sucessfully
         }
-        //we may reach here, because the tail we got can be a stale value
-        PLOG("Did NOT find the right range!!");
-        return false;
       }
+      //we may reach here, because the tail we got can be a stale value
+      PLOG("Did NOT find the right range!!");
+      return false;
     }
 };
 
