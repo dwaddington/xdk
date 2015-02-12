@@ -3,6 +3,7 @@
 
 #include <boost/atomic.hpp>
 #include <common/utils.h>
+#include <common/logging.h>
 //#include <cstddef>
 
 template<typename Element, size_t Size> 
@@ -29,7 +30,7 @@ public:
   //expose the data structure to the outside -- seems ugly
   size_t get_head() const {return _head.load(boost::memory_order_relaxed);}
   size_t get_tail() const {return _tail.load(boost::memory_order_relaxed);}
-  Element *get_array() const {return _array;}
+  Element *get_array() {return _array;}
 
 };
 
@@ -91,6 +92,7 @@ bool RingBuffer<Element, Size>::isLockFree() const
   return (_tail.is_lock_free() && _head.is_lock_free());
 }
 
+/* data structure to record batch info */
 typedef struct {
   uint16_t start_cmdid;
   uint16_t end_cmdid;
@@ -105,7 +107,8 @@ typedef struct {
     printf("counter   = %u", counter);
     printf("fixed     = %u", fixed);
   }
-} batch_info_t;
+}__attribute__((aligned(64))) batch_info_t;
+
 
 #define BATCH_INFO_BUFFER_SIZE 16
 
@@ -130,7 +133,7 @@ class NVME_batch_manager {
     void update(uint16_t cmdid) {
       unsigned long long attempts = 0;
       bool ret;
-      while((ret = _update_single_loop(cmdid)) != true) {
+      while((ret = _update_single_iteration(cmdid)) != true) {
         attempts++;
         if(attempts > 1000ULL) {
           PERR("!!!! The command id is not within the range of any batch !!");
@@ -145,8 +148,8 @@ class NVME_batch_manager {
       array[tail].end_cmdid = cmdid;
       array[tail].total++;
       assert(
-          array[tail].end_cmdid - array[tail].start_cmdid + 1 == array[tail].total || 
-          array[tail].end_cmdid - array[tail].start_cmdid + 1 + BATCH_INFO_BUFFER_SIZE == array[tail].total
+          array[tail].end_cmdid - array[tail].start_cmdid == array[tail].total || 
+          array[tail].end_cmdid - array[tail].start_cmdid + BATCH_INFO_BUFFER_SIZE == array[tail].total
           );
     }
 
@@ -167,18 +170,20 @@ class NVME_batch_manager {
       return (array[idx].counter == array[idx].total && array[idx].fixed);
     }
 
-    bool _update_single_loop(uint16_t cmdid) {
+    bool _update_single_iteration(uint16_t cmdid) {
       size_t head = buffer.get_head();
       size_t tail = buffer.get_tail(); //may get a stale value, this is fine
 
       if(head > tail) tail += BATCH_INFO_BUFFER_SIZE;
 
+      //TODO: maybe better search algo
       for(size_t idx = head; idx < tail; idx++){
         size_t idx2 = idx % BATCH_INFO_BUFFER_SIZE;
 
         if(cmdid >= array[idx2].start_cmdid && cmdid <= array[idx2].end_cmdid){
           array[idx2].counter++;
           assert(array[idx2].counter <= array[idx2].total);
+
           if(_is_complete(idx2)) {
             //TODO: callback
 
