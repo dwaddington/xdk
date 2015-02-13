@@ -21,7 +21,6 @@ public:
   }
 
   void set_mask(uint64_t mask) {
-    PLOG("setting mask (%ld)", mask);
     int current = 0;
     while(mask > 0) {
       if(mask & 0x1ULL) {
