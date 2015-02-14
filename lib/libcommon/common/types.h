@@ -71,4 +71,5 @@ namespace Component
   typedef unsigned allocator_t;
   typedef unsigned state_t;
 }
+  typedef void * io_task_t;
 #endif

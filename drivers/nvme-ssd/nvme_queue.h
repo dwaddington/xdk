@@ -61,6 +61,7 @@ class NVME_queues_base
 {
 protected:
   Exokernel::Bitmap_tracker_threadsafe * _bitmap;
+  NVME_batch_manager * _batch_manager;
   
 protected:
   enum { 
@@ -144,6 +145,14 @@ public:
   void release_slot(uint16_t slot) {
     //status_t s = _bitmap->mark_free(slot);
     //assert(s==Exokernel::S_OK);
+  }
+
+  //used to check next available cmdid, but not really alloc the id
+  uint16_t next_cmdid() {
+    //TODO: check availability
+    uint16_t next_id = _cmdid_counter + 1;
+    if( unlikely(next_id == 0) ) next_id = 1;
+    return next_id;
   }
 
   unsigned queue_length() const {
@@ -448,6 +457,11 @@ public:
                              unsigned access_freq=0, 
                              unsigned access_lat=0,
                              unsigned nsid=1);
+
+
+  uint16_t issue_async_io_batch(io_descriptor_t* io_desc,
+                                uint64_t length
+                                );
 
 
   /** 

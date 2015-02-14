@@ -4,7 +4,7 @@
 #include <boost/atomic.hpp>
 #include <common/utils.h>
 #include <common/logging.h>
-//#include <cstddef>
+#include "notify.h"
 
 template<typename Element, size_t Size> 
 class RingBuffer {
@@ -98,14 +98,17 @@ typedef struct {
   uint16_t end_cmdid;
   uint16_t total;
   uint16_t counter;
-  bool fixed;
+  Notify_object *nobj;
+  bool ready;
+  bool complete;
 
   void dump() {
     printf("start_cmd = %u", start_cmdid);
     printf("end_cmd   = %u", end_cmdid);
     printf("total     = %u", total);
     printf("counter   = %u", counter);
-    printf("fixed     = %u", fixed);
+    printf("ready     = %u", ready);
+    printf("complete  = %u", complete);
   }
 }__attribute__((aligned(64))) batch_info_t;
 
@@ -156,8 +159,8 @@ class NVME_batch_manager {
     //done by producer
     void finish_batch() {
       size_t tail = buffer.get_tail();
-      assert(array[tail].fixed == false);
-      array[tail].fixed = true;
+      assert(array[tail].ready== false);
+      array[tail].ready= true;
     }
 
     bool wasEmpty() const { return buffer.wasEmpty(); }
@@ -167,7 +170,7 @@ class NVME_batch_manager {
 
   private:
     bool _is_complete(size_t idx) {
-      return (array[idx].counter == array[idx].total && array[idx].fixed);
+      return (array[idx].counter == array[idx].total && array[idx].ready);
     }
 
     bool _update_single_iteration(uint16_t cmdid) {
@@ -176,25 +179,25 @@ class NVME_batch_manager {
 
       if(head > tail) tail += BATCH_INFO_BUFFER_SIZE;
 
-      //TODO: maybe better search algo
+      //TODO: maybe need a better search algo
       for(size_t idx = head; idx < tail; idx++){
         size_t idx2 = idx % BATCH_INFO_BUFFER_SIZE;
 
+        //TODO: handle wrap-around
         if(cmdid >= array[idx2].start_cmdid && cmdid <= array[idx2].end_cmdid){
           array[idx2].counter++;
           assert(array[idx2].counter <= array[idx2].total);
 
           if(_is_complete(idx2)) {
             //TODO: callback
+            PERR("callback not called!!!!");
 
             //if idx2 is the head, then pop all finished batch info
-            if(idx2++ == head) {
+            if(idx2 == head) {
               batch_info_t bi;
-              while(1) {
-                if(_is_complete(idx2))
-                  buffer.pop(bi);
-                else
-                  break;
+              while(idx2 < tail) {
+                if(_is_complete(idx2)) { buffer.pop(bi); idx2++; }
+                else break;
               }
             }
           }

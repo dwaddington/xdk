@@ -74,6 +74,10 @@ NVME_queues_base::NVME_queues_base(NVME_device * dev, unsigned queue_id, unsigne
   assert(_bitmap);
   _bitmap->next_free(); // use first slot to avoid cmdid==0
 
+  /* allocate batch manager */
+  _batch_manager = new NVME_batch_manager();
+  assert(_batch_manager);
+
   _stat_mean_send_time_samples = 0;
   _stat_mean_send_time = 0;
   _stat_max_send_time = 0;
@@ -764,6 +768,44 @@ uint16_t NVME_IO_queue::issue_async_write(addr_t prp1,
   ring_submission_doorbell();
 
   return slot_id;
+}
+
+uint16_t NVME_IO_queue::issue_async_io_batch(io_descriptor_t* io_desc,
+                                              uint64_t length)
+{
+  batch_info_t bi;
+  memset(&bi, 0, sizeof(batch_info_t));
+
+  // init the batch info block, and add it to the buffer
+  // only one-time batch is considered now
+  bi.start_cmdid = next_cmdid();
+  bi.end_cmdid = bi.start_cmdid + length - 1;
+  bi.total = length;
+  bi.counter = 0;
+  bi.nobj = NULL;
+  bi.ready = true;
+  bi.complete = false;
+
+  //push to the buffer
+  _batch_manager->push(bi);
+
+  //issue all IOs
+  for(int idx = 0; idx < length; idx++) {
+    io_descriptor_t* io_desc_ptr = io_desc + idx;
+    if(io_desc_ptr->action == NVME_READ) {
+      issue_async_read(io_desc_ptr->buffer_phys, 
+                       io_desc_ptr->offset,
+                       io_desc_ptr->num_blocks);    
+    } else if (io_desc_ptr->action == NVME_WRITE) {
+      issue_async_write(io_desc_ptr->buffer_phys, 
+                       io_desc_ptr->offset,
+                       io_desc_ptr->num_blocks);    
+    } else {
+      PERR("Unrecoganized Operaton !!");
+      assert(0);
+    }
+  }
+  
 }
 
 
