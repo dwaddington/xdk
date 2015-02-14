@@ -155,6 +155,10 @@ public:
     return next_id;
   }
 
+  void update_batch_manager(uint16_t cmdid) {
+    _batch_manager->update(cmdid);
+  }
+
   unsigned queue_length() const {
     return _queue_items;
   }

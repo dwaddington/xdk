@@ -128,6 +128,9 @@ void* CQ_thread::entry(void* qb) {
       /* free slot */
       _queues->release_slot(ccs->command_id-1);
 
+      /* update batch info */
+      _queues->update_batch_manager(ccs->command_id);
+
       found_completion = true;
       // if(!woke_reader) {
       //   woke_reader = true;

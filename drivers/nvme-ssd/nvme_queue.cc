@@ -102,6 +102,7 @@ NVME_queues_base::~NVME_queues_base()
 {
   /* delete bitmap */
   delete _bitmap;
+  delete _batch_manager;
 }
 
 
