@@ -31,6 +31,7 @@ public:
   size_t get_head() const {return _head.load(boost::memory_order_relaxed);}
   size_t get_tail() const {return _tail.load(boost::memory_order_relaxed);}
   Element *get_array() {return _array;}
+
   size_t get_last_entry() const {
     size_t head = _head.load(boost::memory_order_relaxed);
     size_t tail = _tail.load(boost::memory_order_relaxed);
@@ -141,17 +142,19 @@ typedef RingBuffer<batch_info_t, BATCH_INFO_BUFFER_SIZE> batch_info_buffer_t;
 class NVME_batch_manager {
 
   private:
-    batch_info_buffer_t buffer;
-    batch_info_t* array;
+    batch_info_buffer_t _buffer;
+    batch_info_t* _array;
+    boost::atomic<size_t> _head_cmdid;  // tail(input) index
 
   public:
     NVME_batch_manager() {
-      array = buffer.get_array();
+      _array = _buffer.get_array();
+      _head_cmdid.store(0xffff);
     }
     ~NVME_batch_manager() {}
 
-    bool push(const batch_info_t& item) {return buffer.push(item);}
-    bool pop(batch_info_t& item) {return buffer.pop(item);}
+    bool push(const batch_info_t& item) {return _buffer.push(item);}
+    bool pop(batch_info_t& item) {return _buffer.pop(item);}
 
     //done by consumer
     void update(uint16_t cmdid) {
@@ -169,38 +172,47 @@ class NVME_batch_manager {
     //done by producer
     void add_to_last_batch(uint16_t cmdid) {
       //get_last_entry() checks if the queue is empty
-      size_t last_entry = buffer.get_last_entry();
+      size_t last_entry = _buffer.get_last_entry();
 
-      assert(array[last_entry].ready == false);
+      assert(_array[last_entry].ready == false);
 
-      array[last_entry].end_cmdid = cmdid;
-      array[last_entry].total++;
+      _array[last_entry].end_cmdid = cmdid;
+      _array[last_entry].total++;
       assert(
-          array[last_entry].end_cmdid - array[last_entry].start_cmdid == array[last_entry].total || 
-          array[last_entry].end_cmdid + BATCH_INFO_BUFFER_SIZE - array[last_entry].start_cmdid == array[last_entry].total
+          (_array[last_entry].end_cmdid - _array[last_entry].start_cmdid + 1 == _array[last_entry].total) || 
+          (_array[last_entry].end_cmdid + BATCH_INFO_BUFFER_SIZE - _array[last_entry].start_cmdid == _array[last_entry].total) // 0 is not used for cmd id
           );
     }
 
     //done by producer
     void finish_batch() {
-      size_t last_entry = buffer.get_last_entry();
-      assert(array[last_entry].ready == false);
-      array[last_entry].ready = true;
+      size_t last_entry = _buffer.get_last_entry();
+      assert(_array[last_entry].ready == false);
+      _array[last_entry].ready = true;
     }
 
-    bool wasEmpty() const { return buffer.wasEmpty(); }
-    bool wasFull() const { return buffer.wasFull(); }
-    bool isLockFree() const {return buffer.isLockFree();}
+    //check if the cmd id has not been released by the head batch
+    bool is_available(uint16_t cmdid) {
+      return false;
+    }
+
+    bool is_available(uint16_t cmdid_start, uint16_t cmdid_end) {
+      return false;
+    }
+
+    bool wasEmpty() const { return _buffer.wasEmpty(); }
+    bool wasFull() const { return _buffer.wasFull(); }
+    bool isLockFree() const {return _buffer.isLockFree();}
 
 
   private:
     bool _is_complete(size_t idx) {
-      return (array[idx].ready && array[idx].counter == array[idx].total);
+      return (_array[idx].ready && _array[idx].counter == _array[idx].total);
     }
 
     bool _update_single_iteration(uint16_t cmdid) {
-      size_t head = buffer.get_head();
-      size_t tail = buffer.get_tail(); //may get a stale value, this is fine
+      size_t head = _buffer.get_head();
+      size_t tail = _buffer.get_tail(); //may get a stale value, this is fine
 
       if(head > tail) tail += BATCH_INFO_BUFFER_SIZE;
 
@@ -209,9 +221,9 @@ class NVME_batch_manager {
         size_t idx2 = idx % BATCH_INFO_BUFFER_SIZE;
 
         //TODO: handle wrap-around
-        if(cmdid >= array[idx2].start_cmdid && cmdid <= array[idx2].end_cmdid){
-          array[idx2].counter++;
-          assert(array[idx2].counter <= array[idx2].total);
+        if(cmdid >= _array[idx2].start_cmdid && cmdid <= _array[idx2].end_cmdid){
+          _array[idx2].counter++;
+          assert(_array[idx2].counter <= _array[idx2].total);
 
           if(_is_complete(idx2)) {
             //TODO: callback
@@ -221,7 +233,7 @@ class NVME_batch_manager {
             if(idx2 == head) {
               batch_info_t bi;
               while(idx2 < tail) {
-                if(_is_complete(idx2)) { buffer.pop(bi); idx2++; }
+                if(_is_complete(idx2)) { _buffer.pop(bi); idx2++; }
                 else break;
               }
             }

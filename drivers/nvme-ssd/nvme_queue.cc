@@ -776,7 +776,7 @@ uint16_t NVME_IO_queue::issue_async_io_batch(io_descriptor_t* io_desc,
 {
   batch_info_t bi;
   memset(&bi, 0, sizeof(batch_info_t));
-
+  assert(length < 0xffff); //otherwise, we run out of cmd ids. Keep it simple
   // init the batch info block, and add it to the buffer
   // only one-time batch is considered now
   bi.start_cmdid = next_cmdid();
@@ -792,14 +792,15 @@ uint16_t NVME_IO_queue::issue_async_io_batch(io_descriptor_t* io_desc,
   while( (ret = _batch_manager->push(bi)) != true );
 
   //issue all IOs
+  uint16_t cmdid = 0;
   for(int idx = 0; idx < length; idx++) {
     io_descriptor_t* io_desc_ptr = io_desc + idx;
     if(io_desc_ptr->action == NVME_READ) {
-      issue_async_read(io_desc_ptr->buffer_phys, 
+      cmdid = issue_async_read(io_desc_ptr->buffer_phys, 
                        io_desc_ptr->offset,
                        io_desc_ptr->num_blocks);    
     } else if (io_desc_ptr->action == NVME_WRITE) {
-      issue_async_write(io_desc_ptr->buffer_phys, 
+      cmdid = issue_async_write(io_desc_ptr->buffer_phys, 
                        io_desc_ptr->offset,
                        io_desc_ptr->num_blocks);    
     } else {
@@ -807,6 +808,7 @@ uint16_t NVME_IO_queue::issue_async_io_batch(io_descriptor_t* io_desc,
       assert(false);
     }
   }
+  assert(cmdid == bi.end_cmdid);
   
 }
 
