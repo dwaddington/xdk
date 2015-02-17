@@ -788,7 +788,8 @@ uint16_t NVME_IO_queue::issue_async_io_batch(io_descriptor_t* io_desc,
   bi.complete = false;
 
   //push to the buffer
-  _batch_manager->push(bi);
+  bool ret;
+  while( (ret = _batch_manager->push(bi)) != true );
 
   //issue all IOs
   for(int idx = 0; idx < length; idx++) {
@@ -803,7 +804,7 @@ uint16_t NVME_IO_queue::issue_async_io_batch(io_descriptor_t* io_desc,
                        io_desc_ptr->num_blocks);    
     } else {
       PERR("Unrecoganized Operaton !!");
-      assert(0);
+      assert(false);
     }
   }
   

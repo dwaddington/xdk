@@ -11,9 +11,9 @@ class RingBuffer {
 private:
   size_t increment(size_t idx) const; 
 
-  boost::atomic <size_t>  _tail;  // tail(input) index
-  Element    _array[Size];
-  boost::atomic<size_t>   _head; // head(output) index
+  Element _array[Size];
+  boost::atomic<size_t> _head;  // head(output) index
+  boost::atomic<size_t> _tail;  // tail(input) index
 
 public:
 
@@ -31,12 +31,22 @@ public:
   size_t get_head() const {return _head.load(boost::memory_order_relaxed);}
   size_t get_tail() const {return _tail.load(boost::memory_order_relaxed);}
   Element *get_array() {return _array;}
+  size_t get_last_entry() const {
+    size_t head = _head.load(boost::memory_order_relaxed);
+    size_t tail = _tail.load(boost::memory_order_relaxed);
+
+    assert(head != tail);
+
+    if(tail == 0)
+      return (Size - 1);
+    else
+      return tail - 1;
+  }
 
 };
 
 
-// Push on tail. TailHead is only changed by producer and can be safely loaded using memory_order_relexed
-// head is updated by consumer and must be loaded using at least memory_order_acquire
+// Push on tail. Tail is only changed by producer and can be safely loaded using memory_order_relexed; Head is updated by consumer and must be loaded using at least memory_order_acquire
 template<typename Element, size_t Size>
 bool RingBuffer<Element, Size>::push(const Element& item)
 {	
@@ -90,6 +100,17 @@ template<typename Element, size_t Size>
 bool RingBuffer<Element, Size>::isLockFree() const
 {
   return (_tail.is_lock_free() && _head.is_lock_free());
+}
+
+template<typename Element, size_t Size>
+size_t RingBuffer<Element, Size>::increment(size_t idx) const
+{
+  size_t new_idx = idx + 1;
+  assert(new_idx <= Size);
+  if(unlikely(new_idx == Size))
+    return 0;
+  else
+    return new_idx;
 }
 
 /* data structure to record batch info */
@@ -147,20 +168,24 @@ class NVME_batch_manager {
 
     //done by producer
     void add_to_last_batch(uint16_t cmdid) {
-      size_t tail = buffer.get_tail();
-      array[tail].end_cmdid = cmdid;
-      array[tail].total++;
+      //get_last_entry() checks if the queue is empty
+      size_t last_entry = buffer.get_last_entry();
+
+      assert(array[last_entry].ready == false);
+
+      array[last_entry].end_cmdid = cmdid;
+      array[last_entry].total++;
       assert(
-          array[tail].end_cmdid - array[tail].start_cmdid == array[tail].total || 
-          array[tail].end_cmdid - array[tail].start_cmdid + BATCH_INFO_BUFFER_SIZE == array[tail].total
+          array[last_entry].end_cmdid - array[last_entry].start_cmdid == array[last_entry].total || 
+          array[last_entry].end_cmdid + BATCH_INFO_BUFFER_SIZE - array[last_entry].start_cmdid == array[last_entry].total
           );
     }
 
     //done by producer
     void finish_batch() {
-      size_t tail = buffer.get_tail();
-      assert(array[tail].ready== false);
-      array[tail].ready= true;
+      size_t last_entry = buffer.get_last_entry();
+      assert(array[last_entry].ready == false);
+      array[last_entry].ready = true;
     }
 
     bool wasEmpty() const { return buffer.wasEmpty(); }
@@ -170,7 +195,7 @@ class NVME_batch_manager {
 
   private:
     bool _is_complete(size_t idx) {
-      return (array[idx].counter == array[idx].total && array[idx].ready);
+      return (array[idx].ready && array[idx].counter == array[idx].total);
     }
 
     bool _update_single_iteration(uint16_t cmdid) {
