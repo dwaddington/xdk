@@ -102,7 +102,7 @@ namespace Component
     void *                  _dll_handle;
 
   public:
-    IBase() : _dll_handle(NULL), _ref_count(0) {
+    IBase() : _ref_count(0), _dll_handle(NULL) {
     }
 
 
