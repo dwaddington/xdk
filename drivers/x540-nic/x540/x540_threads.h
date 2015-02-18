@@ -49,9 +49,9 @@ private:
   volatile bool             _start;
   unsigned                  _irq;
   unsigned                  _affinity;
-  int                       _tid;       // global rx thread id 
-  int                       _core_id;   // rx thread cpu core id
-  int                       _local_id;  // rx thread local id per NIC
+  unsigned                  _tid;       // global rx thread id 
+  unsigned                  _core_id;   // rx thread cpu core id
+  unsigned                  _local_id;  // rx thread local id per NIC
 
   Intel_x540_uddk_device *  _dev;
   Config_params * _params;
@@ -78,7 +78,6 @@ private:
     //_dev->reg_info(); 
 
     PLOG("RX thread %d on core %d started!!", _tid, _core_id);
-    unsigned count = 0;
 
     if (_local_id == (_rx_threads_per_nic - 1)) {
       unsigned nic_idx = _tid / _rx_threads_per_nic;
@@ -108,10 +107,10 @@ public:
              unsigned global_id,
              unsigned affinity,
              Config_params * params) : Base_thread(NULL, affinity),
-			          _dev(dev),
-                                  _local_id(local_id),
                                   _tid(global_id),
                                   _core_id(affinity),
+                                  _local_id(local_id),
+			          _dev(dev),
                                   _params(params) {
     _irq = _dev->_irq[local_id];
     _start=false;

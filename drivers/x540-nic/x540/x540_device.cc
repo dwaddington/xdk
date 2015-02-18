@@ -240,7 +240,7 @@ void Intel_x540_uddk_device::wait_for_activate() {
 
 void Intel_x540_uddk_device::init_nic_param() {
   unsigned pos = 0;
-  unsigned i,j;
+  unsigned i;
   for (i = 0; i < 4; i++) {
     mac[pos++] = (uint8_t)(_mmio->mmio_read32(IXGBE_RAL(0)) >> (8*i));
   }
@@ -256,11 +256,27 @@ void Intel_x540_uddk_device::init_nic_param() {
 
   add_ip((char *)server_ip.c_str());
 
-  flow_signature[0] = FLOW_SIGNATURE_0;
-  flow_signature[1] = FLOW_SIGNATURE_1;
-  flow_signature[2] = FLOW_SIGNATURE_2;
-  flow_signature[3] = FLOW_SIGNATURE_3;
-  flow_signature[4] = FLOW_SIGNATURE_4;
+  for (i = 0; i < NUM_RX_THREADS_PER_NIC; i++) {
+    switch (i) {
+      case 0: 
+        flow_signature[i] = FLOW_SIGNATURE_0;
+        break;
+      case 1: 
+        flow_signature[i] = FLOW_SIGNATURE_1;
+        break;
+      case 2: 
+        flow_signature[i] = FLOW_SIGNATURE_2;
+        break;
+      case 3: 
+        flow_signature[i] = FLOW_SIGNATURE_3;
+        break;
+      case 4: 
+        flow_signature[i] = FLOW_SIGNATURE_4;
+        break;
+      default:
+        printf("Only 5 client flows for now!\n");
+    }
+  }
 
   num_q_vectors      = NUM_RX_THREADS_PER_NIC;
   rx_pb_size         = 384;
@@ -614,8 +630,7 @@ void Intel_x540_uddk_device::setup_rxpba(unsigned num_pb, uint32_t headroom, int
       for (; i < num_pb; i++)
         _mmio->mmio_write32(IXGBE_RXPBSIZE(i), rxpktsize);
       break;
-    default:
-      break;
+    default:;
   }
 
   /* Only support an equally distributed Tx packet buffer strategy. */
@@ -990,7 +1005,6 @@ inline unsigned Intel_x540_uddk_device::rx_queue_2_core(unsigned queue) {
 }
 
 void Intel_x540_uddk_device::non_sfp_link_config() {
-  int negotiate = 0;
   u32 autoneg;
   bool link_up = false;
   check_mac_link(&autoneg, &link_up, false);
@@ -1134,7 +1148,6 @@ void Intel_x540_uddk_device::interrupt_handler(unsigned tid) {
   uint32_t status;
   unsigned rxdp;
   unsigned queue = tid * 2;
-  unsigned core = rx_core[tid];
   uint8_t* pkt;
   assert(tid>=0);
   assert(tid<NUM_RX_THREADS_PER_NIC);
@@ -1480,7 +1493,6 @@ inline unsigned Intel_x540_uddk_device::tx_free_bufs(unsigned tx_queue) {
  * @param tx_queue
  */
 uint16_t Intel_x540_uddk_device::multi_send(struct exo_mbuf ** tx_pkts, size_t nb_pkts, unsigned tx_queue) {
-  uint32_t ctx = 0;
   struct exo_tx_ring * txq = &tx_ring[tx_queue];
   uint16_t tx_id = txq->tx_tail;
   struct tx_entry *sw_ring = txq->sw_ring;
@@ -1718,13 +1730,6 @@ inline int Intel_x540_uddk_device::xmit_cleanup(struct exo_tx_ring *txq) {
         _imem->free((void *)(mbuf->virt_addr_seg[1]), (mbuf->seg_flag[1] >> 4), _index);
       }
 
-      // Decrement reference counter for a frame list that was used in a response.
-      if (mbuf->pbuf_list != NULL) {
-        pbuf_t * pbuf_list = (pbuf_t *)(mbuf->pbuf_list);
-        assert(pbuf_list->ref_counter > 0);
-        int64_t ref_c = __sync_sub_and_fetch(&(pbuf_list->ref_counter), 1);
-      }
-
       __builtin_memset(&(txq->sw_ring[i]),0,sizeof(struct tx_entry));
       txq->sw_ring[i].next_id = (i + 1) % (txq->nb_tx_desc);
       txq->sw_ring[i].last_id = i;
@@ -1743,13 +1748,6 @@ inline int Intel_x540_uddk_device::xmit_cleanup(struct exo_tx_ring *txq) {
         _imem->free((void *)(mbuf->virt_addr_seg[1]), (mbuf->seg_flag[1] >> 4), _index);
       }
 
-      // Decrement reference counter for a frame list that was used in a response.
-      if (mbuf->pbuf_list != NULL) {
-        pbuf_t * pbuf_list = (pbuf_t *)(mbuf->pbuf_list);
-        assert(pbuf_list->ref_counter > 0);
-        int64_t ref_c = __sync_sub_and_fetch(&(pbuf_list->ref_counter), 1);
-      }
-
       __builtin_memset(&(txq->sw_ring[i]),0,sizeof(struct tx_entry));
       txq->sw_ring[i].next_id = (i + 1) % (txq->nb_tx_desc);
       txq->sw_ring[i].last_id = i;
@@ -1766,13 +1764,6 @@ inline int Intel_x540_uddk_device::xmit_cleanup(struct exo_tx_ring *txq) {
       }
       if (((mbuf->seg_flag[1]) & 1) == 1) {
         _imem->free((void *)(mbuf->virt_addr_seg[1]), (mbuf->seg_flag[1] >> 4), _index);
-      }
-
-      // Decrement reference counter for a frame list that was used in a response.
-      if (mbuf->pbuf_list != NULL) {
-        pbuf_t * pbuf_list = (pbuf_t *)(mbuf->pbuf_list);
-        assert(pbuf_list->ref_counter > 0);
-        int64_t ref_c = __sync_sub_and_fetch(&(pbuf_list->ref_counter), 1);
       }
 
       __builtin_memset(&(txq->sw_ring[i]),0,sizeof(struct tx_entry));
@@ -1807,7 +1798,7 @@ inline int Intel_x540_uddk_device::xmit_cleanup(struct exo_tx_ring *txq) {
  */
 uint16_t Intel_x540_uddk_device::send(struct exo_mbuf ** tx_pkts, size_t nb_pkts, unsigned tx_queue) {
   unsigned pos;
-  uint16_t n;
+  uint16_t n = 0;
   struct exo_tx_ring * txr = &tx_ring[tx_queue];
   /*
    * Begin scanning the H/W ring for done descriptors when the

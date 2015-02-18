@@ -234,7 +234,7 @@ IMem_impl::bind(interface_t itf) {
       case NIC_COMPONENT:
            _nic = (INic *)itf;
            break;
-      defaulf:
+      default:
            printf("binding wrong component types!!!");
            assert(0);
     }

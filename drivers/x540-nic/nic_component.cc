@@ -82,7 +82,7 @@ INic_impl::bind(interface_t itf) {
       case MEM_COMPONENT:
            _mem = (IMem *)itf;
            break;
-      defaulf:
+      default:
            printf("binding wrong component types!!!");
            assert(0);
     }
@@ -121,16 +121,16 @@ INic_impl::init(arg_t arg) {
       _dev[i]->wait_for_activate();
       PINF("NIC [%d] is fully activated OK!", i);
     }
-  }
+  return Exokernel::S_OK;
+}
 
 void 
 INic_impl::run() {
     /* Start receiving packets */
-    for (int i = 0; i < _nic_num; i++) {
+    for (unsigned i = 0; i < _nic_num; i++) {
       _dev[i]->rx_start_ok = true;
     }
     printf("Nic Component is up running...\n");
-
 }
 
 status_t 

@@ -68,9 +68,10 @@
 void Exo_stack::send_udp_pkt_test(unsigned tid) {
 
   enum { PACKET_LEN = 22 };
-  unsigned bytes_to_alloc = PACKET_LEN;
 
 #if 0
+  unsigned bytes_to_alloc = PACKET_LEN;
+
   /* allocate pkt memory */
   size_t BLOCK_SIZE = bytes_to_alloc;
   size_t NUM_BLOCKS = 1;

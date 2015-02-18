@@ -118,8 +118,8 @@ private:
 
   class Nic_memory {
   private:
-    addr_t         _vaddr;
     addr_t         _paddr;
+    addr_t         _vaddr;
     uint32_t       _size;
     Exokernel::Pci_express_device * _owner;
 

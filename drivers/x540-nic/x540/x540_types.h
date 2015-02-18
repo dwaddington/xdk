@@ -206,8 +206,8 @@ struct exo_rx_ring {
  * Macro to return the minimum of two numbers
  */
 #define EXO_MIN(a, b) ({ \
-                typeof (a) _a = (a); \
-                typeof (b) _b = (b); \
+                decltype (a) _a = (a); \
+                decltype (b) _b = (b); \
                 _a < _b ? _a : _b; \
         })
 
@@ -215,8 +215,8 @@ struct exo_rx_ring {
  * Macro to return the maximum of two numbers
  */
 #define EXO_MAX(a, b) ({ \
-                typeof (a) _a = (a); \
-                typeof (b) _b = (b); \
+                decltype (a) _a = (a); \
+                decltype (b) _b = (b); \
                 _a > _b ? _a : _b; \
         })
 
