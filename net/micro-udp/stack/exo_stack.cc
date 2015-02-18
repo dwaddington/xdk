@@ -252,8 +252,8 @@ void Exo_stack::send_pkt_test(unsigned tid) {
       /* transmit more than the max burst, in chunks of TX_MAX_BURST */
       unsigned nb_pkts = pkt_burst_size;
       while(nb_pkts) {
-        uint16_t ret, n;
-        n = (uint16_t)EXO_MIN(nb_pkts, IXGBE_TX_MAX_BURST);
+        size_t ret, n;
+        n = (uint16_t)EXO_MIN(nb_pkts, (unsigned)IXGBE_TX_MAX_BURST);
         ret = n;
         ethernet_output_simple(&xmit_addr_pool[counter % 512], (size_t&)ret, queue);
         //ethernet_output(&xmit_addr_pool[counter % 512], (size_t&)ret, queue);
@@ -388,13 +388,11 @@ void Exo_stack::init_param() {
 }
 
 status_t Exo_stack::ethernet_output(struct exo_mbuf ** pkt, size_t& cnt, unsigned queue) {
-  size_t to_be_sent = cnt;
   status_t s = _inic->send_packets((pkt_buffer_t *)pkt, cnt, _index, queue);
   return s;
 }
 
 status_t Exo_stack::ethernet_output_simple(struct exo_mbuf ** pkt, size_t& cnt, unsigned queue) {
-  size_t to_be_sent = cnt;
   status_t s = _inic->send_packets_simple((pkt_buffer_t *)pkt, cnt, _index, queue);
   return s;
 }
@@ -403,8 +401,8 @@ pkt_status_t Exo_stack::ethernet_input(uint8_t * pkt, size_t len, unsigned queue
   struct eth_hdr* ethhdr;
   uint16_t type;
   pkt_status_t t;
-  unsigned tid = queue >> 1;
-  unsigned core = rx_core[tid];
+  //unsigned tid = queue >> 1;
+  //unsigned core = rx_core[tid];
 
   if (len <= SIZEOF_ETH_HDR) {
     return PACKET_ERROR_BAD_ETH;
@@ -954,11 +952,9 @@ pkt_status_t Exo_stack::udp_input(pbuf_t *pbuf_list, unsigned queue) {
   struct udp_hdr *udphdr;
   pbuf_t * tmp;
   unsigned frag_number=0;
-  unsigned udp_size;
+  //unsigned udp_size;
   unsigned tid = queue >> 1;
   unsigned core = rx_core[tid];
-
-  pkt_status_t t = REUSE_THIS_PACKET;
 
   for (tmp = pbuf_list; tmp != NULL; tmp = tmp->next) {
     frag_number++;
@@ -975,13 +971,14 @@ pkt_status_t Exo_stack::udp_input(pbuf_t *pbuf_list, unsigned queue) {
   ip_addr_copy(current_iphdr_src, iphdr->src);
 
   udphdr = (struct udp_hdr *)(pbuf_list->pkt + SIZEOF_ETH_HDR + IPH_HL(iphdr) * 4);
-  udp_size = ntohs(udphdr->len);
+  //udp_size = ntohs(udphdr->len);
 
-  uint16_t src, dest;
+  uint16_t src;
+  //uint16_t dest;
 
   /* convert src and dest ports to host byte order */
   src = ntohs(udphdr->src);
-  dest = ntohs(udphdr->dest);
+  //dest = ntohs(udphdr->dest);
 
   remote_port = src;
 
@@ -1338,7 +1335,6 @@ void Exo_stack::udp_send_pkt(uint8_t *vaddr,
   if (recycle == true)
     assert(nb_ip_needed == 1);
 
-  void * temp;
   unsigned pkt_index = 0;
   // main loop for IP fragmentation
   while (remaining_bytes > 0) {

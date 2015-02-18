@@ -117,8 +117,9 @@ IStack_impl::init(arg_t arg) {
 
       /* Initialize msg_processor class based on server or client app */
       Msg_processor * msg;
-      if (stack_arg->app == SERVER_APP)
+      if (stack_arg->app == SERVER_APP) {
         msg = new Msg_processor_server(i, _mem, this, _params);
+      }
       else 
 	panic("wrong stack app type");
 
