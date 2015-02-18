@@ -107,13 +107,13 @@ namespace Exokernel
                      unsigned core, 
                      bool& pkt_reuse) {
       pbuf_t * pbuf_list = (pbuf_t *) data;
-      unsigned frag_number = pbuf_list->total_frames;
+      //unsigned frag_number = pbuf_list->total_frames;
 
-      struct ip_hdr * iphdr = (struct ip_hdr *)(pbuf_list->pkt + SIZEOF_ETH_HDR);
-      ip_addr_t src_ip;
-      ip_addr_copy(src_ip, iphdr->src);
-      struct udp_hdr *udphdr = (struct udp_hdr *)(pbuf_list->pkt + SIZEOF_ETH_IP_HLEN);
-      uint16_t src_port = ntohs(udphdr->src);
+      //struct ip_hdr * iphdr = (struct ip_hdr *)(pbuf_list->pkt + SIZEOF_ETH_HDR);
+      //ip_addr_t src_ip;
+      //ip_addr_copy(src_ip, iphdr->src);
+      //struct udp_hdr *udphdr = (struct udp_hdr *)(pbuf_list->pkt + SIZEOF_ETH_IP_HLEN);
+      //uint16_t src_port = ntohs(udphdr->src);
 
 #if 1
       /* push the packet into channel */

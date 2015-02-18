@@ -55,6 +55,7 @@ private:
     nic_arg.params = (params_config_t)_params;
     _nic->init((arg_t)&nic_arg);
     _nic->run();
+    return NULL;
   }
 
 public:
@@ -150,6 +151,8 @@ private:
     _mem->init((arg_t)&mem_arg);
 
     _mem->run();
+
+    return NULL;
   }
 
 public:

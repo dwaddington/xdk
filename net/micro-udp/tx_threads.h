@@ -90,7 +90,8 @@ private:
       sleep(1);
     }
 
-    cpu_time_t start_timer, finish_timer;
+    cpu_time_t start_timer = 0;
+    cpu_time_t finish_timer = 0;
     pbuf_t* pbuf_list;
 
     uint64_t cpu_freq = (uint64_t)(get_tsc_frequency_in_mhz() * 1000000);
@@ -152,11 +153,11 @@ public:
             unsigned global_id,
             unsigned affinity,
             Config_params * params) : Base_thread(NULL, affinity),
-                                 _net_side_channel(channel),
-				 _stack(stack),
-                                 _local_id(local_id),
-                                 _tid(global_id),
                                  _affinity(affinity),
+		                 _tid(global_id),
+                                 _local_id(local_id),
+				 _stack(stack),
+                                 _net_side_channel(channel),
                                  _params(params)
   {
     _stats_num = _params->stats_num;
