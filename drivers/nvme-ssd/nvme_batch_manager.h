@@ -144,12 +144,14 @@ class NVME_batch_manager {
   private:
     batch_info_buffer_t _buffer;
     batch_info_t* _array;
-    boost::atomic<size_t> _head_cmdid;  // tail(input) index
+    //keep tracking the cmdid before the first batch's start cmdid
+    //only consumer (CQ) updates this value after initialization
+    //cmd id before this value (in terms of circle) is available.
+    boost::atomic<uint16_t> _last_available_cmdid;
 
   public:
-    NVME_batch_manager() {
+    NVME_batch_manager() : _last_available_cmdid(0x0) {
       _array = _buffer.get_array();
-      _head_cmdid.store(0xffff);
     }
     ~NVME_batch_manager() {}
 
@@ -191,13 +193,28 @@ class NVME_batch_manager {
       _array[last_entry].ready = true;
     }
 
-    //check if the cmd id has not been released by the head batch
+    //check if the cmd id has been released by the head batch
+    //assuming this can only be called by producer
     bool is_available(uint16_t cmdid) {
-      return false;
+      uint16_t val = _last_available_cmdid.load(boost::memory_order_relaxed);
+      return (cmdid != val);
     }
 
+    //check if the range of cmd id has been released by the head batch
+    //assuming this can only be called by producer
     bool is_available(uint16_t cmdid_start, uint16_t cmdid_end) {
-      return false;
+      assert(cmdid_start <= cmdid_end);
+      uint16_t val = _last_available_cmdid.load(boost::memory_order_relaxed);
+      return (cmdid_start < val && cmdid_end < val
+          || cmdid_start > val && cmdid_end > val
+          );
+    }
+
+    //check if we can safely reset the cmd id counter
+    //only called by producer
+    bool reset_cmdid_ok(uint16_t cmdid) {
+      uint16_t val = _last_available_cmdid.load(boost::memory_order_relaxed);
+      return (val < cmdid);
     }
 
     bool wasEmpty() const { return _buffer.wasEmpty(); }
@@ -233,7 +250,11 @@ class NVME_batch_manager {
             if(idx2 == head) {
               batch_info_t bi;
               while(idx2 < tail) {
-                if(_is_complete(idx2)) { _buffer.pop(bi); idx2++; }
+                if(_is_complete(idx2)) {
+                  _buffer.pop(bi);
+                  _last_available_cmdid.store(bi.end_cmdid, boost::memory_order_relaxed);
+                  idx2++;
+                }
                 else break;
               }
             }

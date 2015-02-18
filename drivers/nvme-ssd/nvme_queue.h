@@ -155,6 +155,11 @@ public:
     return next_id;
   }
 
+  void reset_cmdid() {
+    while( !(_batch_manager->reset_cmdid_ok(_cmdid_counter)) );
+    _cmdid_counter = 0;
+  }
+
   void update_batch_manager(uint16_t cmdid) {
     _batch_manager->update(cmdid);
   }
