@@ -13,7 +13,7 @@ libexo.a: $(OBJS)
 
 clean:
 	rm -Rf obj
-
+	rm *.a 
 TAGS:
 	etags *.cc *.h
 
