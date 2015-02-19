@@ -136,20 +136,13 @@ public:
   void setup_doorbells();
 
   uint16_t alloc_cmdid() {
-    //TODO: check availability
     _cmdid_counter++;
     if( unlikely(_cmdid_counter == 0) ) _cmdid_counter++;
     return _cmdid_counter;
   }
 
-  void release_slot(uint16_t slot) {
-    //status_t s = _bitmap->mark_free(slot);
-    //assert(s==Exokernel::S_OK);
-  }
-
   //used to check next available cmdid, but not really alloc the id
   uint16_t next_cmdid() {
-    //TODO: check availability
     uint16_t next_id = _cmdid_counter + 1;
     if( unlikely(next_id == 0) ) next_id = 1;
     return next_id;
@@ -158,6 +151,11 @@ public:
   void reset_cmdid() {
     while( !(_batch_manager->reset_cmdid_ok(_cmdid_counter)) );
     _cmdid_counter = 0;
+  }
+
+  void release_slot(uint16_t slot) {
+    //status_t s = _bitmap->mark_free(slot);
+    //assert(s==Exokernel::S_OK);
   }
 
   void update_batch_manager(uint16_t cmdid) {

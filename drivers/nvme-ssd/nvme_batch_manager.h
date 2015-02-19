@@ -135,10 +135,12 @@ typedef struct {
 }__attribute__((aligned(64))) batch_info_t;
 
 
-#define BATCH_INFO_BUFFER_SIZE 16
+#define BATCH_INFO_BUFFER_SIZE 32 
 
 typedef RingBuffer<batch_info_t, BATCH_INFO_BUFFER_SIZE> batch_info_buffer_t;
 
+//each batch contains cmds with contiguous cmd ids
+//cmd id wrap-around is not allowed in a single batch
 class NVME_batch_manager {
 
   private:
@@ -188,20 +190,21 @@ class NVME_batch_manager {
 
     //done by producer
     void finish_batch() {
+      //Under a memory modle where stores can be reordered, a fence is needed here
       size_t last_entry = _buffer.get_last_entry();
       assert(_array[last_entry].ready == false);
       _array[last_entry].ready = true;
     }
 
     //check if the cmd id has been released by the head batch
-    //assuming this can only be called by producer
+    //assuming this can only be called by producer, which alloc cmd ids by incrementing counters
     bool is_available(uint16_t cmdid) {
       uint16_t val = _last_available_cmdid.load(boost::memory_order_relaxed);
       return (cmdid != val);
     }
 
     //check if the range of cmd id has been released by the head batch
-    //assuming this can only be called by producer
+    //assuming this can only be called by producer, which alloc cmd ids by incrementing counters
     bool is_available(uint16_t cmdid_start, uint16_t cmdid_end) {
       assert(cmdid_start <= cmdid_end);
       uint16_t val = _last_available_cmdid.load(boost::memory_order_relaxed);
@@ -210,11 +213,12 @@ class NVME_batch_manager {
           );
     }
 
-    //check if we can safely reset the cmd id counter
+    //check if we can safely reset the cmd id counter to 0
+    //the cmd id counter can be reset only when the values after(greater than) the current counter are not being used
     //only called by producer
-    bool reset_cmdid_ok(uint16_t cmdid) {
+    bool reset_cmdid_ok(uint16_t cmdid_counter) {
       uint16_t val = _last_available_cmdid.load(boost::memory_order_relaxed);
-      return (val < cmdid);
+      return (val <= cmdid_counter);
     }
 
     bool wasEmpty() const { return _buffer.wasEmpty(); }
@@ -233,11 +237,12 @@ class NVME_batch_manager {
 
       if(head > tail) tail += BATCH_INFO_BUFFER_SIZE;
 
+      assert(head != tail); //Should not be empty
+
       //TODO: maybe need a better search algo
       for(size_t idx = head; idx < tail; idx++){
         size_t idx2 = idx % BATCH_INFO_BUFFER_SIZE;
 
-        //TODO: handle wrap-around
         if(cmdid >= _array[idx2].start_cmdid && cmdid <= _array[idx2].end_cmdid){
           _array[idx2].counter++;
           assert(_array[idx2].counter <= _array[idx2].total);
@@ -254,11 +259,11 @@ class NVME_batch_manager {
                   _buffer.pop(bi);
                   _last_available_cmdid.store(bi.end_cmdid, boost::memory_order_relaxed);
                   idx2++;
-                }
-                else break;
-              }
+                } else 
+                  break;
+              }//while
             }
-          }
+          }//_is_complete()
           return true; //updated sucessfully
         }
       }

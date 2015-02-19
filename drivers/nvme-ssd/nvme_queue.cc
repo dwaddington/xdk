@@ -819,7 +819,6 @@ uint16_t NVME_IO_queue::issue_async_io_batch(io_descriptor_t* io_desc,
     }
   }
   assert(cmdid == bi.end_cmdid);
-  
 }
 
 
