@@ -38,6 +38,8 @@
 #include "../base.h"
 #include "../interface.h"
 #include <net/udp.h>
+#include <connection.h>
+#include <actor.h>
 
 using namespace Component;
 
@@ -84,6 +86,17 @@ class IStack : public Component::Interface_base
 {
 public:
   DECLARE_INTERFACE_UUID(0x00352b0d,0x81a0,0x4061,0x90e1,0x8ba7,0x5412,0x03fd);
+
+#ifdef DATAHAWK
+  /** 
+   * To initialize the component interface with connection for actor framework.
+   *
+   * @param arg A struct pointer for configuration arguments.
+   * @param conn A connection class pointer.
+   * @return The return status.
+   */
+  virtual status_t init(arg_t arg, Connection * conn) = 0;
+#endif
 
   /**
    * To receive a single packet from NIC component.
