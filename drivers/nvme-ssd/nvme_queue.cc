@@ -772,11 +772,13 @@ uint16_t NVME_IO_queue::issue_async_write(addr_t prp1,
 }
 
 uint16_t NVME_IO_queue::issue_async_io_batch(io_descriptor_t* io_desc,
-                                              uint64_t length)
+                                              uint64_t length,
+                                              Notify *notify
+                                              )
 {
   batch_info_t bi;
   memset(&bi, 0, sizeof(batch_info_t));
-  assert(length < 0xffff); //otherwise, we run out of cmd ids. Keep it simple
+  assert(length < 0xffff); //otherwise, we run out of cmd ids. Keep it simple.
   // init the batch info block, and add it to the buffer
   // only one-time batch is considered now
   uint16_t start_cmdid = next_cmdid();
@@ -794,7 +796,7 @@ uint16_t NVME_IO_queue::issue_async_io_batch(io_descriptor_t* io_desc,
   bi.end_cmdid = end_cmdid;
   bi.total = length;
   bi.counter = 0;
-  bi.nobj = NULL;
+  bi.notify = notify;
   bi.ready = true;
   bi.complete = false;
 

@@ -60,8 +60,9 @@ public:
 
 
   /* async batch I/O operation*/
-  virtual status_t async_io_batch(io_task_t* io_tasks,
+  virtual status_t async_io_batch(io_request_t* io_requests,
                                   size_t length,
+                                  notify_t notify,
                                   unsigned device,
                                   unsigned port
                                   ) = 0;

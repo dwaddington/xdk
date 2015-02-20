@@ -120,7 +120,7 @@ typedef struct {
   uint16_t end_cmdid;
   uint16_t total;
   uint16_t counter;
-  Notify_object *nobj;
+  Notify *notify;
   bool ready;
   bool complete;
 
@@ -190,7 +190,7 @@ class NVME_batch_manager {
 
     //done by producer
     void finish_batch() {
-      //Under a memory modle where stores can be reordered, a fence is needed here
+      //Under a memory modle where stores can be reordered, a memory barrier/fence is needed here
       size_t last_entry = _buffer.get_last_entry();
       assert(_array[last_entry].ready == false);
       _array[last_entry].ready = true;
@@ -239,31 +239,13 @@ class NVME_batch_manager {
 
       assert(head != tail); //Should not be empty
 
-      //TODO: maybe need a better search algo
+      //TODO: maybe need a better search algo, e.g., binary search
       for(size_t idx = head; idx < tail; idx++){
         size_t idx2 = idx % BATCH_INFO_BUFFER_SIZE;
 
+        assert(_array[idx2].start_cmdid <= _array[idx2].end_cmdid);
         if(cmdid >= _array[idx2].start_cmdid && cmdid <= _array[idx2].end_cmdid){
-          _array[idx2].counter++;
-          assert(_array[idx2].counter <= _array[idx2].total);
-
-          if(_is_complete(idx2)) {
-            //TODO: callback
-            PERR("callback not called!!!!");
-
-            //if idx2 is the head, then pop all finished batch info
-            if(idx2 == head) {
-              batch_info_t bi;
-              while(idx2 < tail) {
-                if(_is_complete(idx2)) {
-                  _buffer.pop(bi);
-                  _last_available_cmdid.store(bi.end_cmdid, boost::memory_order_relaxed);
-                  idx2++;
-                } else 
-                  break;
-              }//while
-            }
-          }//_is_complete()
+          _process_update_batch_info(idx2, head, tail);
           return true; //updated sucessfully
         }
       }
@@ -271,6 +253,31 @@ class NVME_batch_manager {
       PLOG("Did NOT find the right range!!");
       return false;
     }
+
+    void _process_update_batch_info(size_t idx, size_t head, size_t tail) {
+      _array[idx].counter++;
+      assert(_array[idx].counter <= _array[idx].total);
+
+      if(_is_complete(idx)) {
+        assert(_array[idx].complete == false);
+        if(_array[idx].notify) _array[idx].notify->action();
+        _array[idx].complete == true;
+
+        //if idx is the head, then pop all finished batch info
+        if(idx == head) {
+          batch_info_t bi;
+          while(idx < tail) {
+            if(_is_complete(idx)) {
+              _buffer.pop(bi);
+              _last_available_cmdid.store(bi.end_cmdid, boost::memory_order_relaxed);
+              idx++;
+            } 
+            else break;
+          }//while
+        }
+      }//_is_complete()   
+    }
+
 };
 
 

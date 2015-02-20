@@ -102,4 +102,20 @@ public:
   }
 };    
 
+class Notify {
+  public:
+    virtual void action() = 0;
+};
+
+class Notify_Impl : public Notify {
+
+  public:
+    Notify_Impl(){}
+    ~Notify_Impl(){}
+
+    void action() {
+      PLOG("notification called !!");
+    }
+};
+
 #endif

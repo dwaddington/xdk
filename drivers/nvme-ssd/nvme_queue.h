@@ -467,7 +467,8 @@ public:
 
 
   uint16_t issue_async_io_batch(io_descriptor_t* io_desc,
-                                uint64_t length
+                                uint64_t length,
+                                Notify *notify
                                 );
 
 

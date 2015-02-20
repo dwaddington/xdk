@@ -71,5 +71,6 @@ namespace Component
   typedef unsigned allocator_t;
   typedef unsigned state_t;
 }
-  typedef void * io_task_t;
+  typedef void * io_request_t;
+  typedef void * notify_t;
 #endif

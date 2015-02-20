@@ -147,16 +147,16 @@ async_write_block(void * buffer_virt, /* must be 512 byte aligned */
 
 status_t
 NVME_driver_component::
-async_io_batch(io_task_t* io_tasks,
+async_io_batch(io_request_t* io_requests,
                size_t length,
+               notify_t notify,
                unsigned device,
                unsigned port
                )
 {
   const unsigned qid = port;
 
-  io_descriptor_t* io_desc = (io_descriptor_t*) io_tasks;
-  _dev->async_io_batch(qid, io_desc, length);
+  _dev->async_io_batch(qid, (io_descriptor_t*)io_requests, length, (Notify*)notify);
 
   return S_OK;
 }

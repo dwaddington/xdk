@@ -227,15 +227,16 @@ public:
 
   status_t async_io_batch(unsigned queue_id,
                           io_descriptor_t* io_desc,
-                          uint64_t length
-                          )  
+                          uint64_t length,
+                          Notify* notify
+                          )
   {
     if((queue_id > _num_io_queues)||(queue_id == 0)) {
       assert(0);
       return Exokernel::E_INVAL;
     }
     assert(_io_queues[queue_id - 1]);
-    return _io_queues[queue_id - 1]->issue_async_io_batch(io_desc, length);
+    return _io_queues[queue_id - 1]->issue_async_io_batch(io_desc, length, notify);
   }
 
 
