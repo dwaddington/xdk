@@ -32,8 +32,6 @@ class Read_thread : public Exokernel::Base_thread {
     {
       using namespace Exokernel;
 
-      //byte r;
-
 #if 0
       /* set higher priority */
       {
