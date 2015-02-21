@@ -158,8 +158,8 @@ public:
     //assert(s==Exokernel::S_OK);
   }
 
-  void update_batch_manager(uint16_t cmdid) {
-    _batch_manager->update(cmdid);
+  status_t update_batch_manager(uint16_t cmdid) {
+    return _batch_manager->update(cmdid);
   }
 
   unsigned queue_length() const {

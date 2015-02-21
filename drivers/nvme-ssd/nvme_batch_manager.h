@@ -161,7 +161,7 @@ class NVME_batch_manager {
     bool pop(batch_info_t& item) {return _buffer.pop(item);}
 
     //done by consumer
-    void update(uint16_t cmdid) {
+    status_t update(uint16_t cmdid) {
       unsigned long long attempts = 0;
       bool ret;
       while((ret = _update_single_iteration(cmdid)) != true) {
@@ -171,6 +171,7 @@ class NVME_batch_manager {
           assert(false);
         }
       }
+      return Exokernel::S_OK;
     }
 
     //done by producer
@@ -249,7 +250,7 @@ class NVME_batch_manager {
           return true; //updated sucessfully
         }
       }
-      //we may reach here, because the tail we got can be a stale value
+      //we may reach here?? because the tail we got can be a stale value
       PLOG("Did NOT find the right range!!");
       return false;
     }
@@ -267,10 +268,12 @@ class NVME_batch_manager {
         if(idx == head) {
           batch_info_t bi;
           while(idx < tail) {
-            if(_is_complete(idx)) {
+            size_t idx2 = idx % BATCH_INFO_BUFFER_SIZE;
+            if(_is_complete(idx2)) {
               _buffer.pop(bi);
               _last_available_cmdid.store(bi.end_cmdid, boost::memory_order_relaxed);
               idx++;
+              PLOG("Popped batch info entry %lu", idx2);
             } 
             else break;
           }//while

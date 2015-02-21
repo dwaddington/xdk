@@ -13,8 +13,9 @@
 #include "nvme_device.h"
 
 //#define COUNT (1000000)
-#define COUNT (10240)
-#define NUM_QUEUES (2)
+#define COUNT (4)
+#define NUM_IO_PER_BATCH (8)
+#define NUM_QUEUES (1)
 #define SLAB_SIZE (512)
 #define NUM_BLOCKS (8)
 
@@ -53,84 +54,56 @@ class Read_thread : public Exokernel::Base_thread {
       //printf("drain_tsc = %lu\n", drain_tsc);
       prev_tsc = rdtsc();
 
-      _dev->io_queue(_qid)->callback_manager()->register_callback(&Notify_object::notify_callback, (void*)&nobj);
+      //_dev->io_queue(_qid)->callback_manager()->register_callback(&Notify_object::notify_callback, (void*)&nobj);
 
-      unsigned long threshold = _dev->io_queue(_qid)->queue_length() * 0.5;
-      PLOG("threshold = %lu (Q:%u)", threshold, _qid);
-      atomic_t send_id = 0;
-      uint16_t cid;
+
+      io_descriptor_t* io_desc = (io_descriptor_t *)malloc(NUM_IO_PER_BATCH * sizeof(io_descriptor_t));
+
       for(unsigned long i=0;i<COUNT;i++) {
 
-        PLOG("Processing to send (Q:%u) %lu...",_qid,send_id);
+        //PLOG("Processing to send (Q:%u) %lu...",_qid,send_id);
         cpu_time_t start = rdtsc();
-#if 0
-        cid = _dev->block_async_read(_qid,
-            _phys_array_local[i%SLAB_SIZE], 
-            (i*PAGE_SIZE)+((_qid-1)*COUNT), /* offset */
-            NUM_BLOCKS); /* num blocks */
-#endif
-        status_t st = _itf->async_read_block(
-            _virt_array_local[i%SLAB_SIZE], 
-            _phys_array_local[i%SLAB_SIZE], 
-            (i*PAGE_SIZE)+((_qid-1)*COUNT), /* offset */
-            NUM_BLOCKS,  /* num blocks */
-            _qid,
-            &cid 
-            );
 
-        PLOG("sent (Q:%u) %lu...",_qid,send_id);
+        Notify *notify = new Notify_Impl(i);
+        memset(io_desc, 0, NUM_IO_PER_BATCH * sizeof(io_descriptor_t));
+        //prepare io descriptors
+        for(unsigned long j = 0; j < NUM_IO_PER_BATCH; j++) {
+          io_desc[j].action = NVME_READ;
+          unsigned idx = (i*NUM_IO_PER_BATCH+j)*NUM_BLOCKS % SLAB_SIZE;
+          io_desc[j].buffer_virt = _virt_array_local[idx];
+          io_desc[j].buffer_phys = _phys_array_local[idx];
+          io_desc[j].offset = PAGE_SIZE * ( ((_qid-1)*COUNT*NUM_IO_PER_BATCH*NUM_BLOCKS) + (i*NUM_IO_PER_BATCH+j)*NUM_BLOCKS );
+          io_desc[j].num_blocks = NUM_BLOCKS;
+          io_desc[j].port = _qid;
+
+          PLOG("phys_addr[%lu][%lu] = 0x%lx, offset = %ld", i, j, io_desc[j].buffer_phys, io_desc[j].offset);
+        }
+
+        status_t st = _itf-> async_io_batch((io_request_t*)io_desc, NUM_IO_PER_BATCH, notify, 0, _qid);
+
+        PLOG("sent %d blocks in iteration = %lu (Q:%u) \n", NUM_IO_PER_BATCH*NUM_BLOCKS, i, _qid);
+
         /* collect stats */
         cpu_time_t delta = rdtsc() - start;
 
         if(sample_count > 0) {
           total_cycles += delta;
-          sample_count++;
+          sample_count += (NUM_IO_PER_BATCH*NUM_BLOCKS);
           mean_cycles = total_cycles/sample_count;
         } else {
           total_cycles = delta;
           mean_cycles = delta;
-          sample_count = 1;
+          sample_count = NUM_IO_PER_BATCH*NUM_BLOCKS;
         }
-
-#define INTERVAL 100
-        if(i % INTERVAL == 0) PLOG("(_QID:%u) i=%lu", _qid, i);     
-        if(i==COUNT) break;
-
-        cur_tsc = rdtsc();
-        diff_tsc = cur_tsc - prev_tsc;
-        /* wait for bursts of IOPs - don't do this too late */
-        if((i % threshold == 0) && (i > 0) || i == COUNT-1
-            || diff_tsc > drain_tsc
-          ) {
-          atomic_t c;
-          prev_tsc = cur_tsc;
-
-          nobj.set_when(cid); /* set wake up at send_id */
-        printf("\nSEM: set_when done (at send_id=%lu, cid=%d) 33333333333\n", send_id, cid);
-          nobj.wait();
-        printf("\n\nSEM: Done waiting 44444444444444\n\n");
-        }
-
-        PLOG("***********SEM: send_id = %lu, cid = %d\n", send_id, cid);
-        send_id++;
       }
+
       PLOG("all sends complete (Q:%u).", _qid);
-
-      // /* wait for last command */
-      // uint16_t c;
-      // while((c = nobj.wait()) != cid) {
-      // }
-      // PLOG("end c = %x",c);
-
 
       ioq->dump_stats();
 
       PLOG("(QID:%u) cycles mean/iteration %llu (%llu IOPS)\n",_qid, mean_cycles, (((unsigned long long)get_tsc_frequency_in_mhz())*1000000)/mean_cycles);
       cpu_time_t end_ts = rdtsc();
 
-#if 0
-      Memory::huge_shmem_free(virt_array[0],h);
-#endif
     }
 
 
@@ -224,6 +197,7 @@ class mt_tests {
         }
 
         PLOG("All read threads joined.");
+        sleep(5);
 
         getrusage(RUSAGE_SELF,&ru_end);
         gettimeofday(&tv_end, NULL);

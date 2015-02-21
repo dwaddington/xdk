@@ -108,13 +108,15 @@ class Notify {
 };
 
 class Notify_Impl : public Notify {
-
+  private:
+    unsigned _id;
   public:
-    Notify_Impl(){}
+    Notify_Impl():_id(0){}
+    Notify_Impl(unsigned id):_id(id){}
     ~Notify_Impl(){}
 
     void action() {
-      PLOG("notification called !!");
+      PLOG(" Notification called (id = %u) !!", _id);
     }
 };
 
