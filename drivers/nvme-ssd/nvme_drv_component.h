@@ -80,6 +80,15 @@ public:
                           );
 
 
+  status_t io_suspend(unsigned device,
+                      unsigned port
+                      );
+
+  status_t flush(unsigned nsid,
+                 unsigned device,
+                 unsigned port
+                 );
+
 
 };
 

@@ -67,6 +67,14 @@ public:
                                   unsigned port
                                   ) = 0;
 
+  virtual status_t io_suspend(unsigned device,
+                              unsigned port
+                              ) = 0;
+
+  virtual status_t flush(unsigned nsid,
+                         unsigned device,
+                         unsigned port
+                         ) = 0;
   /* TODO: add some nice async equivalents */
 
 };

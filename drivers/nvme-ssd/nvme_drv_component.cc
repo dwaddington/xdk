@@ -162,6 +162,33 @@ async_io_batch(io_request_t* io_requests,
 }
 
 
+status_t
+NVME_driver_component::
+io_suspend(unsigned device,
+           unsigned port
+          )
+{
+  const unsigned qid = port;
+
+  _dev->io_suspend(qid);
+
+  return S_OK;
+}
+
+
+
+status_t
+NVME_driver_component::
+flush(unsigned nsid, unsigned device, unsigned port)
+{
+  const unsigned qid = port;
+
+  _dev->flush(nsid, qid);
+
+  return S_OK;
+}
+
+
 
 extern "C" void * factory_createInstance(Component::uuid_t& component_id)
 {

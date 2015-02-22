@@ -471,6 +471,7 @@ public:
                                 Notify *notify
                                 );
 
+  status_t io_suspend();
 
   /** 
    * Issue flush command
@@ -479,6 +480,7 @@ public:
    * @return 
    */
   uint16_t issue_flush();
+
 };
 
 #endif // __NVME_QUEUE_H__
