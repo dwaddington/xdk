@@ -13,8 +13,8 @@
 #include "nvme_device.h"
 
 //#define COUNT (1000000)
-#define COUNT (4)
-#define NUM_IO_PER_BATCH (8)
+#define COUNT (1024)
+#define NUM_IO_PER_BATCH (64)
 #define NUM_QUEUES (1)
 #define SLAB_SIZE (512)
 #define NUM_BLOCKS (8)
@@ -56,15 +56,13 @@ class Read_thread : public Exokernel::Base_thread {
 
       //_dev->io_queue(_qid)->callback_manager()->register_callback(&Notify_object::notify_callback, (void*)&nobj);
 
-
       io_descriptor_t* io_desc = (io_descriptor_t *)malloc(NUM_IO_PER_BATCH * sizeof(io_descriptor_t));
 
       for(unsigned long i=0;i<COUNT;i++) {
 
-        //PLOG("Processing to send (Q:%u) %lu...",_qid,send_id);
         cpu_time_t start = rdtsc();
 
-        Notify *notify = new Notify_Async(i);
+        Notify *notify = new Notify_Async(i, true);
         memset(io_desc, 0, NUM_IO_PER_BATCH * sizeof(io_descriptor_t));
         //prepare io descriptors
         for(unsigned long j = 0; j < NUM_IO_PER_BATCH; j++) {
@@ -197,7 +195,7 @@ class mt_tests {
         }
 
         PLOG("All read threads joined.");
-        sleep(5);
+        sleep(30);
 
         getrusage(RUSAGE_SELF,&ru_end);
         gettimeofday(&tv_end, NULL);

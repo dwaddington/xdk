@@ -117,6 +117,7 @@ status_t NVME_queues_base::increment_submission_tail(queue_ptr_t * tptr) {
 
   /* check if the SQ is full */
   if(_sq_tail + 1 == _sq_head || _sq_tail == _queue_items && _sq_head == 0 ) {
+    PLOG("Queue %d is full !!", _queue_id);
     return Exokernel::E_FULL;
   }
 
@@ -228,10 +229,10 @@ Submission_command_slot * NVME_queues_base::next_sub_slot(signed * cmdid) {
   *cmdid = alloc_cmdid();
   assert(*cmdid > 0);
 
-  /* if we get here we know there is no overflow possible */
   status_t st;
   while ( (st = increment_submission_tail(&curr_ptr)) != Exokernel::S_OK );
 
+  PLOG("sub_slot = %u", curr_ptr);
   return &_sub_cmd[curr_ptr];
 }
 

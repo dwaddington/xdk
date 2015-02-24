@@ -273,8 +273,12 @@ class NVME_batch_manager {
             if(_is_complete(idx2)) {
               _buffer.pop(bi);
               _last_available_cmdid.store(bi.end_cmdid, boost::memory_order_relaxed);
-              //TODO: release notify object
-              //if(bi.notify) delete bi.notify;
+              // release notify object
+              if(bi.notify && bi.notify->free_notify_obj()) {
+                PLOG("Free the notify object at entry %lu", idx2);
+                delete bi.notify;
+              }
+
               idx++;
               PLOG("Popped batch info entry %lu", idx2);
             }

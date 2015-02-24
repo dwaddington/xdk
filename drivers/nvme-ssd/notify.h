@@ -106,21 +106,32 @@ class Notify {
   public:
     virtual void action() = 0;
     virtual void wait() = 0;
+    virtual bool free_notify_obj() = 0;
 };
 
 class Notify_Async : public Notify {
   private:
     unsigned _id;
+    bool _free_notify_obj;
   public:
-    Notify_Async():_id(0){}
-    Notify_Async(unsigned id):_id(id){}
+    Notify_Async():_id(0), _free_notify_obj(false){}
+    Notify_Async(unsigned id):_id(id), _free_notify_obj(false){}
+    Notify_Async(bool free_noitfy_obj):_id(0), _free_notify_obj(free_noitfy_obj){}
+    Notify_Async(unsigned id, bool free_noitfy_obj):_id(id), _free_notify_obj(free_noitfy_obj){}
     ~Notify_Async(){}
 
     void action() {
       PLOG(" Notification called (id = %u) !!", _id);
     }
 
-    void wait() {}
+    void wait() {
+      PERR(" Should not be called !!");
+      assert(false);
+    }
+
+    bool free_notify_obj() {
+      return _free_notify_obj;
+    }
 };
 
 class Notify_Sync : public Notify {
@@ -137,6 +148,10 @@ class Notify_Sync : public Notify {
 
     void wait() {
       _sem.wait();
+    }
+
+    bool free_notify_obj() {
+      return false;
     }
 };
 
