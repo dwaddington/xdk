@@ -144,7 +144,6 @@ void Exo_stack::send_udp_pkt_test(unsigned tid, unsigned stream) {
       start_time=rdtsc();
 
     udp_send_pkt((uint8_t *)pkt_v, pkt_p, PACKET_LEN, queue, false, PACKET_ALLOCATOR);
-    printf("%u sends a packet\n",tid);
     counter++;
 
     if (counter >= stats_num) {
