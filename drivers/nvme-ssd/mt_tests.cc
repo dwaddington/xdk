@@ -64,7 +64,7 @@ class Read_thread : public Exokernel::Base_thread {
         //PLOG("Processing to send (Q:%u) %lu...",_qid,send_id);
         cpu_time_t start = rdtsc();
 
-        Notify *notify = new Notify_Impl(i);
+        Notify *notify = new Notify_Async(i);
         memset(io_desc, 0, NUM_IO_PER_BATCH * sizeof(io_descriptor_t));
         //prepare io descriptors
         for(unsigned long j = 0; j < NUM_IO_PER_BATCH; j++) {
@@ -79,7 +79,7 @@ class Read_thread : public Exokernel::Base_thread {
           PLOG("phys_addr[%lu][%lu] = 0x%lx, offset = %ld", i, j, io_desc[j].buffer_phys, io_desc[j].offset);
         }
 
-        status_t st = _itf-> async_io_batch((io_request_t*)io_desc, NUM_IO_PER_BATCH, notify, 0, _qid);
+        status_t st = _itf->async_io_batch((io_request_t*)io_desc, NUM_IO_PER_BATCH, notify, 0, _qid);
 
         PLOG("sent %d blocks in iteration = %lu (Q:%u) \n", NUM_IO_PER_BATCH*NUM_BLOCKS, i, _qid);
 

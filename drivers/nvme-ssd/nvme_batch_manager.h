@@ -116,13 +116,13 @@ size_t RingBuffer<Element, Size>::increment(size_t idx) const
 
 /* data structure to record batch info */
 typedef struct {
-  uint16_t start_cmdid;
-  uint16_t end_cmdid;
-  uint16_t total;
-  uint16_t counter;
-  Notify *notify;
-  bool ready;
-  bool complete;
+  uint16_t  start_cmdid;
+  uint16_t  end_cmdid;
+  uint16_t  total;
+  uint16_t  counter;
+  Notify*   notify;
+  bool      ready;
+  bool      complete;
 
   void dump() {
     printf("start_cmd = %u", start_cmdid);
@@ -209,6 +209,7 @@ class NVME_batch_manager {
     bool is_available(uint16_t cmdid_start, uint16_t cmdid_end) {
       assert(cmdid_start <= cmdid_end);
       uint16_t val = _last_available_cmdid.load(boost::memory_order_relaxed);
+      //PLOG("last_available = %u, start_cmdid = %u, end_cmdid = %u", val, cmdid_start, cmdid_end);
       return (cmdid_start < val && cmdid_end < val
           || cmdid_start > val && cmdid_end > val
           );
@@ -217,7 +218,7 @@ class NVME_batch_manager {
     //check if we can safely reset the cmd id counter to 0
     //the cmd id counter can be reset only when the values after(greater than) the current counter are not being used
     //only called by producer
-    bool reset_cmdid_ok(uint16_t cmdid_counter) {
+    bool can_reset_cmdid(uint16_t cmdid_counter) {
       uint16_t val = _last_available_cmdid.load(boost::memory_order_relaxed);
       return (val <= cmdid_counter);
     }
@@ -272,9 +273,11 @@ class NVME_batch_manager {
             if(_is_complete(idx2)) {
               _buffer.pop(bi);
               _last_available_cmdid.store(bi.end_cmdid, boost::memory_order_relaxed);
+              //TODO: release notify object
+              //if(bi.notify) delete bi.notify;
               idx++;
               PLOG("Popped batch info entry %lu", idx2);
-            } 
+            }
             else break;
           }//while
         }

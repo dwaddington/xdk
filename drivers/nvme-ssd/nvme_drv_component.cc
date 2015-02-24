@@ -74,6 +74,7 @@ sync_read_block(void * buffer_virt, /* must be 512 byte aligned */
   return S_OK;
 }
 
+
 status_t 
 NVME_driver_component::
 sync_write_block(void * buffer_virt, /* must be 512 byte aligned */
@@ -101,47 +102,73 @@ sync_write_block(void * buffer_virt, /* must be 512 byte aligned */
   return S_OK;
 }
 
-/*async apis*/
 
+//new sync I/O
 status_t
 NVME_driver_component::
-async_read_block(void * buffer_virt, /* must be 512 byte aligned */
-                addr_t buffer_phys,
-                off_t lba,          /* store offset */
-                size_t num_blocks,  /* each block is 512 bytes */
-                unsigned port,      /* device port */
-                uint16_t *cid
+sync_read_block(io_request_t io_request,
+                unsigned device,
+                unsigned port
                 )
 {
   const unsigned qid = port; /* do we want to change IBlockDevice? */
+  Notify_Sync nobj;
+  async_read_block(io_request, (notify_t)&nobj, device, port);
 
-  Notify_object nobj;
+  nobj.wait();
 
-  *cid = _dev->block_async_read(qid,
-                                        buffer_phys,
-                                        lba,
-                                        num_blocks); /* num blocks */
   return S_OK;
 }
 
 status_t
 NVME_driver_component::
-async_write_block(void * buffer_virt, /* must be 512 byte aligned */
-                 addr_t buffer_phys,
-                 off_t lba,          /* logical block offset */
-                 size_t num_blocks,  /* each block is 512 bytes */
-                 unsigned port,       /* device port */
-                 uint16_t *cid
-                 )
+sync_write_block(io_request_t io_request,
+                 unsigned device,
+                 unsigned port
+                )
 {
   const unsigned qid = port; /* do we want to change IBlockDevice? */
+  Notify_Sync nobj;
+  async_write_block(io_request, (notify_t)&nobj, device, port);
 
-  Notify_object nobj;
+  nobj.wait();
 
-  *cid = _dev->block_async_write(qid,
-                                         buffer_phys,
-                                         lba,
-                                         num_blocks); /* num blocks */
+  return S_OK;
+}
+
+/*async apis*/
+
+status_t
+NVME_driver_component::
+async_read_block(io_request_t io_request,
+                notify_t notify,
+                unsigned device,
+                unsigned port
+                )
+{
+  const unsigned qid = port;
+
+  io_descriptor_t* io_desc = (io_descriptor_t*)io_request;
+  io_desc->action = NVME_READ;
+  _dev->async_io_batch(qid, io_desc, 1, (Notify*)notify);
+
+  return S_OK;
+}
+
+status_t
+NVME_driver_component::
+async_write_block(io_request_t io_request,
+                  notify_t notify,
+                  unsigned device,
+                  unsigned port
+                 )
+{
+  const unsigned qid = port;
+
+  io_descriptor_t* io_desc = (io_descriptor_t*)io_request;
+  io_desc->action = NVME_WRITE;
+  _dev->async_io_batch(qid, io_desc, 1, (Notify*)notify);
+
   return S_OK;
 }
 

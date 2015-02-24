@@ -148,8 +148,15 @@ public:
     return next_id;
   }
 
+  uint16_t next_cmdid(uint16_t length) {
+    assert(length < 0xffff);
+    uint16_t next_id = _cmdid_counter + length;
+    if( unlikely(next_id == 0 || next_id < _cmdid_counter) ) next_id++;
+    return next_id;
+  }
+
   void reset_cmdid() {
-    while( !(_batch_manager->reset_cmdid_ok(_cmdid_counter)) );
+    while( !(_batch_manager->can_reset_cmdid(_cmdid_counter)) );
     _cmdid_counter = 0;
   }
 

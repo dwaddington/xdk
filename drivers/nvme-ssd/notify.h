@@ -105,18 +105,38 @@ public:
 class Notify {
   public:
     virtual void action() = 0;
+    virtual void wait() = 0;
 };
 
-class Notify_Impl : public Notify {
+class Notify_Async : public Notify {
   private:
     unsigned _id;
   public:
-    Notify_Impl():_id(0){}
-    Notify_Impl(unsigned id):_id(id){}
-    ~Notify_Impl(){}
+    Notify_Async():_id(0){}
+    Notify_Async(unsigned id):_id(id){}
+    ~Notify_Async(){}
 
     void action() {
       PLOG(" Notification called (id = %u) !!", _id);
+    }
+
+    void wait() {}
+};
+
+class Notify_Sync : public Notify {
+  private:
+    Semaphore _sem;
+
+  public:
+    Notify_Sync() {}
+    ~Notify_Sync() {}
+
+    void action() {
+      _sem.post();
+    }
+
+    void wait() {
+      _sem.wait();
     }
 };
 

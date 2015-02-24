@@ -40,6 +40,7 @@
 
 #include "nvme_drv_component.h"
 #include "tests.h"
+#include "mt_tests.cc"
 
 /* very basic test */
 void basic_test(IBlockDevice * itf)
@@ -50,20 +51,49 @@ void basic_test(IBlockDevice * itf)
   void * p = dev->alloc_dma_pages(1,&phys);
     
   memset(p,0xA,PAGE_SIZE);
-  
+
+//#define ORIG_SYNC_IO 
+#ifdef ORIG_SYNC_IO 
   itf->sync_write_block(p, /* must be 512 byte aligned */
                         phys, 
                         10, // lba
                         1,  /* each block is 512 bytes */
                         1); // queue
+#else
+  io_descriptor_t* io_desc = (io_descriptor_t *)malloc(sizeof(io_descriptor_t));
+  memset(io_desc, 0, sizeof(io_descriptor_t));
+  io_desc->action = NVME_WRITE;
+  io_desc->buffer_virt = p;
+  io_desc->buffer_phys = phys;
+  io_desc->offset = 10;
+  io_desc->num_blocks = 1;
+  io_desc->port = 1;
+   
+  itf->sync_write_block((io_request_t)io_desc, 0, 1);
+#endif
+
+  PLOG("======= DONE WRITE ========");
 
   memset(p,0,PAGE_SIZE);
 
+
+#ifdef ORIG_SYNC_IO 
   itf->sync_read_block(p, /* must be 512 byte aligned */
                        phys, 
                        10, // lba
                        1,  /* each block is 512 bytes */
                        1); // queue
+#else
+  memset(io_desc, 0, sizeof(io_descriptor_t));
+  io_desc->action = NVME_READ;
+  io_desc->buffer_virt = p;
+  io_desc->buffer_phys = phys;
+  io_desc->offset = 10;
+  io_desc->num_blocks = 1;
+  io_desc->port = 1;
+
+  itf->sync_read_block((io_request_t)io_desc, 0, 1);
+#endif
 
   hexdump(p,512);
 
@@ -74,7 +104,7 @@ int main()
 {
   Exokernel::set_thread_name("nvme_drv-test-client");
 
-  Component::IBase * comp = Component::load_component("nvme_drv.so.1",
+  Component::IBase * comp = Component::load_component("./nvme_drv.so.1",
                                                       NVME_driver_component::component_id());
 
   IBlockDevice * itf = (IBlockDevice *) comp->query_interface(IBlockDevice::iid());
@@ -82,6 +112,7 @@ int main()
   itf->init_device(0);
 
   basic_test(itf);
+  //(new mt_tests())->runTest(itf);
 
   itf->shutdown_device();
 

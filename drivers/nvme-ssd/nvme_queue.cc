@@ -778,17 +778,23 @@ uint16_t NVME_IO_queue::issue_async_io_batch(io_descriptor_t* io_desc,
 {
   batch_info_t bi;
   memset(&bi, 0, sizeof(batch_info_t));
+  assert(length > 0);
   assert(length < 0xffff); //otherwise, we run out of cmd ids. Keep it simple.
   // init the batch info block, and add it to the buffer
   // only one-time batch is considered now
   uint16_t start_cmdid = next_cmdid();
-  uint16_t end_cmdid = start_cmdid + length - 1;
+  uint16_t end_cmdid = next_cmdid(length);
+  //PLOG("start_cmdid = %u, end_cmdid = %u", start_cmdid, end_cmdid);
+
   if(end_cmdid < start_cmdid) { //handling wrap-around
     reset_cmdid();
     start_cmdid = next_cmdid();
-    end_cmdid = start_cmdid + length - 1;
+    end_cmdid = next_cmdid(length);
+  
+    //PLOG("Reset: start_cmdid = %u, end_cmdid = %u", start_cmdid, end_cmdid);
   }
   assert(end_cmdid >= start_cmdid);
+  
   //check availability
   while(!_batch_manager->is_available(start_cmdid, end_cmdid));
 

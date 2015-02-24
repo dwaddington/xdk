@@ -55,21 +55,27 @@ public:
                             unsigned port       /* device port */
                             );
 
-  /*async*/
-  status_t async_read_block(void * buffer_virt, /* must be 512 byte aligned */
-                           addr_t buffer_phys,
-                           off_t offset,       /* store offset */
-                           size_t num_blocks,  /* each block is 512 bytes */
-                           unsigned port,      /* device port */
-                           uint16_t *cid
+  status_t sync_read_block(io_request_t io_request,
+                           unsigned device,
+                           unsigned port
+                          );
+
+  status_t sync_write_block(io_request_t io_request,
+                            unsigned device,
+                            unsigned port
                            );
 
-  status_t async_write_block(void * buffer_virt, /* must be 512 byte aligned */
-                            addr_t buffer_phys,
-                            off_t offset,       /* store offset */
-                            size_t num_blocks,  /* each block is 512 bytes */
-                            unsigned port,      /* device port */
-                            uint16_t *cid
+
+  status_t async_read_block(io_request_t io_request,
+                            notify_t notify,
+                            unsigned device,
+                            unsigned port
+                           );
+
+  status_t async_write_block(io_request_t io_request,
+                             notify_t notify,
+                             unsigned device,
+                             unsigned port
                             );
 
   status_t async_io_batch(io_request_t* io_requests,
@@ -78,7 +84,6 @@ public:
                           unsigned device,
                           unsigned port
                           );
-
 
   status_t io_suspend(unsigned device,
                       unsigned port
