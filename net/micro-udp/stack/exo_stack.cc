@@ -1376,7 +1376,7 @@ void Exo_stack::udp_send_pkt(uint8_t *vaddr,
     iphdr->_ttl=0x3f; //TTL value
     iphdr->_chksum=0; //Hardware will do the IP checksum
     iphdr->_v_hl_tos=htons(0x4500); //ipv4 and ip header 20 bytes
-    iphdr->_proto=0x11; //udp  
+    iphdr->_proto=0x11; //udp 
 
     if (remaining_bytes <= MAX_IP_PAYLOAD) {
       if (need_fragment == false) {
@@ -1385,21 +1385,26 @@ void Exo_stack::udp_send_pkt(uint8_t *vaddr,
         // last fragment
         iphdr->_offset=htons(curr_offset);
       }
-      if (first_ip==true)
+      if (first_ip==true) {
         app_len = remaining_bytes - UDP_HLEN;
-      else
-        app_len = remaining_bytes;
-
+      }
+      else {
+        app_len = remaining_bytes;  
+      }
+      iphdr->_len=htons((uint16_t)(remaining_bytes + 20));
       remaining_bytes = 0;
     }
     else {
       remaining_bytes = remaining_bytes - MAX_IP_PAYLOAD;
       iphdr->_offset=htons(curr_offset|(1<<13)); // more fragments flag
       curr_offset += MAX_IP_PAYLOAD/8;
-      if (first_ip==true)
+      if (first_ip==true) {
         app_len = MAX_IP_PAYLOAD - UDP_HLEN;
-      else
+      }
+      else {
         app_len = MAX_IP_PAYLOAD;
+      }
+      iphdr->_len=htons((uint16_t)(MAX_IP_PAYLOAD + 20));
     }
 
     ethhdr = (struct eth_hdr *)network_hdr;

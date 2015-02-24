@@ -211,8 +211,8 @@ struct ip_reass_helper {
 struct pbuf {
   struct pbuf* next;
   uint8_t* pkt; 
-  int32_t ippayload_len; 
-  int32_t iphdr_len;
+  uint32_t ippayload_len; 
+  uint32_t iphdr_len;
   struct ip_reass_helper irh;
 
   /**
