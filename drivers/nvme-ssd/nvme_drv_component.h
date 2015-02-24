@@ -56,42 +56,42 @@ public:
                             );
 
   status_t sync_read_block(io_request_t io_request,
-                           unsigned device,
-                           unsigned port
+                           unsigned port,
+                           unsigned device
                           );
 
   status_t sync_write_block(io_request_t io_request,
-                            unsigned device,
-                            unsigned port
+                            unsigned port,
+                            unsigned device
                            );
 
 
   status_t async_read_block(io_request_t io_request,
                             notify_t notify,
-                            unsigned device,
-                            unsigned port
+                            unsigned port,
+                            unsigned device
                            );
 
   status_t async_write_block(io_request_t io_request,
                              notify_t notify,
-                             unsigned device,
-                             unsigned port
+                             unsigned port,
+                             unsigned device
                             );
 
   status_t async_io_batch(io_request_t* io_requests,
                           size_t length,
                           notify_t notify,
-                          unsigned device,
-                          unsigned port
+                          unsigned port,
+                          unsigned device
                           );
 
-  status_t io_suspend(unsigned device,
-                      unsigned port
+  status_t io_suspend(unsigned port,
+                      unsigned device
                       );
 
   status_t flush(unsigned nsid,
-                 unsigned device,
-                 unsigned port
+                 unsigned port,
+                 unsigned device
                  );
 
 

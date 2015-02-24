@@ -24,6 +24,12 @@ public:
                                    unsigned port      
                                    ) = 0;
   
+  //new sync read
+  virtual status_t sync_read_block(io_request_t io_request,
+                                   unsigned port,
+                                   unsigned device
+                                   ) = 0;
+
   /** 
    * Synchronously write a block of data
    * 
@@ -42,38 +48,40 @@ public:
                                     unsigned port       /* device port */
                                     ) = 0;
 
-  virtual status_t async_read_block(void * buffer_virt,
-                                   addr_t buffer_phys, 
-                                   off_t offset,      
-                                   size_t num_blocks, 
-                                   unsigned port,      
-                                   uint16_t *cid
-                                   ) = 0;
-
-  virtual status_t async_write_block(void * buffer_virt, /* must be 512 byte aligned */
-                                    addr_t buffer_phys, 
-                                    off_t offset,       /* store offset */
-                                    size_t num_blocks,  /* each block is 512 bytes */
-                                    unsigned port,      /* device port */
-                                    uint16_t *cid
+  virtual status_t sync_write_block(io_request_t io_request,
+                                    unsigned port,
+                                    unsigned device
                                     ) = 0;
 
+
+  /* async I/O operation*/
+  virtual status_t async_read_block(io_request_t io_request,
+                                    notify_t notify,
+                                    unsigned port,
+                                    unsigned device
+                                    ) = 0;
+
+  virtual status_t async_write_block(io_request_t io_request,
+                                    notify_t notify,
+                                    unsigned port,
+                                    unsigned device
+                                    ) = 0;
 
   /* async batch I/O operation*/
   virtual status_t async_io_batch(io_request_t* io_requests,
                                   size_t length,
                                   notify_t notify,
-                                  unsigned device,
-                                  unsigned port
+                                  unsigned port,
+                                  unsigned device
                                   ) = 0;
 
-  virtual status_t io_suspend(unsigned device,
-                              unsigned port
+  virtual status_t io_suspend(unsigned port,
+                              unsigned device
                               ) = 0;
 
   virtual status_t flush(unsigned nsid,
-                         unsigned device,
-                         unsigned port
+                         unsigned port,
+                         unsigned device
                          ) = 0;
   /* TODO: add some nice async equivalents */
 

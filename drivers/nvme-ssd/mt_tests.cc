@@ -79,7 +79,7 @@ class Read_thread : public Exokernel::Base_thread {
           PLOG("phys_addr[%lu][%lu] = 0x%lx, offset = %ld", i, j, io_desc[j].buffer_phys, io_desc[j].offset);
         }
 
-        status_t st = _itf->async_io_batch((io_request_t*)io_desc, NUM_IO_PER_BATCH, notify, 0, _qid);
+        status_t st = _itf->async_io_batch((io_request_t*)io_desc, NUM_IO_PER_BATCH, notify, _qid, 0);
 
         PLOG("sent %d blocks in iteration = %lu (Q:%u) \n", NUM_IO_PER_BATCH*NUM_BLOCKS, i, _qid);
 

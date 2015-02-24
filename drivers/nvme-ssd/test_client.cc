@@ -69,7 +69,7 @@ void basic_test(IBlockDevice * itf)
   io_desc->num_blocks = 1;
   io_desc->port = 1;
    
-  itf->sync_write_block((io_request_t)io_desc, 0, 1);
+  itf->sync_write_block((io_request_t)io_desc, 1, 0);
 #endif
 
   PLOG("======= DONE WRITE ========");
@@ -92,7 +92,7 @@ void basic_test(IBlockDevice * itf)
   io_desc->num_blocks = 1;
   io_desc->port = 1;
 
-  itf->sync_read_block((io_request_t)io_desc, 0, 1);
+  itf->sync_read_block((io_request_t)io_desc, 1, 0);
 #endif
 
   hexdump(p,512);
