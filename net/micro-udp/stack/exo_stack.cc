@@ -128,14 +128,14 @@ void Exo_stack::send_udp_pkt_test(unsigned tid, unsigned stream) {
   cpu_time_t start_time=0;
   cpu_time_t finish_time=0;
 
-  struct timespec interval;
-  interval.tv_sec = 0;
-  interval.tv_nsec = 1L;
+  //struct timespec interval;
+  //interval.tv_sec = 0;
+  //interval.tv_nsec = 1L;
 
   /* setting flow director signature */
   uint8_t * tmp = (uint8_t *)pkt_v;
-  tmp[7] = 0;
-  tmp[6] = 0xf & stream;
+  tmp[6] = 0;
+  tmp[7] = 0xf & stream;
 
   while (1) {
     //nanosleep(&interval, NULL);
@@ -144,7 +144,7 @@ void Exo_stack::send_udp_pkt_test(unsigned tid, unsigned stream) {
       start_time=rdtsc();
 
     udp_send_pkt((uint8_t *)pkt_v, pkt_p, PACKET_LEN, queue, false, PACKET_ALLOCATOR);
-
+    printf("%u sends a packet\n",tid);
     counter++;
 
     if (counter >= stats_num) {
