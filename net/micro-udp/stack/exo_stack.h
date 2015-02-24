@@ -155,7 +155,7 @@ public:
   void add_ip(char* myip);
   void parse_ip_format(char *s, uint8_t * ip);
   void send_pkt_test(unsigned queue);
-  void send_udp_pkt_test(unsigned queue);
+  void send_udp_pkt_test(unsigned queue, unsigned stream = 0);
   ip_addr_t* get_remote_ip() { return &remote_ip_addr; }
   INic * get_nic_component() { return _inic; }
   IMem * get_mem_component() { return _imem; }

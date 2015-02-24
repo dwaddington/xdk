@@ -65,9 +65,9 @@
 #include <arpa/inet.h>
 #include <common/cycles.h>
 
-void Exo_stack::send_udp_pkt_test(unsigned tid) {
+void Exo_stack::send_udp_pkt_test(unsigned tid, unsigned stream) {
 
-  enum { PACKET_LEN = 22 };
+  enum { PACKET_LEN = 64 };
 
 #if 0
   unsigned bytes_to_alloc = PACKET_LEN;
@@ -128,19 +128,31 @@ void Exo_stack::send_udp_pkt_test(unsigned tid) {
   cpu_time_t start_time=0;
   cpu_time_t finish_time=0;
 
+  struct timespec interval;
+  interval.tv_sec = 0;
+  interval.tv_nsec = 1L;
+
+  /* setting flow director signature */
+  uint8_t * tmp = (uint8_t *)pkt_v;
+  tmp[7] = 0;
+  tmp[6] = 0xf & stream;
+
   while (1) {
+    //nanosleep(&interval, NULL);
+    sleep(1);
     if (counter==0)
       start_time=rdtsc();
 
     udp_send_pkt((uint8_t *)pkt_v, pkt_p, PACKET_LEN, queue, false, PACKET_ALLOCATOR);
+
     counter++;
 
     if (counter >= stats_num) {
       finish_time=rdtsc();
-      printf("[NIC %u QUEUE %u] TX THROUGHPUT (UDP %u bytes) %llu PPS\n",
+      printf("[NIC %u TX %u] TX THROUGHPUT (UDP payload %u bytes) %llu PPS\n",
              _index,
              tid,
-             PACKET_LEN + 42,
+             PACKET_LEN,
              (((unsigned long long)counter) * cpu_freq) / (finish_time - start_time));
       counter = 0;
     }

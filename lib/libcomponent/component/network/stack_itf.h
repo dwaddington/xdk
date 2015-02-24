@@ -38,8 +38,11 @@
 #include "../base.h"
 #include "../interface.h"
 #include <net/udp.h>
-#include <connection.h>
-#include <actor.h>
+
+#ifdef DATAHAWK
+  #include <connection.h>
+  #include <actor.h>
+#endif
 
 using namespace Component;
 
