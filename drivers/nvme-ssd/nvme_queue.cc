@@ -788,11 +788,13 @@ uint16_t NVME_IO_queue::issue_async_io_batch(io_descriptor_t* io_desc,
   //PLOG("start_cmdid = %u, end_cmdid = %u", start_cmdid, end_cmdid);
 
   if(end_cmdid < start_cmdid) { //handling wrap-around
+    PLOG("start_cmdid = %u, end_cmdid = %u", start_cmdid, end_cmdid);
+
     reset_cmdid();
     start_cmdid = next_cmdid();
     end_cmdid = next_cmdid(length);
   
-    //PLOG("Reset: start_cmdid = %u, end_cmdid = %u", start_cmdid, end_cmdid);
+    PLOG("Reset: start_cmdid = %u, end_cmdid = %u", start_cmdid, end_cmdid);
   }
   assert(end_cmdid >= start_cmdid);
   

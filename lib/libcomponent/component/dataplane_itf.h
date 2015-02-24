@@ -27,7 +27,7 @@ public:
   //new sync read
   virtual status_t sync_read_block(io_request_t io_request,
                                    unsigned port,
-                                   unsigned device
+                                   unsigned device=0
                                    ) = 0;
 
   /** 
@@ -50,7 +50,7 @@ public:
 
   virtual status_t sync_write_block(io_request_t io_request,
                                     unsigned port,
-                                    unsigned device
+                                    unsigned device=0
                                     ) = 0;
 
 
@@ -58,13 +58,13 @@ public:
   virtual status_t async_read_block(io_request_t io_request,
                                     notify_t notify,
                                     unsigned port,
-                                    unsigned device
+                                    unsigned device=0
                                     ) = 0;
 
   virtual status_t async_write_block(io_request_t io_request,
                                     notify_t notify,
                                     unsigned port,
-                                    unsigned device
+                                    unsigned device=0
                                     ) = 0;
 
   /* async batch I/O operation*/
@@ -72,16 +72,16 @@ public:
                                   size_t length,
                                   notify_t notify,
                                   unsigned port,
-                                  unsigned device
+                                  unsigned device=0
                                   ) = 0;
 
   virtual status_t io_suspend(unsigned port,
-                              unsigned device
+                              unsigned device=0
                               ) = 0;
 
   virtual status_t flush(unsigned nsid,
                          unsigned port,
-                         unsigned device
+                         unsigned device=0
                          ) = 0;
   /* TODO: add some nice async equivalents */
 
