@@ -122,6 +122,18 @@ void Exo_stack::send_udp_pkt_test(unsigned tid, unsigned stream) {
 
   void * pkt_v = temp;
 
+
+  if (_imem->alloc((addr_t *)&temp, PACKET_ALLOCATOR, _index, rx_core[tid]) != Exokernel::S_OK) {
+    panic("PACKET_ALLOCATOR failed!\n");
+  }
+  assert(temp);
+
+  addr_t pkt_p1;
+  pkt_p1 = _imem->get_phys_addr(temp, PACKET_ALLOCATOR, _index);
+  assert(pkt_p1);
+
+  void * pkt_v1 = temp;
+
   unsigned queue = 2*tid+1;
 
   unsigned counter = 0;
@@ -133,17 +145,21 @@ void Exo_stack::send_udp_pkt_test(unsigned tid, unsigned stream) {
   //interval.tv_nsec = 1L;
 
   /* setting flow director signature */
-  uint8_t * tmp = (uint8_t *)pkt_v;
+  uint8_t * tmp = (uint8_t *)pkt_v1;
   tmp[6] = 0;
-  tmp[7] = 0xf & stream;
+  tmp[7] = 0xf & 1;
 
   while (1) {
     //nanosleep(&interval, NULL);
-    sleep(1);
+    //sleep(1);
     if (counter==0)
       start_time=rdtsc();
 
-    udp_send_pkt((uint8_t *)pkt_v, pkt_p, PACKET_LEN, queue, false, PACKET_ALLOCATOR);
+    if (counter % 2 == 0)
+      udp_send_pkt((uint8_t *)pkt_v, pkt_p, PACKET_LEN, queue, false, PACKET_ALLOCATOR);
+    else
+      udp_send_pkt((uint8_t *)pkt_v1, pkt_p1, PACKET_LEN, queue, false, PACKET_ALLOCATOR);
+
     counter++;
 
     if (counter >= stats_num) {
