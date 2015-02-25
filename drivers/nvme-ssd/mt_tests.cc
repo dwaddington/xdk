@@ -11,12 +11,13 @@
 
 #include "nvme_drv_component.h"
 #include "nvme_device.h"
+#include "nvme_types.h"
 
 //#define COUNT (1000000)
-#define COUNT (1024)
-#define NUM_IO_PER_BATCH (64)
+#define COUNT (128)
+#define IO_PER_BATCH (8)
 #define NUM_QUEUES (1)
-#define SLAB_SIZE (512)
+#define SLAB_SIZE (1024)
 #define NUM_BLOCKS (8)
 
 
@@ -33,15 +34,6 @@ class Read_thread : public Exokernel::Base_thread {
     {
       using namespace Exokernel;
 
-#if 0
-      /* set higher priority */
-      {
-        struct sched_param params;
-        params.sched_priority = sched_get_priority_max(SCHED_FIFO);   
-        pthread_setschedparam(pthread_self(), SCHED_FIFO, &params);
-      }
-#endif
-
       cpu_time_t start_ts = rdtsc();
       NVME_IO_queue * ioq = _dev->io_queue(_qid);
       PLOG("** READ THROUGHPUT AROUND Q:%p (_qid=%u)\n",(void *) ioq, _qid);
@@ -56,44 +48,48 @@ class Read_thread : public Exokernel::Base_thread {
 
       //_dev->io_queue(_qid)->callback_manager()->register_callback(&Notify_object::notify_callback, (void*)&nobj);
 
-      io_descriptor_t* io_desc = (io_descriptor_t *)malloc(NUM_IO_PER_BATCH * sizeof(io_descriptor_t));
+      io_descriptor_t* io_desc = (io_descriptor_t *)malloc(IO_PER_BATCH * sizeof(io_descriptor_t));
 
       for(unsigned long i=0;i<COUNT;i++) {
+
+        if(i%100 == 0) printf("count = %lu\n", i);
 
         cpu_time_t start = rdtsc();
 
         Notify *notify = new Notify_Async(i, true);
-        memset(io_desc, 0, NUM_IO_PER_BATCH * sizeof(io_descriptor_t));
+        memset(io_desc, 0, IO_PER_BATCH * sizeof(io_descriptor_t));
         //prepare io descriptors
-        for(unsigned long j = 0; j < NUM_IO_PER_BATCH; j++) {
+        for(unsigned long j = 0; j < IO_PER_BATCH; j++) {
           io_desc[j].action = NVME_READ;
-          unsigned idx = (i*NUM_IO_PER_BATCH+j)*NUM_BLOCKS % SLAB_SIZE;
+          unsigned idx = (i*IO_PER_BATCH+j)*NUM_BLOCKS % SLAB_SIZE;
           io_desc[j].buffer_virt = _virt_array_local[idx];
           io_desc[j].buffer_phys = _phys_array_local[idx];
-          io_desc[j].offset = PAGE_SIZE * ( ((_qid-1)*COUNT*NUM_IO_PER_BATCH*NUM_BLOCKS) + (i*NUM_IO_PER_BATCH+j)*NUM_BLOCKS );
+          io_desc[j].offset = PAGE_SIZE * ( ((_qid-1)*COUNT*IO_PER_BATCH*NUM_BLOCKS) + (i*IO_PER_BATCH+j)*NUM_BLOCKS );
           io_desc[j].num_blocks = NUM_BLOCKS;
           io_desc[j].port = _qid;
 
           PLOG("phys_addr[%lu][%lu] = 0x%lx, offset = %ld", i, j, io_desc[j].buffer_phys, io_desc[j].offset);
         }
 
-        status_t st = _itf->async_io_batch((io_request_t*)io_desc, NUM_IO_PER_BATCH, notify, _qid);
+        status_t st = _itf->async_io_batch((io_request_t*)io_desc, IO_PER_BATCH, notify, _qid);
 
-        PLOG("sent %d blocks in iteration = %lu (Q:%u) \n", NUM_IO_PER_BATCH*NUM_BLOCKS, i, _qid);
+        PLOG("sent %d blocks in iteration = %lu (Q:%u) \n", IO_PER_BATCH*NUM_BLOCKS, i, _qid);
 
         /* collect stats */
         cpu_time_t delta = rdtsc() - start;
 
         if(sample_count > 0) {
           total_cycles += delta;
-          sample_count += (NUM_IO_PER_BATCH*NUM_BLOCKS);
+          sample_count += (IO_PER_BATCH*NUM_BLOCKS);
           mean_cycles = total_cycles/sample_count;
         } else {
           total_cycles = delta;
           mean_cycles = delta;
-          sample_count = NUM_IO_PER_BATCH*NUM_BLOCKS;
+          sample_count = IO_PER_BATCH*NUM_BLOCKS;
         }
       }
+
+      _itf->io_suspend(_qid); //wait for IO completion
 
       PLOG("all sends complete (Q:%u).", _qid);
 
@@ -195,10 +191,17 @@ class mt_tests {
         }
 
         PLOG("All read threads joined.");
-        sleep(30);
+
+        //Wait for IO completion
+        //This is done inside each thread by calling io_suspend()
 
         getrusage(RUSAGE_SELF,&ru_end);
         gettimeofday(&tv_end, NULL);
+
+        unsigned io_size = (NVME::BLOCK_SIZE)*NUM_BLOCKS/1024; //xK
+        assert((NVME::BLOCK_SIZE)*NUM_BLOCKS % 1024 == 0);
+        uint64_t total_io = COUNT * IO_PER_BATCH * (io_size/4) * NUM_QUEUES;
+        PLOG("COUNT = %u, IO_PER_BATCH = %u, NUM_QUEUES = %u, total_io = %lu", (unsigned)COUNT, (unsigned)IO_PER_BATCH, (unsigned)NUM_QUEUES, total_io);
 
         double delta = ((ru_end.ru_utime.tv_sec - ru_start.ru_utime.tv_sec) * 1000000.0) +
           ((ru_end.ru_utime.tv_usec - ru_start.ru_utime.tv_usec));
@@ -207,10 +210,11 @@ class mt_tests {
         delta += ((ru_end.ru_stime.tv_sec - ru_start.ru_stime.tv_sec) * 1000000.0) +
           ((ru_end.ru_stime.tv_usec - ru_start.ru_stime.tv_usec));
 
-        float usec_seconds_for_count = delta/NUM_QUEUES;    
-        PLOG("Time for 1M 4K reads is: %.5g sec",usec_seconds_for_count / 1000000.0);
-        float usec_each = usec_seconds_for_count / ((float)COUNT);
-        PLOG("Rate: %.5f IOPS/sec", (1000000.0 / usec_each)/1000.0);
+        float usec_per_queue = delta/NUM_QUEUES;
+        PLOG("Time for %lu 4K reads is: %.5g sec", total_io, usec_per_queue / 1000000.0);
+        float usec_per_io = usec_per_queue * 1.0 / total_io;
+        PLOG("Rate: %.2f KIOPS", total_io*1.0 / (usec_per_queue/1000) );
+        printf("Rate: %.2f KIOPS\n", total_io*1.0 / (usec_per_queue/1000) );
 
         PLOG("Voluntary ctx switches = %ld",ru_end.ru_nvcsw - ru_start.ru_nvcsw);
         PLOG("Involuntary ctx switches = %ld",ru_end.ru_nivcsw - ru_start.ru_nivcsw);
@@ -219,10 +223,8 @@ class mt_tests {
         double gtod_delta = ((tv_end.tv_sec - tv_start.tv_sec) * 1000000.0) +
           ((tv_end.tv_usec - tv_start.tv_usec));
         double gtod_secs = (gtod_delta/NUM_QUEUES) / 1000000.0;
-        PLOG("gettimeofday delta %.2g sec (rate=%.2f KIOPS)",
-            gtod_secs,
-            1000.0 / gtod_secs);
-
+        PLOG("gettimeofday delta %.5g sec (rate=%.2f KIOPS)", gtod_secs, total_io*1.0 / (gtod_secs * 1000) );
+        printf("gettimeofday delta %.5g sec (rate=%.2f KIOPS)\n", gtod_secs, total_io*1.0 / (gtod_secs * 1000) );
       }
       freeMem();
     }

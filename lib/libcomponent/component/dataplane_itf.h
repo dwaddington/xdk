@@ -83,7 +83,6 @@ public:
                          unsigned port,
                          unsigned device=0
                          ) = 0;
-  /* TODO: add some nice async equivalents */
 
 };
 

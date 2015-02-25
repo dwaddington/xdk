@@ -5,7 +5,8 @@ SOURCES = cq_thread.cc nvme_command_admin.cc nvme_common.cc nvme_queue.cc \
 nvme_command.cc nvme_device.cc tests.cc nvme_drv_component.cc mt_tests.cc
 
 INCLUDES = -I$(XDK_BASE)/lib/libexo -I$(XDK_BASE)/lib/libcommon -I$(XDK_BASE)/lib/libcomponent
-CXXFLAGS += -g -O2 -fPIC -DCONFIG_BUILD_DEBUG $(INCLUDES)
+CXXFLAGS += -DCONFIG_BUILD_DEBUG
+CXXFLAGS += -g -O2 -fPIC $(INCLUDES)
 
 LIBS = -L$(XDK_BASE)/lib/libexo -L$(XDK_BASE)/lib/libcommon -L$(XDK_BASE)/lib/libcomponent -lcommon -lcomponent -lexo -lpthread -lrt -lnuma -ltinyxml 
 
