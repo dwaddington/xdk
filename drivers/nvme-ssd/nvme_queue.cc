@@ -58,19 +58,25 @@ NVME_queues_base::NVME_queues_base(NVME_device * dev, unsigned queue_id, unsigne
   _dev(dev),  _queue_id(queue_id),
   _sq_dma_mem(NULL), _sq_dma_mem_phys(0), 
   _cq_dma_mem(NULL), _cq_dma_mem_phys(0), 
+  _sq_head(0),
   _sq_tail(0),
   _cq_head(0),
   _cq_phase(1),  
-  _irq(irq)
+  _irq(irq),
+  _cmdid_counter(0)
 {
   //   static unsigned stride = NVME_CAP_STRIDE(_registers->cap);
   //   unsigned db_offset = NVME_OFFSET_COMPLETION_DB(cap,queue_id,stride);
   //   *(offset<uint32_t>(db_offset)) = p;
   
   /* allocate bitmap */
-  _bitmap = new Exokernel::Bitmap_tracker_threadsafe(queue_length);
+  _bitmap = new Exokernel::Bitmap_tracker_threadsafe(queue_length*4);
   assert(_bitmap);
   _bitmap->next_free(); // use first slot to avoid cmdid==0
+
+  /* allocate batch manager */
+  _batch_manager = new NVME_batch_manager();
+  assert(_batch_manager);
 
   _stat_mean_send_time_samples = 0;
   _stat_mean_send_time = 0;
@@ -96,6 +102,7 @@ NVME_queues_base::~NVME_queues_base()
 {
   /* delete bitmap */
   delete _bitmap;
+  delete _batch_manager;
 }
 
 
@@ -107,6 +114,12 @@ NVME_queues_base::~NVME_queues_base()
  * @return S_OK on success, E_FULL on full
  */
 status_t NVME_queues_base::increment_submission_tail(queue_ptr_t * tptr) {
+
+  /* check if the SQ is full */
+  if(_sq_tail + 1 == _sq_head || _sq_tail == _queue_items && _sq_head == 0 ) {
+    PLOG("Queue %d is full !!", _queue_id);
+    return Exokernel::E_FULL;
+  }
 
   *tptr = _sq_tail++;
 
@@ -149,16 +162,17 @@ Completion_command_slot * NVME_queues_base::get_next_completion()
   unsigned curr_head = _cq_head;
 
   if(_comp_cmd[curr_head].phase_tag != _cq_phase) {
-    PLOG("slot at head=%u is not phase changed",curr_head);
+    PLOG("slot at head=%u is not phase changed (phase=0x%x) (Q:%u)",curr_head, _comp_cmd[curr_head].phase_tag, _queue_id);
     return NULL;
   }
 
-  PLOG("get_next_completion looking at head=%u",curr_head);
+  PLOG("get_next_completion looking at head=%u (Q:%u)",curr_head, _queue_id);
 
-  PLOG("completion head: slot=%u phase=0x%x status=0x%x",
+  PLOG("completion head: slot=%u phase=0x%x status=0x%x (Q:%u)",
        curr_head,
        _comp_cmd[curr_head].phase_tag,
-       _comp_cmd[curr_head].status);
+       _comp_cmd[curr_head].status,
+       _queue_id);
 
 
   // if((_comp_cmd[curr_head].phase_tag != _cq_phase) ||
@@ -208,20 +222,17 @@ void NVME_queues_base::dump_queue_info() {
 }
 
 
-Submission_command_slot * NVME_queues_base::next_sub_slot(signed * slot_id) {
+Submission_command_slot * NVME_queues_base::next_sub_slot(signed * cmdid) {
 
   queue_ptr_t curr_ptr;
-  signed slot;
-  slot = _bitmap->next_free();
+  
+  *cmdid = alloc_cmdid();
+  assert(*cmdid > 0);
 
-  if(slot < 0) {
-    return NULL;
-  }
-  *slot_id = slot + 1;
+  status_t st;
+  while ( (st = increment_submission_tail(&curr_ptr)) != Exokernel::S_OK );
 
-  /* if we get here we know there is no overflow possible */
-  increment_submission_tail(&curr_ptr);
-
+  PLOG("sub_slot = %u", curr_ptr);
   return &_sub_cmd[curr_ptr];
 }
 
@@ -761,6 +772,72 @@ uint16_t NVME_IO_queue::issue_async_write(addr_t prp1,
   return slot_id;
 }
 
+uint16_t NVME_IO_queue::issue_async_io_batch(io_descriptor_t* io_desc,
+                                              uint64_t length,
+                                              Notify *notify
+                                              )
+{
+  batch_info_t bi;
+  memset(&bi, 0, sizeof(batch_info_t));
+  assert(length > 0);
+  assert(length < 0xffff); //otherwise, we run out of cmd ids. Keep it simple.
+  // init the batch info block, and add it to the buffer
+  // only one-time batch is considered now
+  uint16_t start_cmdid = next_cmdid();
+  uint16_t end_cmdid = next_cmdid(length);
+  //PLOG("start_cmdid = %u, end_cmdid = %u", start_cmdid, end_cmdid);
+
+  if(end_cmdid < start_cmdid) { //handling wrap-around
+    PLOG("start_cmdid = %u, end_cmdid = %u", start_cmdid, end_cmdid);
+
+    reset_cmdid();
+    start_cmdid = next_cmdid();
+    end_cmdid = next_cmdid(length);
+  
+    PLOG("Reset: start_cmdid = %u, end_cmdid = %u", start_cmdid, end_cmdid);
+  }
+  assert(end_cmdid >= start_cmdid);
+  
+  //check availability
+  while(!_batch_manager->is_available(start_cmdid, end_cmdid));
+
+  bi.start_cmdid = start_cmdid;
+  bi.end_cmdid = end_cmdid;
+  bi.total = length;
+  bi.counter = 0;
+  bi.notify = notify;
+  bi.ready = true;
+  bi.complete = false;
+
+  //push to the buffer
+  while( !(_batch_manager->push(bi)) );
+
+  //issue all IOs
+  uint16_t cmdid = 0;
+  for(int idx = 0; idx < length; idx++) {
+    io_descriptor_t* io_desc_ptr = io_desc + idx;
+    if(io_desc_ptr->action == NVME_READ) {
+      cmdid = issue_async_read(io_desc_ptr->buffer_phys, 
+                       io_desc_ptr->offset,
+                       io_desc_ptr->num_blocks);    
+    } else if (io_desc_ptr->action == NVME_WRITE) {
+      cmdid = issue_async_write(io_desc_ptr->buffer_phys, 
+                       io_desc_ptr->offset,
+                       io_desc_ptr->num_blocks);    
+    } else {
+      PERR("Unrecoganized Operaton !!");
+      assert(false);
+    }
+  }
+  assert(cmdid == bi.end_cmdid);
+}
+
+status_t NVME_IO_queue::io_suspend()
+{
+  while( !(_batch_manager->wasEmpty()) );
+
+  return Exokernel::S_OK;
+}
 
 uint16_t NVME_IO_queue::issue_flush() 
 {

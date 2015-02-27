@@ -38,18 +38,12 @@
 
 #include "nvme_device.h"
 #include "tests.h"
+#include "mt_tests.cc"
 
-#define COUNT (1000000)
-#define NUM_QUEUES (1)
-#define SLAB_SIZE (1000)
-#define NUM_BLOCKS (8)
-
-Exokernel::Pagemap pm;
 
 void basic_block_read(NVME_device * dev, off_t lba);
 void basic_block_write(NVME_device * dev, off_t lba);
 void flush_test(NVME_device * dev);
-
 
 
 int main(int argc, char * argv[])
@@ -78,6 +72,7 @@ int main(int argc, char * argv[])
 
 
   if(argc > 1) {
+#if 0
     NVME_INFO("****** Round1 : STARTING SINGLE BLOCK R/W TESTING ********\n");
     flush_test(dev);
     basic_block_write(dev,2);
@@ -93,9 +88,12 @@ int main(int argc, char * argv[])
       tbw.write_and_verify(lba,value);
     }
     NVME_INFO("****** Round2 : TESTING COMPLETE  ********\n");
-    
-  }
+#endif
 
+    NVME_INFO("****** Round3 : TESTING MULTI-THREADED ********\n");
+    (new mt_tests())->runTest(dev);
+    NVME_INFO("****** Round3 : TESTING COMPLETE - MULTI-THREADED ********\n");
+  }
 
 #if 0
   NVME_INFO("Issuing test read and write test...");

@@ -94,9 +94,8 @@ void panic(const char *format, ...) __attribute__((format(printf, 1, 2)));
 // Macros for performance optimization
 ///////////////////////////////////////////////////////////////////////////////
 
-//#define likely(x)    __builtin_expect (!!(x), 1)
-//#define unlikely(x)  __builtin_expect (!!(x), 0)
-
+#define likely(x)    __builtin_expect (!!(x), 1)
+#define unlikely(x)  __builtin_expect (!!(x), 0)
 
 /** 
  * Forward align a pointer

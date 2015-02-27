@@ -36,10 +36,12 @@
 #define __NVME_QUEUE_H__
 
 #include <exo/spinlocks.h>
+#include <common/utils.h>
 #include "nvme_registers.h"
 #include "nvme_command.h"
 #include "nvme_types.h"
 #include "cq_thread.h"
+#include "nvme_batch_manager.h"
 
 /*
   The maximum size for either an I/O Submission Queue or an I/O
@@ -59,6 +61,7 @@ class NVME_queues_base
 {
 protected:
   Exokernel::Bitmap_tracker_threadsafe * _bitmap;
+  NVME_batch_manager * _batch_manager;
   
 protected:
   enum { 
@@ -92,6 +95,8 @@ private:
   uint16_t  _sq_tail  __attribute__((aligned(8)));
   uint16_t  _cq_head  __attribute__((aligned(8)));
   uint16_t  _cq_phase __attribute__((aligned(8)));
+  volatile uint16_t  _sq_head  __attribute__((aligned(8))); /*get updated from completion command, which indicates the most recent SQ entry fetched*/
+  uint16_t _cmdid_counter;
 
   unsigned _irq;  
 
@@ -130,9 +135,38 @@ public:
 
   void setup_doorbells();
 
-  void release_slot(unsigned slot) {
-    status_t s = _bitmap->mark_free(slot);
-    assert(s==Exokernel::S_OK);
+  uint16_t alloc_cmdid() {
+    _cmdid_counter++;
+    if( unlikely(_cmdid_counter == 0) ) _cmdid_counter++;
+    return _cmdid_counter;
+  }
+
+  //used to check next available cmdid, but not really alloc the id
+  uint16_t next_cmdid() {
+    uint16_t next_id = _cmdid_counter + 1;
+    if( unlikely(next_id == 0) ) next_id = 1;
+    return next_id;
+  }
+
+  uint16_t next_cmdid(uint16_t length) {
+    assert(length < 0xffff);
+    uint16_t next_id = _cmdid_counter + length;
+    if( unlikely(next_id == 0 || next_id < _cmdid_counter) ) next_id++;
+    return next_id;
+  }
+
+  void reset_cmdid() {
+    while( !(_batch_manager->can_reset_cmdid(_cmdid_counter)) );
+    _cmdid_counter = 0;
+  }
+
+  void release_slot(uint16_t slot) {
+    //status_t s = _bitmap->mark_free(slot);
+    //assert(s==Exokernel::S_OK);
+  }
+
+  status_t update_batch_manager(uint16_t cmdid) {
+    return _batch_manager->update(cmdid);
   }
 
   unsigned queue_length() const {
@@ -439,6 +473,13 @@ public:
                              unsigned nsid=1);
 
 
+  uint16_t issue_async_io_batch(io_descriptor_t* io_desc,
+                                uint64_t length,
+                                Notify *notify
+                                );
+
+  status_t io_suspend();
+
   /** 
    * Issue flush command
    * 
@@ -446,6 +487,7 @@ public:
    * @return 
    */
   uint16_t issue_flush();
+
 };
 
 #endif // __NVME_QUEUE_H__

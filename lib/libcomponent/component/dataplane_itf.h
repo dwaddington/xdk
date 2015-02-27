@@ -24,6 +24,12 @@ public:
                                    unsigned port      
                                    ) = 0;
   
+  //new sync read
+  virtual status_t sync_read_block(io_request_t io_request,
+                                   unsigned port,
+                                   unsigned device=0
+                                   ) = 0;
+
   /** 
    * Synchronously write a block of data
    * 
@@ -42,7 +48,41 @@ public:
                                     unsigned port       /* device port */
                                     ) = 0;
 
-  /* TODO: add some nice async equivalents */
+  virtual status_t sync_write_block(io_request_t io_request,
+                                    unsigned port,
+                                    unsigned device=0
+                                    ) = 0;
+
+
+  /* async I/O operation*/
+  virtual status_t async_read_block(io_request_t io_request,
+                                    notify_t notify,
+                                    unsigned port,
+                                    unsigned device=0
+                                    ) = 0;
+
+  virtual status_t async_write_block(io_request_t io_request,
+                                    notify_t notify,
+                                    unsigned port,
+                                    unsigned device=0
+                                    ) = 0;
+
+  /* async batch I/O operation*/
+  virtual status_t async_io_batch(io_request_t* io_requests,
+                                  size_t length,
+                                  notify_t notify,
+                                  unsigned port,
+                                  unsigned device=0
+                                  ) = 0;
+
+  virtual status_t io_suspend(unsigned port,
+                              unsigned device=0
+                              ) = 0;
+
+  virtual status_t flush(unsigned nsid,
+                         unsigned port,
+                         unsigned device=0
+                         ) = 0;
 
 };
 
