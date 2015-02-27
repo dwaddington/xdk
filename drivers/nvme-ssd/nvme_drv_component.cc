@@ -103,75 +103,42 @@ sync_write_block(void * buffer_virt, /* must be 512 byte aligned */
 }
 
 
-//new sync I/O
+/* new sync I/O */
 status_t
 NVME_driver_component::
-sync_read_block(io_request_t io_request,
-                unsigned port,
-                unsigned device
-                )
+sync_io(io_request_t io_request,
+        unsigned port,
+        unsigned device
+       )
 {
   const unsigned qid = port; /* do we want to change IBlockDevice? */
   Notify_Sync nobj;
-  async_read_block(io_request, (notify_t)&nobj, port, device);
+  async_io(io_request, (notify_t)&nobj, port, device);
 
   nobj.wait();
 
   return S_OK;
 }
 
+/* async I/O */
 status_t
 NVME_driver_component::
-sync_write_block(io_request_t io_request,
-                 unsigned port,
-                 unsigned device
-                )
-{
-  const unsigned qid = port; /* do we want to change IBlockDevice? */
-  Notify_Sync nobj;
-  async_write_block(io_request, (notify_t)&nobj, port, device);
-
-  nobj.wait();
-
-  return S_OK;
-}
-
-/*async apis*/
-
-status_t
-NVME_driver_component::
-async_read_block(io_request_t io_request,
-                notify_t notify,
-                unsigned port,
-                unsigned device
-                )
+async_io(io_request_t io_request,
+         notify_t notify,
+         unsigned port,
+         unsigned device
+        )
 {
   const unsigned qid = port;
 
   io_descriptor_t* io_desc = (io_descriptor_t*)io_request;
-  io_desc->action = NVME_READ;
+  assert (io_desc->action == NVME_READ || io_desc->action == NVME_WRITE);
   _dev->async_io_batch(qid, io_desc, 1, (Notify*)notify);
 
   return S_OK;
 }
 
-status_t
-NVME_driver_component::
-async_write_block(io_request_t io_request,
-                  notify_t notify,
-                  unsigned port,
-                  unsigned device
-                 )
-{
-  const unsigned qid = port;
-
-  io_descriptor_t* io_desc = (io_descriptor_t*)io_request;
-  io_desc->action = NVME_WRITE;
-  _dev->async_io_batch(qid, io_desc, 1, (Notify*)notify);
-
-  return S_OK;
-}
-
+/* async I/O batch */
 status_t
 NVME_driver_component::
 async_io_batch(io_request_t* io_requests,
@@ -179,7 +146,7 @@ async_io_batch(io_request_t* io_requests,
                notify_t notify,
                unsigned port,
                unsigned device
-               )
+              )
 {
   const unsigned qid = port;
 
