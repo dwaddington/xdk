@@ -158,9 +158,9 @@ async_io_batch(io_request_t* io_requests,
 
 status_t
 NVME_driver_component::
-io_suspend(unsigned port,
-           unsigned device
-          )
+wait_io_completion(unsigned port,
+                   unsigned device
+                  )
 {
   const unsigned qid = port;
 

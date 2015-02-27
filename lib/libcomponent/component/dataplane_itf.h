@@ -92,16 +92,16 @@ public:
                                   ) = 0;
 
   /** 
-   * Suspend IO on device
+   * Wait for all I/O operations to complete
    * 
    * @param port Device port
    * @param device Device instance
    * 
    * @return S_OK
    */
-  virtual status_t io_suspend(unsigned port,
-                              unsigned device=0
-                              ) = 0;
+  virtual status_t wait_io_completion(unsigned port,
+                                      unsigned device=0
+                                     ) = 0;
 
   /** 
    * Flush IO device

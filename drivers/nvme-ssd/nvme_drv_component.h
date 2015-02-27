@@ -73,9 +73,9 @@ public:
                           unsigned device
                           );
 
-  status_t io_suspend(unsigned port,
-                      unsigned device
-                      );
+  status_t wait_io_completion(unsigned port,
+                              unsigned device
+                             );
 
   status_t flush(unsigned nsid,
                  unsigned port,
