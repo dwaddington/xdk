@@ -135,7 +135,7 @@ typedef struct {
 }__attribute__((aligned(64))) batch_info_t;
 
 
-#define BATCH_INFO_BUFFER_SIZE 32 
+#define BATCH_INFO_BUFFER_SIZE 128
 
 typedef RingBuffer<batch_info_t, BATCH_INFO_BUFFER_SIZE> batch_info_buffer_t;
 

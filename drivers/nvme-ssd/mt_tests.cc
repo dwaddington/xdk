@@ -14,9 +14,9 @@
 #include "nvme_types.h"
 
 //#define COUNT (1000000)
-#define COUNT (1024)
-#define IO_PER_BATCH (64)
-#define NUM_QUEUES (2)
+#define COUNT (40960)
+#define IO_PER_BATCH (32)
+#define NUM_QUEUES (1)
 #define SLAB_SIZE (2048)
 #define NUM_BLOCKS (8)
 
@@ -52,7 +52,7 @@ class Read_thread : public Exokernel::Base_thread {
 
       for(unsigned long i=0;i<COUNT;i++) {
 
-        if(i%100 == 0) printf("count = %lu (Q: %u)\n", i, _qid);
+        if(i%1000 == 0) printf("count = %lu (Q: %u)\n", i, _qid);
 
         cpu_time_t start = rdtsc();
 
@@ -168,10 +168,18 @@ class mt_tests {
       {
         Read_thread * thr[NUM_QUEUES];
 
+#define N_QUEUE_MAP 8
+        unsigned cq_map[N_QUEUE_MAP] = {4, 8, 12, 16, 20, 24, 28, 32};
+
         for(unsigned i=1;i<=NUM_QUEUES;i++) {
+          assert(NUM_QUEUES <= N_QUEUE_MAP);
+
+          printf("********** i = %u, cq_map = %u \n", i, cq_map[i-1]);
+
           thr[i-1] = new Read_thread(itf,
               i, //(2*(i-1))+1, /* qid */
-              i+3, //*2-1); //1,3,5,7 /* core for read thread */
+              cq_map[i-1],
+              //i+3, //*2-1); //1,3,5,7 /* core for read thread */
               phys_array[i-1],
               virt_array[i-1]
               );
