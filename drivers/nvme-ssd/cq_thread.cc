@@ -126,6 +126,8 @@ void* CQ_thread::entry(void* qb) {
       //assert(s == Exokernel::S_OK);
 #endif
 
+      /* update SQ head*/
+      _queues->update_sq_head(ccs);
       /* update batch info */
       s = _queues->update_batch_manager(ccs->command_id);
       assert(s == Exokernel::S_OK);

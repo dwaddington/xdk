@@ -14,10 +14,10 @@
 #include "nvme_types.h"
 
 //#define COUNT (1000000)
-#define COUNT (128)
-#define IO_PER_BATCH (8)
-#define NUM_QUEUES (1)
-#define SLAB_SIZE (1024)
+#define COUNT (1024)
+#define IO_PER_BATCH (64)
+#define NUM_QUEUES (2)
+#define SLAB_SIZE (2048)
 #define NUM_BLOCKS (8)
 
 
@@ -52,7 +52,7 @@ class Read_thread : public Exokernel::Base_thread {
 
       for(unsigned long i=0;i<COUNT;i++) {
 
-        if(i%100 == 0) printf("count = %lu\n", i);
+        if(i%100 == 0) printf("count = %lu (Q: %u)\n", i, _qid);
 
         cpu_time_t start = rdtsc();
 
@@ -212,6 +212,7 @@ class mt_tests {
 
         float usec_per_queue = delta/NUM_QUEUES;
         PLOG("Time for %lu 4K reads is: %.5g sec", total_io, usec_per_queue / 1000000.0);
+        printf("Time for %lu 4K reads is: %.5g sec\n", total_io, usec_per_queue / 1000000.0);
         float usec_per_io = usec_per_queue * 1.0 / total_io;
         PLOG("Rate: %.2f KIOPS", total_io*1.0 / (usec_per_queue/1000) );
         printf("Rate: %.2f KIOPS\n", total_io*1.0 / (usec_per_queue/1000) );
@@ -222,7 +223,7 @@ class mt_tests {
 
         double gtod_delta = ((tv_end.tv_sec - tv_start.tv_sec) * 1000000.0) +
           ((tv_end.tv_usec - tv_start.tv_usec));
-        double gtod_secs = (gtod_delta/NUM_QUEUES) / 1000000.0;
+        double gtod_secs = (gtod_delta) / 1000000.0;
         PLOG("gettimeofday delta %.5g sec (rate=%.2f KIOPS)", gtod_secs, total_io*1.0 / (gtod_secs * 1000) );
         printf("gettimeofday delta %.5g sec (rate=%.2f KIOPS)\n", gtod_secs, total_io*1.0 / (gtod_secs * 1000) );
       }

@@ -116,7 +116,9 @@ NVME_queues_base::~NVME_queues_base()
 status_t NVME_queues_base::increment_submission_tail(queue_ptr_t * tptr) {
 
   /* check if the SQ is full */
-  if(_sq_tail + 1 == _sq_head || _sq_tail == _queue_items && _sq_head == 0 ) {
+  uint16_t new_tail = _sq_tail + 1;
+  if( unlikely(new_tail >= _queue_items) ) new_tail -= _queue_items;
+  if( new_tail == _sq_head ) {
     PLOG("Queue %d is full !!", _queue_id);
     return Exokernel::E_FULL;
   }

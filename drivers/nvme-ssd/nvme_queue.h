@@ -165,6 +165,10 @@ public:
     //assert(s==Exokernel::S_OK);
   }
 
+  void update_sq_head(Completion_command_slot *ccs) {
+    _sq_head = ccs->get_sq_head();
+  }
+
   status_t update_batch_manager(uint16_t cmdid) {
     return _batch_manager->update(cmdid);
   }
@@ -291,7 +295,7 @@ class NVME_admin_queue : public NVME_queues_base
 
 private:
   enum { 
-    Admin_queue_len  = 8,
+    Admin_queue_len  = 32,
   };
 
   void ring_doorbell_single_completion();

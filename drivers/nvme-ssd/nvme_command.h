@@ -50,6 +50,7 @@ class Completion_command_slot : public nvme_comp_command_common
 {
 public:
   void * raw() const { return ((void *) this); }
+  uint16_t get_sq_head() const {return sq_hdptr;}
   void dump();
 };  
 
