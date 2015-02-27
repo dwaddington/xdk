@@ -89,7 +89,7 @@ class Read_thread : public Exokernel::Base_thread {
         }
       }
 
-      _itf->io_suspend(_qid); //wait for IO completion
+      _itf->wait_io_completion(_qid); //wait for IO completion
 
       PLOG("all sends complete (Q:%u).", _qid);
 
