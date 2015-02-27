@@ -1,4 +1,4 @@
-include ../../../../../tools/mk/global.mk
+include ../../../../mk/global.mk
 
 SOURCES = main.cc
 CXXFLAGS += -g -I$(SILICA_BASE)/lib/libexo

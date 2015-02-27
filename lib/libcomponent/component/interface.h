@@ -35,7 +35,8 @@
 #ifndef __COMPONENT_INTERFACE_H__
 #define __COMPONENT_INTERFACE_H__
 
-#include "types.h"
+#include <common/types.h>
+#include <common/cpu_mask.h>
 
 namespace Component
 {

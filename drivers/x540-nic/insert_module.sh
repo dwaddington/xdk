@@ -1,3 +1,3 @@
 #! /bin/bash
 
-sudo insmod ~/stash/silica/kernel/modules/parasite/pk.ko
+sudo insmod ~/xdk/kernel/modules/parasite/pk.ko

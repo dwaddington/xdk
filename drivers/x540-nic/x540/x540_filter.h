@@ -27,10 +27,10 @@
    in files containing the exception.  
 */
 
-
-
-
-
+/*
+  Author(s):
+  @author Jilong Kuang (jilong.kuang@samsung.com)
+*/
 
 #ifndef __NIC_FILTER_H__
 #define __NIC_FILTER_H__

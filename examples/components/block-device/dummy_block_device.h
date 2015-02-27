@@ -30,6 +30,47 @@ public:
                             unsigned port       /* device port */
                             );
 
+  //new sync read
+  status_t sync_read_block(io_request_t io_request,
+                           unsigned port,
+                           unsigned device=0
+                           ) { return S_OK; }
+
+  status_t sync_write_block(io_request_t io_request,
+                            unsigned port,
+                            unsigned device=0
+                            ) { return S_OK; }
+
+  status_t async_read_block(io_request_t io_request,
+                            notify_t notify,
+                            unsigned port,
+                            unsigned device=0
+                            ) { return S_OK; }
+
+  status_t async_write_block(io_request_t io_request,
+                             notify_t notify,
+                             unsigned port,
+                             unsigned device=0
+                             ) { return S_OK; }
+
+  /* async batch I/O operation*/
+  status_t async_io_batch(io_request_t* io_requests,
+                          size_t length,
+                          notify_t notify,
+                          unsigned port,
+                          unsigned device=0
+                          ) { return S_OK; }
+
+
+  status_t io_suspend(unsigned port,
+                      unsigned device=0
+                      ) { return S_OK; }
+
+  status_t flush(unsigned nsid,
+                 unsigned port,
+                 unsigned device=0
+                 ) { return S_OK; }
+
 };
 
 
