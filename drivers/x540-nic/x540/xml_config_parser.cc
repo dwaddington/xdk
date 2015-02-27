@@ -27,18 +27,10 @@
    in files containing the exception.  
 */
 
-
-
-
-
-
-
-
 /** 
  * @author Juan A. Colmenares <juan.col@samsung.com>
  * @date March 31, 2014.
  */
-
 
 #include "xml_config_parser.h" 
 #include <stdlib.h>
@@ -318,21 +310,6 @@ XML_config_parser::parse(const std::string& filename,
     throw Exokernel::Exception("Invalid value of 'channel_size'.");
   }
 
-  // EVICTION_PERIOD
-  TiXmlElement* eviction_period_elem = root_hdl.FirstChild("eviction_period").ToElement();
-  if (eviction_period_elem == NULL) {
-    throw Exokernel::Exception("Didn't specify EVICTION_PERIOD.");
-  }
-
-  if (verbose) {
-    std::cout << "EVICTION_PERIOD: " << eviction_period_elem->GetText() << std::endl;
-  }
-
-  unsigned eviction_period = str_to_num<unsigned>(eviction_period_elem->GetText());
-  if (eviction_period <= 0) {
-    throw Exokernel::Exception("Invalid value of 'eviction_period'.");
-  }
-
   // REQUEST_RATE
   TiXmlElement* request_rate_elem = root_hdl.FirstChild("request_rate").ToElement();
   if (request_rate_elem == NULL) {
@@ -447,6 +424,21 @@ XML_config_parser::parse(const std::string& filename,
     throw Exokernel::Exception("Invalid value of 'server_port'.");
   }
 
+  // CLIENT_PORT
+  TiXmlElement* client_port_elem = root_hdl.FirstChild("client_port").ToElement();
+  if (client_port_elem == NULL) {
+    throw Exokernel::Exception("Didn't specify CLIENT_PORT.");
+  }
+
+  if (verbose) {
+    std::cout << "CLIENT_PORT: " << client_port_elem->GetText() << std::endl;
+  }
+
+  unsigned client_port = str_to_num<unsigned>(client_port_elem->GetText());
+  if (client_port <= 0) {
+    throw Exokernel::Exception("Invalid value of 'client_port'.");
+  }
+
   // SERVER_IP
   for (unsigned i = 0; i < nic_num; i++) {
     char str[64];
@@ -464,6 +456,23 @@ XML_config_parser::parse(const std::string& filename,
     params.server_ip[i] = server_ip_elem->GetText();
   }
 
+  // CLIENT_IP
+  for (unsigned i = 0; i < nic_num; i++) {
+    char str[64];
+    __builtin_memset(str, 0, 64);
+    sprintf(str, "client_ip%u", i+1);
+    TiXmlElement* client_ip_elem = root_hdl.FirstChild(str).ToElement();
+    if (client_ip_elem == NULL) {
+      throw Exokernel::Exception("Didn't specify CLIENT_IP.");
+    }
+
+    if (verbose) {
+      std::cout << "CLIENT_IP: " << client_ip_elem->GetText() << std::endl;
+    }
+
+    params.client_ip[i] = client_ip_elem->GetText();
+  }
+
   params.nic_num = nic_num;
   params.channels_per_nic = channels_per_nic;
   params.cpus_per_nic = cpus_per_nic;
@@ -479,7 +488,6 @@ XML_config_parser::parse(const std::string& filename,
   params.ip_reass_num_per_core = ip_reass_num_per_core;
   params.udp_pcb_num_per_core = udp_pcb_num_per_core;
   params.channel_size = channel_size;
-  params.eviction_period = eviction_period;
   params.request_rate = request_rate;
   params.tx_threads_cpu_mask = tx_threads_cpu_mask;
   params.rx_threads_cpu_mask = rx_threads_cpu_mask;
@@ -488,4 +496,5 @@ XML_config_parser::parse(const std::string& filename,
   params.flex_byte_pos = flex_byte_pos;
   params.server_timestamp = server_timestamp;
   params.server_port = server_port;
+  params.client_port = client_port;
 }

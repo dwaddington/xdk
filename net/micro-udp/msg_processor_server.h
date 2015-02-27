@@ -27,19 +27,19 @@
    in files containing the exception.  
 */
 
-
+/*
+  Author(s):
+  @author Jilong Kuang (jilong.kuang@samsung.com)
+*/
 
 #ifndef __EXO_MSG_PROCESSOR_SERVER_H__
 #define __EXO_MSG_PROCESSOR_SERVER_H__
 
 #include "../msg_processor.h"
-#include "../../app/kvcache/job_desc.h"
 #include "tx_threads.h"
-#include <x540/evict_support.h>
 #include <x540/xml_config_parser.h>
 
 using namespace Exokernel;
-using namespace KVcache;
 
 namespace Exokernel
 {
@@ -92,9 +92,6 @@ namespace Exokernel
       for (unsigned i = 0; i < _channels_per_nic; i++) {
         _net_side_channel[i] = new Shm_channel_t(i + _index * _channels_per_nic, true, nic_index);
       }
-
-      _eviction_threshold = calculate_threshold(_channel_size, _channels_per_nic,
-                                                _request_rate, _eviction_period);
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////
@@ -109,57 +106,23 @@ namespace Exokernel
                      unsigned tid, 
                      unsigned core, 
                      bool& pkt_reuse) {
-      
-      /* allocate a new job descriptor */
-      void * temp;
-      assert(_imem);
-      if (_imem->alloc((addr_t *)&temp, JOB_DESC_ALLOCATOR, _index, core) != Exokernel::S_OK) {
-        panic("JOB_DESC_ALLOCATOR failed!\n");
-      }
-      assert(temp);
-
-      job_descriptor_t * jd = (job_descriptor_t *) temp;
-      __builtin_memset(jd, 0, sizeof(job_descriptor_t));
-
-      if (_server_timestamp > 0)
-        jd->ts_array[0] = rdtsc();  // timestamp before pushed to channel
-
-      /* populate the job descriptor */
       pbuf_t * pbuf_list = (pbuf_t *) data;
-      unsigned frag_number = pbuf_list->total_frames;
+      //unsigned frag_number = pbuf_list->total_frames;
 
-      struct ip_hdr * iphdr = (struct ip_hdr *)(pbuf_list->pkt + SIZEOF_ETH_HDR);
-      ip_addr_t src_ip;
-      ip_addr_copy(src_ip, iphdr->src);
-      struct udp_hdr *udphdr = (struct udp_hdr *)(pbuf_list->pkt + SIZEOF_ETH_IP_HLEN);
-      uint16_t src_port = ntohs(udphdr->src);
+      //struct ip_hdr * iphdr = (struct ip_hdr *)(pbuf_list->pkt + SIZEOF_ETH_HDR);
+      //ip_addr_t src_ip;
+      //ip_addr_copy(src_ip, iphdr->src);
+      //struct udp_hdr *udphdr = (struct udp_hdr *)(pbuf_list->pkt + SIZEOF_ETH_IP_HLEN);
+      //uint16_t src_port = ntohs(udphdr->src);
 
-      jd->protocol_frame = pbuf_list;
-      jd->client_ip_addr = src_ip;
-      jd->client_udp_port = src_port;
-      jd->num_frames = frag_number;
-      jd->evict = evict_needed(pbuf_list, 
-                               jd->num_frames_2_evict,
-                               _imem->get_total_avail(PACKET_ALLOCATOR, _index), 
-                               _eviction_threshold);
-
-      // For the Eviction Reactive Strategy we only evict the number of frames needed by the 
-      // ingress message. 
-      // Note that using the difference between the threshold and the available frames cause 
-      // eviction overshoot due to the lag (i.e., the difference keeps increasing arithmetically).
-      jd->num_frames_2_evict = frag_number; 
-      jd->core_id = core;
-
-      /* push the job descriptor into channel */
-      while (_net_side_channel[tid]->produce(jd) != E_SPMC_CIRBUFF_OK) {
-        _imem->free(jd, JOB_DESC_ALLOCATOR, _index);
+#if 1
+      /* push the packet into channel */
+      while (_net_side_channel[tid]->produce(pbuf_list) != E_SPMC_CIRBUFF_OK) {
         pkt_reuse = true;
         return E_FAIL;
       }
-
-      if (_server_timestamp > 1)
-        jd->ts_array[1] = rdtsc();   // timestamp after pushed to channel
-
+#endif
+      //_net_side_channel[tid]->dump();
       pkt_reuse = false;
       return S_OK;
     }

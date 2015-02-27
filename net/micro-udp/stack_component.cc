@@ -27,55 +27,39 @@
    in files containing the exception.  
 */
 
+/*
+  Author(s):
+  @author Jilong Kuang (jilong.kuang@samsung.com)
+*/
 
-
-
-#include <libexo.h>
-#include <network/nic_itf.h>
-#include <network/stack_itf.h>
-#include <network/memory_itf.h>
-#include <micro-udp/stack/exo_stack.h>
-#include "msg_processor_server.h"
-#include <x540/xml_config_parser.h>
-#include "../../app/kvblaster/trafgen/trafgen_xml_config_parser.h"
-#include "../../app/kvblaster/trafgen/msg_processor_client.h"
+#include "stack_component.h"
 
 /** 
  * Interface IStack implementation
  * 
  */
-class IStack_impl : public IStack
-{
-public:
-  unsigned _count;
-  INic * _nic;
-  Exo_stack **  _stack;
-  IMem * _mem;
-  unsigned _nic_num;
-  Config_params * _params;
-	KVBlaster::Trafgen_config_params * _trafgen_params;
+IStack_impl::IStack_impl() {
+  _count = 0;
+  component_t t = STACK_COMPONENT;
+  set_comp_type(t);
 
-public:
-  IStack_impl() : _count(0) {
-    component_t t = STACK_COMPONENT;
-    set_comp_type(t);
+  for (unsigned i = 0; i < MAX_INSTANCE; i++)
+    set_comp_state(STACK_INIT_STATE, i);
+}
 
-    for (unsigned i = 0; i < MAX_INSTANCE; i++)
-      set_comp_state(STACK_INIT_STATE, i);
-  }
+status_t
+IStack_impl::receive_packet(pkt_buffer_t p, size_t pktlen, unsigned device, unsigned queue) {
+  status_t t = (status_t) _stack[device]->ethernet_input((uint8_t *)p, pktlen, queue);
+  return t;
+}
 
-  status_t receive_packet(pkt_buffer_t p, size_t pktlen, unsigned device, unsigned queue) {
+void 
+IStack_impl::arp_output(ip_addr_t *ipdst_addr, unsigned device) {
+  _stack[device]->arp_output(ipdst_addr);
+} 
 
-    status_t t = (status_t) _stack[device]->ethernet_input((uint8_t *)p, pktlen, queue);
-
-    return t;
-  }
-
-  void arp_output(ip_addr_t *ipdst_addr, unsigned device) {
-    _stack[device]->arp_output(ipdst_addr);
-  } 
-
-  void udp_send_pkt(uint8_t *vaddr, addr_t paddr, unsigned udp_payload_len,
+void 
+IStack_impl::udp_send_pkt(uint8_t *vaddr, addr_t paddr, unsigned udp_payload_len,
                 bool recycle, unsigned allocator_id, unsigned device, unsigned queue) {
     _stack[device]->udp_send_pkt(vaddr, 
                                  paddr, 
@@ -83,109 +67,89 @@ public:
                                  queue, 
                                  recycle, 
                                  allocator_id);
+}
+
+int 
+IStack_impl::get_entry_in_arp_table(ip_addr_t* ip_addr, unsigned device) {
+  return _stack[device]->get_entry_in_arp_table(ip_addr); 
+}
+
+void 
+IStack_impl::udp_bind(ip_addr_t *ipaddr, uint16_t port, unsigned device) {
+  _stack[device]->udp_bind(ipaddr, port);
+}
+
+status_t 
+IStack_impl::bind(interface_t itf) {
+  assert(itf);
+  Interface_base * itf_base = (Interface_base *)itf;
+  switch (itf_base->get_comp_type()) {
+    case NIC_COMPONENT:
+         _nic = (INic *)itf;
+         break;
+    case MEM_COMPONENT:
+         _mem = (IMem *)itf;
+         break;
+    default:
+         printf("binding wrong component types!!!");
+         assert(0);
   }
+  
+  return Exokernel::S_OK;
+}
 
-  int get_entry_in_arp_table(ip_addr_t* ip_addr, unsigned device) {
-     _stack[device]->get_entry_in_arp_table(ip_addr);
-  }
+status_t
+IStack_impl::init(arg_t arg) {
+  assert(arg);
+  assert(_nic);
+  assert(_mem);
+  stack_arg_t * stack_arg = (stack_arg_t *) arg;
 
-  void udp_bind(ip_addr_t *ipaddr, uint16_t port, unsigned device) {
-    _stack[device]->udp_bind(ipaddr, port);
-  }
+  _params = (Config_params *) (stack_arg->params);
+  _nic_num = _params->nic_num;
 
-  status_t bind(interface_t itf) {
-    assert(itf);
-    Interface_base * itf_base = (Interface_base *)itf;
-    switch (itf_base->get_comp_type()) {
-      case NIC_COMPONENT:
-           _nic = (INic *)itf;
-           break;
-      case MEM_COMPONENT:
-           _mem = (IMem *)itf;
-           break;
-      defaulf:
-           printf("binding wrong component types!!!");
-           assert(0);
-    }
-    
-    return Exokernel::S_OK;
-  }
+  _stack = (Exo_stack **)malloc(_nic_num * sizeof(Exo_stack *));
+  
+  while (_mem->get_comp_state(0) < MEM_READY_STATE) { sleep(1); }
 
-  status_t init(arg_t arg) {
-    assert(arg);
-    assert(_nic);
-    assert(_mem);
-    stack_arg_t * stack_arg = (stack_arg_t *) arg;
+  for (unsigned i = 0; i < _nic_num; i++) {
+    while (_nic->get_comp_state(i) < NIC_TX_DONE_STATE) { sleep(1); }
 
-    _params = (Config_params *) (stack_arg->params);
-		if (stack_arg->app == TRAFGEN) {
-			_trafgen_params = (KVBlaster::Trafgen_config_params *) (stack_arg->app_params);
-		}
-    _nic_num = _params->nic_num;
-
-    _stack = (Exo_stack **)malloc(_nic_num * sizeof(Exo_stack *));
-    
-    while (_mem->get_comp_state(0) < MEM_READY_STATE) { sleep(1); }
-
-    for (unsigned i = 0; i < _nic_num; i++) {
-      while (_nic->get_comp_state(i) < NIC_TX_DONE_STATE) { sleep(1); }
-
-      /* Initialize msg_processor class based on server or client app */
-      Msg_processor * msg;
-      if (stack_arg->app == TERA_CACHE)
-        msg = new Msg_processor_server(i, _mem, this, _params);
-      else if (stack_arg->app == TRAFGEN) {
-				KVBlaster::Trafgen_config_params trafgen_params;
-				trafgen_params.client_id = _trafgen_params->key_prefix;;
-				trafgen_params.key_prefix = _trafgen_params->key_prefix;
-        msg = new Msg_processor_client(i, _mem, this, _params, _trafgen_params);
-			}
-      else 
-				panic("wrong stack app type");
-
-      /* Initialize micro UDP stack */
-      _stack[i] = new Exo_stack(this, _nic, _mem, i, msg, _params);
-
-      if (stack_arg->app == TERA_CACHE || stack_arg->app == TRAFGEN) msg->create_tx_threads(_stack[i]);
-
-      set_comp_state(STACK_READY_STATE, i);
-    }
-  }
-
-  void run() {
-    printf("Stack Component is up running...\n");
-  }  
-
-  status_t cpu_allocation(cpu_mask_t mask) {
-    //TODO
-    printf("%s Not implemented yet!\n",__func__);
-    return Exokernel::S_OK;
-  }
-
-};
-
-/** 
- * Definition of the component
- * 
- */
-class StackComponent : public Exokernel::Component_base,
-                     public IStack_impl
-{
-public:  
-  DECLARE_COMPONENT_UUID(0x51a5efbb,0xa76b,0x47a8,0x9fb8,0xe3fe,0x757e,0x155b);
-
-  void * query_interface(Exokernel::uuid_t& itf_uuid) {
-    if(itf_uuid == IStack::uuid()) {
-      add_ref(); // implicitly add reference
-      return (void *) static_cast<IStack *>(this);
+    /* Initialize msg_processor class based on server or client app */
+    Msg_processor * msg = NULL;
+    if (stack_arg->app == SERVER_APP) {
+      msg = new Msg_processor_server(i, _mem, this, _params);
     }
     else 
-      return NULL; // we don't support this interface
+      panic("wrong stack app type");
+
+    /* Initialize micro UDP stack */
+    _stack[i] = new Exo_stack(this, _nic, _mem, i, msg, _params);
+
+    if (stack_arg->app == SERVER_APP) msg->create_tx_threads(_stack[i]);
+
+    set_comp_state(STACK_READY_STATE, i);
   }
-};
+  return Exokernel::S_OK;
+}
 
+void
+IStack_impl::run() {
+  printf("Stack Component is up running...\n");
+}  
 
-extern "C" void * factory_createInstance()
+status_t
+IStack_impl::cpu_allocation(cpu_mask_t mask) {
+  //TODO
+  printf("%s Not implemented yet!\n",__func__);
+  return Exokernel::S_OK;
+}
+
+extern "C" void * factory_createInstance(Component::uuid_t& component_id)
 {
-  return static_cast<void*>(new StackComponent());
+  if(component_id == StackComponent::component_id()) {
+    printf("Creating 'StackComponent' component.\n");
+    return static_cast<void*>(new StackComponent());
+  }
+  else return NULL;
 }

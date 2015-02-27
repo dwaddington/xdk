@@ -1,4 +1,31 @@
 /*
+   Copyright (c) 2001-2004 Swedish Institute of Computer Science. 
+   All rights reserved. 
+   
+   Redistribution and use in source and binary forms, with or without modification, 
+   are permitted provided that the following conditions are met: 
+   
+   1. Redistributions of source code must retain the above copyright notice, 
+   this list of conditions and the following disclaimer. 
+   2. Redistributions in binary form must reproduce the above copyright notice, 
+   this list of conditions and the following disclaimer in the documentation 
+   and/or other materials provided with the distribution. 
+   3. The name of the author may not be used to endorse or promote products 
+   derived from this software without specific prior written permission. 
+   
+   THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS AND ANY EXPRESS OR IMPLIED 
+   WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
+   MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT 
+   SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, 
+   EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT 
+   OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
+   INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
+   CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING 
+   IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY 
+   OF SUCH DAMAGE.
+*/
+
+/*
    eXokernel Development Kit (XDK)
 
    Based on code by Samsung Research America Copyright (C) 2013
@@ -27,7 +54,10 @@
    in files containing the exception.  
 */
 
-
+/*
+  Author(s):
+  @author Jilong Kuang (jilong.kuang@samsung.com)
+*/
 
 #ifndef __EXO_STACK_H__
 #define __EXO_STACK_H__
@@ -38,8 +68,8 @@
 #include <network/memory_itf.h>
 #include <x540/driver_config.h>
 #include <x540/x540_types.h>
-#include <network_stack/protocol.h>
-#include "../../msg_processor.h"
+#include <net/udp.h>
+#include <net/msg_processor.h>
 #include <x540/xml_config_parser.h>
 
 using namespace Exokernel;
@@ -104,22 +134,28 @@ public:
 
     stats_num = _params->stats_num;
     client_rx_flow_num = _params->client_rx_flow_num;
-    assert(client_rx_flow_num == 4);
     server_port = _params->server_port;
+    remote_port = _params->client_port;
 
     _inic = inic;
     _istack = istack;
     _imem = imem;
     _index = index;
-    _msg_processor = msg;   
+    _msg_processor = msg;
+
+    std::string client_ip;
+    client_ip = _params->client_ip[index];
+    add_ip((char *)client_ip.c_str());
 
     init_param();
   }
 
   /* stack functions */
   void init_param();
+  void add_ip(char* myip);
+  void parse_ip_format(char *s, uint8_t * ip);
   void send_pkt_test(unsigned queue);
-  void send_udp_pkt_test(unsigned queue);
+  void send_udp_pkt_test(unsigned queue, unsigned stream = 0);
   ip_addr_t* get_remote_ip() { return &remote_ip_addr; }
   INic * get_nic_component() { return _inic; }
   IMem * get_mem_component() { return _imem; }
@@ -173,17 +209,6 @@ public:
    */
   void udp_send_pkt(uint8_t *vaddr, addr_t paddr, unsigned udp_payload_len, unsigned queue, 
                     bool recycle, unsigned allocator_id);
-
-  /**
-   * To send UDP packets for GET/GET_K reply. This function is application specific.
-   *
-   * @param app_hdr_vaddr Virtual address of the application header.
-   * @param app_hdr_paddr Physical address of the application header.
-   * @param app_hdr_len The length of the application header.
-   * @param pbuf_list The frame list for the object.
-   * @param queue The TX queue where the packets are sent.
-   */
-  void udp_send_get_reply(uint8_t *app_hdr_vaddr, addr_t app_hdr_paddr, uint32_t app_hdr_len, pbuf_t* pbuf_list, unsigned queue);
 };
 
 }

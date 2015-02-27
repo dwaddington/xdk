@@ -1,54 +1,43 @@
 <?xml version="1.0" ?>
 
 <!-- 
-    1. This config file contains major parameters for x540 driver and TeraCache app.
-       config.xml.tmpl is a sample file for beast server configuration.
+    1. This config file contains major parameters for x540 driver and server app.
 
-    2. The old driver_config.h is still needed for now. Please make sure the macros 
-       defined in driver_config.h match those defined in this file. 
-
-    3. All numbers should be configured carefully based on your target platform.
+    2. All numbers should be configured carefully based on your target platform.
        Make sure combined allocator quota does not exceed memory size.
 -->
 
 <x540_driver>
 
-
   <!-- MEMORY AND ALLOCATOR QUOTA -->
-  <shm_max_size>80</shm_max_size>                                  <!-- maximum size of shared memory in GB. -->
-  <frame_num_per_core>1024000</frame_num_per_core>
-  <jd_num_per_core>1024000</jd_num_per_core>
+  <shm_max_size>4</shm_max_size>                                  <!-- maximum size of shared memory in GB. -->
+  <frame_num_per_core>10240</frame_num_per_core>
+  <jd_num_per_core>1024</jd_num_per_core>
   <mbuf_num_per_core>10240</mbuf_num_per_core>
   <meta_data_num_per_core>10240</meta_data_num_per_core>
-  <pbuf_num_per_core>1024000</pbuf_num_per_core>
-  <net_header_num_per_core>1024000</net_header_num_per_core>
+  <pbuf_num_per_core>10240</pbuf_num_per_core>
+  <net_header_num_per_core>10240</net_header_num_per_core>
   <ip_reass_num_per_core>10240</ip_reass_num_per_core>
   <udp_pcb_num_per_core>1024</udp_pcb_num_per_core>
 
-
-
   <!-- PLATFORM AND DRIVER CONFIG -->
-  <channels_per_nic>5</channels_per_nic>                           <!-- same as in driver_config.h. -->
+  <channels_per_nic>4</channels_per_nic>                           <!-- same as in driver_config.h. -->
   <channel_size>1024</channel_size>                                <!-- same as in driver_config.h. -->                             
   <tx_desc_per_queue>512</tx_desc_per_queue>                       <!-- same as in driver_config.h. -->
   <rx_desc_per_queue>512</rx_desc_per_queue>                       <!-- same as in driver_config.h. -->
-  <nic_num>4</nic_num>                                             
-  <cpus_per_nic>16</cpus_per_nic>                                  
-  <rx_threads_cpu_mask>0001001001001001</rx_threads_cpu_mask>
-  <tx_threads_cpu_mask>0100100100100100</tx_threads_cpu_mask>
+  <nic_num>1</nic_num>                                             
+  <cpus_per_nic>8</cpus_per_nic>                                  
+  <rx_threads_cpu_mask>00001111</rx_threads_cpu_mask>
+  <tx_threads_cpu_mask>11110000</tx_threads_cpu_mask>
   <flex_byte_pos>24</flex_byte_pos>
-
-
 
   <!-- APPLICATION CONFIG -->
   <stats_num>1000000</stats_num>
-  <client_rx_flow_num>4</client_rx_flow_num>
-  <eviction_period>10</eviction_period>
+  <client_rx_flow_num>1</client_rx_flow_num>
+  <server_ip1>105.145.68.41</server_ip1>
   <server_port>11211</server_port>
-  <server_ip1>10.0.0.1</server_ip1>
-  <server_ip2>10.0.0.2</server_ip2>
-  <server_ip3>10.0.0.3</server_ip3>
-  <server_ip4>10.0.0.4</server_ip4>
+  <client_ip1>105.145.68.40</client_ip1>
+  <client_port>56788</client_port>
   <!-- 
     Expected peak request rate (in requests per second).
     Used to estimate evition threshold in the IXGBE driver (acting as memory manager) 
@@ -60,6 +49,5 @@
    SERVER_TIMESTAMP 2 (6 timestamps to breakdown in fine granularity)
   -->
   <server_timestamp>1</server_timestamp>
-
 
 </x540_driver>

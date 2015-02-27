@@ -27,18 +27,10 @@
    in files containing the exception.  
 */
 
-
-
-
-
-
-
-
 /** 
  * @author Juan A. Colmenares <juan.col@samsung.com>
  * @date March 31, 2014.
  */
-
 
 #ifndef __XML_CONFIG_PARSER_H__
 #define __XML_CONFIG_PARSER_H__
@@ -72,9 +64,11 @@ struct Config_params {
   unsigned flex_byte_pos;
   unsigned server_timestamp;
   unsigned server_port;
+  unsigned client_port;
   std::string tx_threads_cpu_mask;
   std::string rx_threads_cpu_mask;
   std::string server_ip[4];
+  std::string client_ip[4];
 };
 
 
