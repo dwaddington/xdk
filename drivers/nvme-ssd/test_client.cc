@@ -67,7 +67,6 @@ void basic_test(IBlockDevice * itf)
   io_desc->buffer_phys = phys;
   io_desc->offset = 10;
   io_desc->num_blocks = 1;
-  io_desc->port = 1;
    
   itf->sync_io((io_request_t)io_desc, 1, 0);
 #endif
@@ -90,7 +89,6 @@ void basic_test(IBlockDevice * itf)
   io_desc->buffer_phys = phys;
   io_desc->offset = 10;
   io_desc->num_blocks = 1;
-  io_desc->port = 1;
 
   itf->sync_io((io_request_t)io_desc, 1, 0);
 #endif
@@ -111,8 +109,8 @@ int main()
 
   itf->init_device(0);
 
-  basic_test(itf);
-  //(new mt_tests())->runTest(itf);
+  //basic_test(itf);
+  (new mt_tests())->runTest(itf);
 
   itf->shutdown_device();
 

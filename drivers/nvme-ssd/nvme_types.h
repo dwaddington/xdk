@@ -65,7 +65,6 @@ typedef struct {
   addr_t    buffer_phys;
   off_t     offset;
   size_t    num_blocks;
-  unsigned  port;
 }__attribute__((aligned(64))) io_descriptor_t;
 
 

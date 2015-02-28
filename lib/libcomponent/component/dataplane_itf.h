@@ -97,7 +97,7 @@ public:
    * @param port Device port
    * @param device Device instance
    * 
-   * @return S_OK
+   * @return S_OK on success.
    */
   virtual status_t wait_io_completion(unsigned port,
                                       unsigned device=0

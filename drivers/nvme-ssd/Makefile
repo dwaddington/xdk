@@ -8,7 +8,7 @@ INCLUDES = -I$(XDK_BASE)/lib/libexo -I$(XDK_BASE)/lib/libcommon -I$(XDK_BASE)/li
 #CXXFLAGS += -DCONFIG_BUILD_DEBUG
 CXXFLAGS += -g -O2 -fPIC $(INCLUDES)
 
-LIBS = -L$(XDK_BASE)/lib/libexo -L$(XDK_BASE)/lib/libcommon -L$(XDK_BASE)/lib/libcomponent -lcommon -lcomponent -lexo -lpthread -lrt -lnuma -ltinyxml 
+LIBS = -L$(XDK_BASE)/lib/libexo -L$(XDK_BASE)/lib/libcommon -L$(XDK_BASE)/lib/libcomponent -lcommon -lcomponent -lexo -lpthread -lrt -lnuma -ltinyxml -lboost_random
 
 RPATHS=-Wl,-rpath=$(XDK_BASE)/lib/libexo -Wl,-rpath=/usr/lib/x86_64-linux-gnu/ -Wl,-rpath=.
 
