@@ -232,7 +232,7 @@ Submission_command_slot * NVME_queues_base::next_sub_slot(signed * cmdid) {
   assert(*cmdid > 0);
 
   status_t st;
-  while ( (st = increment_submission_tail(&curr_ptr)) != Exokernel::S_OK );
+  NVME_LOOP( ((st = increment_submission_tail(&curr_ptr)) != Exokernel::S_OK), false);
 
   PLOG("sub_slot = %u", curr_ptr);
   return &_sub_cmd[curr_ptr];
@@ -801,7 +801,7 @@ uint16_t NVME_IO_queue::issue_async_io_batch(io_descriptor_t* io_desc,
   assert(end_cmdid >= start_cmdid);
   
   //check availability
-  while(!_batch_manager->is_available(start_cmdid, end_cmdid));
+  NVME_LOOP( (!_batch_manager->is_available(start_cmdid, end_cmdid)), false);
 
   bi.start_cmdid = start_cmdid;
   bi.end_cmdid = end_cmdid;
@@ -812,7 +812,7 @@ uint16_t NVME_IO_queue::issue_async_io_batch(io_descriptor_t* io_desc,
   bi.complete = false;
 
   //push to the buffer
-  while( !(_batch_manager->push(bi)) );
+  NVME_LOOP( (!(_batch_manager->push(bi))), false);
 
   //issue all IOs
   uint16_t cmdid = 0;
@@ -836,7 +836,7 @@ uint16_t NVME_IO_queue::issue_async_io_batch(io_descriptor_t* io_desc,
 
 status_t NVME_IO_queue::io_suspend()
 {
-  while( !(_batch_manager->wasEmpty()) );
+  NVME_LOOP( ( !(_batch_manager->wasEmpty()) ), false);
 
   return Exokernel::S_OK;
 }

@@ -37,6 +37,7 @@
 
 #include <exo/spinlocks.h>
 #include <common/utils.h>
+#include "nvme_common.h"
 #include "nvme_registers.h"
 #include "nvme_command.h"
 #include "nvme_types.h"
@@ -156,7 +157,7 @@ public:
   }
 
   void reset_cmdid() {
-    while( !(_batch_manager->can_reset_cmdid(_cmdid_counter)) );
+    NVME_LOOP( (!(_batch_manager->can_reset_cmdid(_cmdid_counter)) ), false);
     _cmdid_counter = 0;
   }
 
