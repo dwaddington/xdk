@@ -17,7 +17,6 @@
 #include "nvme_device.h"
 #include "nvme_types.h"
 
-//#define COUNT (1000000)
 #define COUNT (409600)
 #define IO_PER_BATCH (1)
 #define NUM_QUEUES (2)
@@ -39,24 +38,18 @@ class Read_thread : public Exokernel::Base_thread {
     {
       using namespace Exokernel;
 
-      cpu_time_t start_ts = rdtsc();
       NVME_IO_queue * ioq = _dev->io_queue(_qid);
       PLOG("** READ THROUGHPUT AROUND Q:%p (_qid=%u)\n",(void *) ioq, _qid);
 
       unsigned long long mean_cycles = 0;
       unsigned long long total_cycles = 0;
       unsigned long long sample_count = 0;
-      cpu_time_t prev_tsc, diff_tsc, cur_tsc;
-      const cpu_time_t drain_tsc = (unsigned long long)get_tsc_frequency_in_mhz() * 1000000UL;
-      //printf("drain_tsc = %lu\n", drain_tsc);
-      prev_tsc = rdtsc();
 
       io_descriptor_t* io_desc = (io_descriptor_t *)malloc(IO_PER_BATCH * sizeof(io_descriptor_t));
 
       Notify *notify = new Notify_Async(false);
 
 #ifdef RANDOM_IO
-      //boost::mt19937 rng;
       boost::random::random_device rng;
       boost::random::uniform_int_distribution<> rnd_page_offset(1, 32*1024*1024); //max 781,422,768 sectors
 #endif
@@ -90,6 +83,7 @@ class Read_thread : public Exokernel::Base_thread {
 
         PLOG("sent %d blocks (%u pages) in iteration = %lu (Q:%u) \n", IO_PER_BATCH*NUM_BLOCKS, IO_PER_BATCH*npages_per_io, i, _qid);
 
+#if 0
         /* collect stats */
         cpu_time_t delta = rdtsc() - start;
 
@@ -102,18 +96,17 @@ class Read_thread : public Exokernel::Base_thread {
           mean_cycles = delta;
           sample_count = IO_PER_BATCH*NUM_BLOCKS;
         }
+#endif
       }
-
       _itf->wait_io_completion(_qid); //wait for IO completion
-
-      cpu_time_t end_ts = rdtsc();
 
       PLOG("all sends complete (Q:%u).", _qid);
 
+#if 0
       ioq->dump_stats();
 
       PLOG("(QID:%u) cycles mean/iteration %llu (%llu IOPS)\n",_qid, mean_cycles, (((unsigned long long)get_tsc_frequency_in_mhz())*1000000)/mean_cycles);
-
+#endif
     }
 
 
@@ -178,6 +171,9 @@ class mt_tests {
     void runTest(IBlockDevice * itf) {
       //NVME_INFO("Issuing test read and write test...\n");
 
+      const cpu_time_t tsc_per_sec = (unsigned long long)get_tsc_frequency_in_mhz() * 1000000UL;
+      PLOG("tsc_per_sec = %lu", tsc_per_sec);
+
       allocMem();
 
       {
@@ -204,6 +200,7 @@ class mt_tests {
         struct timeval tv_start, tv_end;
         gettimeofday(&tv_start, NULL);
         getrusage(RUSAGE_SELF,&ru_start);
+        cpu_time_t start_tsc = rdtsc();
 
         for(unsigned i=1;i<=NUM_QUEUES;i++)
           thr[i-1]->start();
@@ -218,14 +215,18 @@ class mt_tests {
         //Wait for IO completion
         //This is done inside each thread by calling io_suspend()
 
+        cpu_time_t end_tsc = rdtsc();
         getrusage(RUSAGE_SELF,&ru_end);
         gettimeofday(&tv_end, NULL);
 
-        unsigned io_size_in_KB = (NVME::BLOCK_SIZE)*NUM_BLOCKS/1024; //xK
         assert((NVME::BLOCK_SIZE)*NUM_BLOCKS % 1024 == 0);
+        unsigned io_size_in_KB = (NVME::BLOCK_SIZE)*NUM_BLOCKS/1024; //xK
+        assert(io_size_in_KB % 4 == 0);
         uint64_t total_io = COUNT * IO_PER_BATCH * (io_size_in_KB/4) * NUM_QUEUES;
+        printf("**********************\n");
         printf("COUNT = %u, IO_PER_BATCH = %u, NUM_QUEUES = %u, total_io = %lu\n", (unsigned)COUNT, (unsigned)IO_PER_BATCH, (unsigned)NUM_QUEUES, total_io);
 
+        /*use getrusage*/
         double delta = ((ru_end.ru_utime.tv_sec - ru_start.ru_utime.tv_sec) * 1000000.0) +
           ((ru_end.ru_utime.tv_usec - ru_start.ru_utime.tv_usec));
 
@@ -234,19 +235,24 @@ class mt_tests {
           ((ru_end.ru_stime.tv_usec - ru_start.ru_stime.tv_usec));
 
         float usec_per_queue = delta/NUM_QUEUES;
-        printf("getrusage: Time for %lu 4K reads is: %.5g sec\n", total_io, usec_per_queue / 1000000.0);
         float usec_per_io = usec_per_queue * 1.0 / total_io;
-        printf("getrusage: Rate: %.2f KIOPS (%.2f usec per I/O)\n", total_io*1.0 / (usec_per_queue/1000), usec_per_io);
+        printf("getrusage: \n\tRate = %.2f KIOPS, Time = %.5g sec (%.2f usec per I/O)\n", total_io*1.0 / (usec_per_queue/1000), usec_per_queue / 1000000.0, usec_per_io);
 
         PLOG("Voluntary ctx switches = %ld",ru_end.ru_nvcsw - ru_start.ru_nvcsw);
         PLOG("Involuntary ctx switches = %ld",ru_end.ru_nivcsw - ru_start.ru_nivcsw);
         PLOG("Page-faults = %ld",ru_end.ru_majflt - ru_start.ru_majflt);
 
+        /*use gettimeofday*/
         double gtod_delta = ((tv_end.tv_sec - tv_start.tv_sec) * 1000000.0) +
           ((tv_end.tv_usec - tv_start.tv_usec));
         double gtod_secs = (gtod_delta) / 1000000.0;
-        printf("gettimeofday delta %.5g sec (rate=%.2f KIOPS)\n", gtod_secs, total_io*1.0 / (gtod_secs * 1000) );
+        printf("gettimeofday: \n\tRate = %.2f KIOPS, Time = %.5g sec (%.2f usec per I/O)\n", total_io*1.0 / (gtod_secs * 1000), gtod_secs, gtod_delta/total_io);
+
+        /*use rdtsc*/
+        double tsc_secs = (end_tsc - start_tsc)*1.0 / tsc_per_sec;
+        printf("rdtsc: \n\tRate = %.2f KIOPS, Time = %.5g sec (%.2f usec per I/O)\n", total_io*1.0 / (tsc_secs * 1000), tsc_secs, tsc_secs*1000000/total_io);
       }
+
       freeMem();
     }
 };
