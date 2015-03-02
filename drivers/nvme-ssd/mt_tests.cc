@@ -18,7 +18,7 @@
 #include "nvme_types.h"
 
 #define COUNT (10240000)
-//#define COUNT (1024)
+//#define COUNT (10240)
 #define IO_PER_BATCH (1)
 #define NUM_QUEUES (3)
 #define SLAB_SIZE (2048)
@@ -26,6 +26,7 @@
 
 #define TEST_RANDOM_IO
 #define TEST_IO_READ
+//#define VERIFY
 
 class Read_thread : public Exokernel::Base_thread {
   private:
@@ -142,25 +143,27 @@ class Read_thread : public Exokernel::Base_thread {
 #endif
     }
 
-    /*************************************************************
+    /********************************************************************
      * Verify correctness. We first write blocks(with marks) to SSD
-     * then read blocks for verification
-     *************************************************************/
+     * then read blocks for verification. 
+     * In particular, the callback is responsible for comparing content
+     ********************************************************************/
     class Notify_Verify : public Notify {
       private:
         void* _p;
-        char _content;
+        uint8_t _content;
         unsigned _size;
 
       public:
-        Notify_Verify(void* p, char content, unsigned size) : _p(p), _content(content),_size(size) {}
+        Notify_Verify(void* p, uint8_t content, unsigned size) : _p(p), _content(content),_size(size) {}
         ~Notify_Verify() {}
 
         void action() {
           //printf("t = %x%x\n",0xf & (_content >> 4), 0xf & _content);
           for(unsigned i = 0; i<_size; i++) {
-            //printf("%u: c = %x%x size=%u\n", i, 0xf & (((char*)_p)[i] >> 4), 0xf & ((char*)_p)[i], _size);
-            assert(((char*)_p)[i]==_content);
+            //if(((uint8_t*)_p)[i]!=_content)
+            //printf("%u: c = %x%x size=%u\n", i, 0xf & (((uint8_t*)_p)[i] >> 4), 0xf & ((uint8_t*)_p)[i], _size);
+            assert(((uint8_t*)_p)[i]==_content);
           }
         }
 
@@ -176,8 +179,8 @@ class Read_thread : public Exokernel::Base_thread {
     {
       using namespace Exokernel;
 
+      PLOG("** VERIFY CORRECTNESS FOR Q:%p (_qid=%u)\n",(void *) ioq, _qid);
       NVME_IO_queue * ioq = _dev->io_queue(_qid);
-      PLOG("** READ THROUGHPUT AROUND Q:%p (_qid=%u)\n",(void *) ioq, _qid);
 
 #define IO_PER_BATCH_FILL 32
       io_descriptor_t* io_desc = (io_descriptor_t *)malloc(IO_PER_BATCH_FILL * sizeof(io_descriptor_t));
@@ -224,7 +227,7 @@ class Read_thread : public Exokernel::Base_thread {
       boost::random::uniform_int_distribution<> rnd_page_offset(1, COUNT*IO_PER_BATCH_FILL); //max 781,422,768 sectors
 #endif
 
-      for(unsigned long i=0;i<COUNT;i++) {
+      for(unsigned long i=0;i<COUNT*IO_PER_BATCH_FILL;i++) {
 
         if(i%1000 == 0) printf("Read count = %lu (Q: %u)\n", i, _qid);
 
@@ -242,8 +245,6 @@ class Read_thread : public Exokernel::Base_thread {
         io_desc[0].offset = PAGE_SIZE * npages_per_io * ( ((_qid-1)*COUNT) + i );
 #endif
         io_desc[0].num_blocks = NUM_BLOCKS;
-
-        PLOG("phys_addr[%lu][%lu] = 0x%lx, offset = %ld", i, j, io_desc[0].buffer_phys, io_desc[0].offset);
 
         Notify *notify2 = new Notify_Verify(io_desc[0].buffer_virt, (io_desc[0].offset/PAGE_SIZE) & 0xff, NVME::BLOCK_SIZE * NUM_BLOCKS);
         status_t st = _itf->async_io_batch((io_request_t*)io_desc, 1, notify2, _qid);
@@ -271,8 +272,11 @@ class Read_thread : public Exokernel::Base_thread {
       str << "rt-client-qt-" << _qid;
       Exokernel::set_thread_name(str.str().c_str());
 
+#ifdef VERIFY
+      verification();
+#else
       read_throughput_test();
-      //verification();
+#endif
     }
 
 };
