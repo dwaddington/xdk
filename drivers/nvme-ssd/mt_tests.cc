@@ -17,10 +17,10 @@
 #include "nvme_device.h"
 #include "nvme_types.h"
 
-//#define COUNT (10240000)
-#define COUNT (1024)
+#define COUNT (10240000)
+//#define COUNT (1024)
 #define IO_PER_BATCH (1)
-#define NUM_QUEUES (1)
+#define NUM_QUEUES (3)
 #define SLAB_SIZE (2048)
 #define NUM_BLOCKS (8)
 
@@ -36,6 +36,30 @@ class Read_thread : public Exokernel::Base_thread {
     addr_t* _phys_array_local;
     void ** _virt_array_local;
 
+    class Notify_Async_Cnt : public Notify {
+      private:
+        unsigned _id;
+        bool _free_notify_obj;
+        uint64_t *_cnt;
+      public:
+        Notify_Async_Cnt(uint64_t *cnt) : _cnt(cnt), _id(0), _free_notify_obj(false) {}
+        ~Notify_Async_Cnt() {}
+
+        void wait() {
+          PERR(" Should not be called !!");
+          assert(false);
+        }
+
+        bool free_notify_obj() {
+          return _free_notify_obj;
+        }
+
+        void action() {
+          (*_cnt)++;
+          PLOG(" Notification called (id = %u) !!", _id);
+        }
+    };
+
     void read_throughput_test()
     {
       using namespace Exokernel;
@@ -49,7 +73,9 @@ class Read_thread : public Exokernel::Base_thread {
 
       io_descriptor_t* io_desc = (io_descriptor_t *)malloc(IO_PER_BATCH * sizeof(io_descriptor_t));
 
-      Notify *notify = new Notify_Async(false);
+      uint64_t counter = 0;
+      Notify *notify = new Notify_Async_Cnt(&counter);
+      //Notify *notify = new Notify_Async(false);
 
 #ifdef TEST_RANDOM_IO
       boost::random::random_device rng;
@@ -108,6 +134,7 @@ class Read_thread : public Exokernel::Base_thread {
 
       PLOG("all sends complete (Q:%u).", _qid);
 
+      printf("** Total 4K I/O = %lu (Q: %u)\n", counter * IO_PER_BATCH, _qid);
 #if 0
       ioq->dump_stats();
 
@@ -115,10 +142,36 @@ class Read_thread : public Exokernel::Base_thread {
 #endif
     }
 
-    /**
+    /*************************************************************
      * Verify correctness. We first write blocks(with marks) to SSD
      * then read blocks for verification
-     */
+     *************************************************************/
+    class Notify_Verify : public Notify {
+      private:
+        void* _p;
+        char _content;
+        unsigned _size;
+
+      public:
+        Notify_Verify(void* p, char content, unsigned size) : _p(p), _content(content),_size(size) {}
+        ~Notify_Verify() {}
+
+        void action() {
+          //printf("t = %x%x\n",0xf & (_content >> 4), 0xf & _content);
+          for(unsigned i = 0; i<_size; i++) {
+            //printf("%u: c = %x%x size=%u\n", i, 0xf & (((char*)_p)[i] >> 4), 0xf & ((char*)_p)[i], _size);
+            assert(((char*)_p)[i]==_content);
+          }
+        }
+
+        void wait() {}
+
+        bool free_notify_obj() {
+          return true;
+        }
+
+    };
+
     void verification()
     {
       using namespace Exokernel;
@@ -136,7 +189,6 @@ class Read_thread : public Exokernel::Base_thread {
 
         if(i%1000 == 0) printf("Write count = %lu (Q: %u)\n", i, _qid);
 
-        //Notify *notify = new Notify_Async(i, true);
         memset(io_desc, 0, IO_PER_BATCH_FILL * sizeof(io_descriptor_t));
         //prepare io descriptors
         unsigned npages_per_io = (NVME::BLOCK_SIZE)*NUM_BLOCKS/PAGE_SIZE;
@@ -155,13 +207,14 @@ class Read_thread : public Exokernel::Base_thread {
           PLOG("phys_addr[%lu][%lu] = 0x%lx, offset = %ld", i, j, io_desc[j].buffer_phys, io_desc[j].offset);
         }
 
-        //status_t st = _itf->async_io_batch((io_request_t*)io_desc, IO_PER_BATCH_FILL, notify, _qid);
+        status_t st = _itf->async_io_batch((io_request_t*)io_desc, IO_PER_BATCH_FILL, notify, _qid);
 
         PLOG("sent %d blocks (%u pages) in iteration = %lu (Q:%u) \n", IO_PER_BATCH_VEFIRY*NUM_BLOCKS, IO_PER_BATCH_VEFIRY*npages_per_io, i, _qid);
 
       }
       _itf->wait_io_completion(_qid); //wait for IO completion
       _itf->flush(1, _qid); //flush data
+      delete notify;
 
       printf("** All writes complete. start to read (Q:%u).\n", _qid);
 
@@ -200,7 +253,6 @@ class Read_thread : public Exokernel::Base_thread {
       }
       _itf->wait_io_completion(_qid); //wait for IO completion
       _itf->flush(1, _qid); //flush data
-
 
       free(io_desc);
     }

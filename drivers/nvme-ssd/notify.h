@@ -155,30 +155,4 @@ class Notify_Sync : public Notify {
     }
 };
 
-class Notify_Verify : public Notify {
-  private:
-    void* _p;
-    char _content;
-    unsigned _size;
-
-  public:
-    Notify_Verify(void* p, char content, unsigned size) : _p(p), _content(content),_size(size) {}
-    ~Notify_Verify() {}
-
-    void action() {
-//printf("t = %x%x\n",0xf & (_content >> 4), 0xf & _content);
-      for(unsigned i = 0; i<_size; i++) {
-//printf("%u: c = %x%x size=%u\n", i, 0xf & (((char*)_p)[i] >> 4), 0xf & ((char*)_p)[i], _size);
-        assert(((char*)_p)[i]==_content);
-      }
-    }
-
-    void wait() {}
-
-    bool free_notify_obj() {
-      return true;
-    }
-
-};
-
 #endif
