@@ -816,6 +816,7 @@ uint16_t NVME_IO_queue::issue_async_io_batch(io_descriptor_t* io_desc,
 
   //issue all IOs
   uint16_t cmdid = 0;
+  assert(io_desc);
   for(int idx = 0; idx < length; idx++) {
     io_descriptor_t* io_desc_ptr = io_desc + idx;
     if(io_desc_ptr->action == NVME_READ) {
@@ -834,7 +835,7 @@ uint16_t NVME_IO_queue::issue_async_io_batch(io_descriptor_t* io_desc,
   assert(cmdid == bi.end_cmdid);
 }
 
-status_t NVME_IO_queue::io_suspend()
+status_t NVME_IO_queue::wait_io_completion()
 {
   NVME_LOOP( ( !(_batch_manager->wasEmpty()) ), false);
 

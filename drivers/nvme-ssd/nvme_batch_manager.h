@@ -253,7 +253,7 @@ class NVME_batch_manager {
       }
       //we may reach here?? because the tail we got can be a stale value
       PLOG("Did NOT find the right range!!");
-      return false;
+      return true; //FIXME: flush command is not put in the manager
     }
 
     void _process_update_batch_info(size_t idx, size_t head, size_t tail) {

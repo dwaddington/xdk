@@ -250,14 +250,14 @@ public:
   }
 
 
-  status_t io_suspend(unsigned queue_id)
+  status_t wait_io_completion(unsigned queue_id)
   {
     if((queue_id > _num_io_queues)||(queue_id == 0)) {
       assert(0);
       return Exokernel::E_INVAL;
     }
     assert(_io_queues[queue_id - 1]);
-    return _io_queues[queue_id - 1]->io_suspend();
+    return _io_queues[queue_id - 1]->wait_io_completion();
   }
 
 

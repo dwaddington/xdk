@@ -483,7 +483,7 @@ public:
                                 Notify *notify
                                 );
 
-  status_t io_suspend();
+  status_t wait_io_completion();
 
   /** 
    * Issue flush command

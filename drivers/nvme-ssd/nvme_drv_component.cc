@@ -164,7 +164,7 @@ wait_io_completion(unsigned port,
 {
   const unsigned qid = port;
 
-  _dev->io_suspend(qid);
+  _dev->wait_io_completion(qid);
 
   return S_OK;
 }
