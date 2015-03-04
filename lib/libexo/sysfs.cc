@@ -261,18 +261,18 @@ Exokernel::Device_sysfs::
 }
 
 /** 
- * Allocate pages for DMA
+ * Allocate contiguous pages for DMA
  * 
  * @param num_pages Number of pages to allocate
  * @param phys_addr [out] physical address
  * @param numa_node NUMA node identifier
- * @param flags Additional mmap flags (e.g., VM_HUGEPAGE)
+ * @param flags Additional mmap flags
  * 
- * @return 
+ * @return Virtual address of allocated memory
  */
 void * 
 Exokernel::Device_sysfs::
-alloc_dma_pages(size_t num_pages, addr_t * phys_addr, unsigned numa_node, int flags) 
+alloc_dma_pages(size_t num_pages, addr_t * phys_addr, int numa_node, int flags) 
 {
   try {
 
@@ -318,17 +318,17 @@ alloc_dma_pages(size_t num_pages, addr_t * phys_addr, unsigned numa_node, int fl
       fd = open("/dev/parasite",O_RDWR);
       if(fd == -1)
         throw Exokernel::Fatal(__FILE__,__LINE__,"unable to open /dev/parasite");
-          
-        
+      
       p = mmap(NULL,
                num_pages * PAGE_SIZE, 
                PROT_READ | PROT_WRITE, // prot
-               MAP_SHARED | flags,     // flags
+               MAP_PRIVATE | flags,
                fd,
                paddr);
         
       if(p==MAP_FAILED) {
         close(fd);
+        PLOG("mmap failed. errno=0x%x",errno);
         throw Exokernel::Fatal(__FILE__,__LINE__,"mmap failed unexpectedly");
       }
       /* zero memory */
@@ -351,6 +351,99 @@ alloc_dma_pages(size_t num_pages, addr_t * phys_addr, unsigned numa_node, int fl
   catch(...) {
     throw Exokernel::Fatal(__FILE__,__LINE__,
                            "unexpected condition in alloc_dma_pages");
+  }
+}
+
+/**
+ * Allocate contiguous physical memory and map to huge virtual pages
+ * Note: must allocate huge pages in the system with
+ * echo 100 > /proc/sys/vm/nr_hugepages
+ * 
+ * @param num_pages Number of pages (2MB each)
+ * @param phys_addr Returned physical address
+ * @param numa_node Numa node to allocate from
+ * @param flags Additional flags
+ * 
+ * @return Virtual address of allocated memory
+ */
+void * 
+Exokernel::Device_sysfs::
+alloc_dma_huge_pages(size_t num_pages, addr_t * phys_addr, int numa_node, int flags) 
+{
+  assert(!_fs_root_name.empty());
+
+  try {
+
+    /* first allocate physical pages */
+    std::fstream fs;
+    std::string n = _fs_root_name;
+    n += "/dma_page_alloc";
+ 
+    fs.open(n.c_str());
+
+    std::stringstream sstr;
+    /* we scale pages to 2MB huge pagers.  the kernel module works in 4K pages. */
+    sstr << (num_pages * 512)  << " " << numa_node << std::endl;
+    fs << sstr.str();
+
+    /* reset file pointer and read allocation results */
+    fs.seekg(0);
+    int owner, numa, order;
+    addr_t paddr;
+
+    try {
+      if(!(fs >> std::hex >> owner >> std::ws >> numa >> std::ws >> order >> std::ws >> std::hex >> paddr)) {
+        if(errno  == 34) 
+          PDBG("DMA allocation order invalid for kernel.");
+        else
+        PDBG("unknown error in dma_page_alloc (%d)",errno);
+      }
+    }
+    catch(...) {
+      PERR("unexpected data on (%s)",n.c_str());
+      throw Exokernel::Fatal(__FILE__,__LINE__,"unexpected data from dma_page_alloc - ran out of pages?");
+    }
+
+
+    assert(paddr > 0);
+    *phys_addr = paddr;
+
+    /* do mmap into virtual address space using parasitic module */
+    void * p;
+    {
+      int fd;
+      fd = open("/dev/parasite",O_RDWR);
+      if(fd == -1)
+        throw Exokernel::Fatal(__FILE__,__LINE__,"unable to open /dev/parasite");
+          
+      p = mmap(NULL,
+               num_pages * HUGE_PAGE_SIZE, 
+               PROT_READ | PROT_WRITE, // prot
+               MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | flags,     // flags
+               fd,
+               paddr);
+        
+      if(p==MAP_FAILED) {
+        close(fd);
+        PLOG("mmap with MAP_HUGETLB failed. errno=%d",errno);
+        throw Exokernel::Fatal(__FILE__,__LINE__,"huge page mmap failed unexpectedly");
+      }
+      assert(check_aligned(p,PAGE_SIZE));
+          
+      close(fd);
+    }
+
+    assert(p);
+    _dma_allocations[p] = new memory_mapping_t(paddr, num_pages * HUGE_PAGE_SIZE, flags);
+          
+    return p;
+  }
+  catch(Exokernel::Fatal e) {
+    throw e;
+  }
+  catch(...) {
+    throw Exokernel::Fatal(__FILE__,__LINE__,
+                           "unexpected condition in alloc_dma_huge_pages");
   }
 }
 
@@ -409,6 +502,21 @@ free_dma_pages(void * vptr)
   memory_mapping_t * mm = _dma_allocations[vptr];
   if(mm == NULL)
     throw Exokernel::Exception("free_dma_pages called with invalid parameter");
+
+  __free_dma_mapping(vptr, mm);
+}
+
+
+void 
+Exokernel::Device_sysfs::
+free_dma_huge_pages(void * vptr) 
+{
+  /* look up memory mapping */
+  memory_mapping_t * mm = _dma_allocations[vptr];
+  if(mm == NULL)
+    throw Exokernel::Exception("free_dma_huge_pages called with invalid parameter");
+
+  assert(mm->_length % MB(2) == 0);
 
   __free_dma_mapping(vptr, mm);
 }

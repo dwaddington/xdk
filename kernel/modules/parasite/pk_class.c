@@ -256,7 +256,7 @@ static ssize_t dma_alloc_store(struct device * dev,
   if((1UL << (order-1)) == num_pages) 
     order --;
 
-  /* check for limit of kernel */
+  /* check for limit of kernel, 4MB normally.  CMA may be an alternative  */
   if(order >= MAX_ORDER) {
     PLOG("dma_alloc_store requested (order=%u) more than kernel max order of (%d)",
          order,
@@ -318,7 +318,7 @@ static ssize_t dma_alloc_store(struct device * dev,
     UNLOCK_DMA_AREA_LIST;
 
     /* testing purposes */
-    PDBG("allocated %lu pages at %p (phys=%llx) (owner=%x)",
+    PDBG("allocated %lu pages at 0x%p (phys=%llx) (owner=%x)",
          num_pages,
          page_address(new_pages),
          virt_to_phys(page_address(new_pages)),
@@ -475,9 +475,9 @@ static ssize_t dma_free_store(struct device * dev,
       /* remove from list and free memory */
       if (free_all || (area->phys_addr == phys_addr)) {
 
-#if 0
-        PDBG("Freeing DMA page (0x%lx).",phys_addr);
 
+        PDBG("Freeing DMA page (0x%lx).",phys_addr);
+#if 0
         /* clear reserved bit */
         {
           struct page * page = area->p;

@@ -1,7 +1,8 @@
 include ../../mk/global.mk
 
 SOURCES := $(wildcard *.cc)
-CXXFLAGS += -g -fPIC -Wall $(XDK_INCLUDES)
+CXXFLAGS += -g -fPIC -Wall $(XDK_INCLUDES) 
+CXXFLAGS += -DCONFIG_BUILD_DEBUG
 
 all: libexo.a
 
