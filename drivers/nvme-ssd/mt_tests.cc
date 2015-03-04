@@ -17,8 +17,8 @@
 #include "nvme_device.h"
 #include "nvme_types.h"
 
-//#define COUNT (10240000
-#define COUNT (1024)
+#define COUNT (10240000)
+//#define COUNT (1024)
 #define IO_PER_BATCH (1)
 #define NUM_QUEUES (1)
 #define SLAB_SIZE (2048)
@@ -26,7 +26,7 @@
 
 #define TEST_RANDOM_IO
 #define TEST_IO_READ
-#define TEST_VERIFY
+//#define TEST_VERIFY
 
 class Read_thread : public Exokernel::Base_thread {
   private:
@@ -72,11 +72,14 @@ class Read_thread : public Exokernel::Base_thread {
       unsigned long long total_cycles = 0;
       unsigned long long sample_count = 0;
 
-      io_descriptor_t* io_desc = (io_descriptor_t *)malloc(IO_PER_BATCH * sizeof(io_descriptor_t));
+      //slab size should be large enough, so that there is no overlap
+      assert(SLAB_SIZE > 4*(ioq->queue_length()));
+      io_descriptor_t* io_desc = (io_descriptor_t *)malloc(SLAB_SIZE * sizeof(io_descriptor_t));
 
       uint64_t counter = 0;
       Notify *notify = new Notify_Async_Cnt(&counter);
       //Notify *notify = new Notify_Async(false);
+      unsigned io_req_idx = (_qid-1)*COUNT*IO_PER_BATCH;
 
 #ifdef TEST_RANDOM_IO
       boost::random::random_device rng;
@@ -89,30 +92,35 @@ class Read_thread : public Exokernel::Base_thread {
 
         cpu_time_t start = rdtsc();
 
-        //Notify *notify = new Notify_Async(i, true);
-        memset(io_desc, 0, IO_PER_BATCH * sizeof(io_descriptor_t));
         //prepare io descriptors
         unsigned npages_per_io = (NVME::BLOCK_SIZE)*NUM_BLOCKS/PAGE_SIZE;
-        for(unsigned long j = 0; j < IO_PER_BATCH; j++) {
-#ifdef TEST_IO_READ
-          io_desc[j].action = NVME_READ;
-#else /*WRITE*/
-          io_desc[j].action = NVME_WRITE;
-#endif
-          unsigned idx = (i*IO_PER_BATCH+j)*npages_per_io % SLAB_SIZE;
-          io_desc[j].buffer_virt = _virt_array_local[idx];
-          io_desc[j].buffer_phys = _phys_array_local[idx];
-#ifdef TEST_RANDOM_IO
-          io_desc[j].offset = PAGE_SIZE * rnd_page_offset(rng);
-#else
-          io_desc[j].offset = PAGE_SIZE * npages_per_io * ( ((_qid-1)*COUNT*IO_PER_BATCH) + (i*IO_PER_BATCH+j) );
-#endif
-          io_desc[j].num_blocks = NUM_BLOCKS;
+        io_descriptor_t* io_desc_base = io_desc + (io_req_idx%SLAB_SIZE);
+        assert((io_req_idx % SLAB_SIZE) + IO_PER_BATCH - 1 < SLAB_SIZE);
 
-          PLOG("phys_addr[%lu][%lu] = 0x%lx, offset = %ld", i, j, io_desc[j].buffer_phys, io_desc[j].offset);
+        for(unsigned long j = 0; j < IO_PER_BATCH; j++) {
+          io_descriptor_t* io_desc_ptr = io_desc_base + j;
+          memset(io_desc_ptr, 0, sizeof(io_descriptor_t));
+
+#ifdef TEST_IO_READ
+          io_desc_ptr->action = NVME_READ;
+#else /*WRITE*/
+          io_desc_ptr->action = NVME_WRITE;
+#endif
+          unsigned slab_idx_local = (i*IO_PER_BATCH+j)*npages_per_io%SLAB_SIZE;
+          //unsigned slab_idx_local = io_req_idx % SLAB_SIZE;
+          io_desc_ptr->buffer_virt = _virt_array_local[slab_idx_local];
+          io_desc_ptr->buffer_phys = _phys_array_local[slab_idx_local];
+#ifdef TEST_RANDOM_IO
+          io_desc_ptr->offset = PAGE_SIZE * rnd_page_offset(rng);
+#else
+          io_desc_ptr->offset = PAGE_SIZE * npages_per_io * io_req_idx;
+#endif
+          io_desc_ptr->num_blocks = NUM_BLOCKS;
+
+          io_req_idx++;
         }
 
-        status_t st = _itf->async_io_batch((io_request_t*)io_desc, IO_PER_BATCH, notify, _qid);
+        status_t st = _itf->async_io_batch((io_request_t*)io_desc_base, IO_PER_BATCH, notify, _qid);
 
         PLOG("sent %d blocks (%u pages) in iteration = %lu (Q:%u) \n", IO_PER_BATCH*NUM_BLOCKS, IO_PER_BATCH*npages_per_io, i, _qid);
 
@@ -131,6 +139,7 @@ class Read_thread : public Exokernel::Base_thread {
         }
 #endif
       }
+      assert( io_req_idx == _qid*COUNT*IO_PER_BATCH);
       _itf->wait_io_completion(_qid); //wait for IO completion
 
       PLOG("all sends complete (Q:%u).", _qid);
@@ -141,6 +150,8 @@ class Read_thread : public Exokernel::Base_thread {
 
       PLOG("(QID:%u) cycles mean/iteration %llu (%llu IOPS)\n",_qid, mean_cycles, (((unsigned long long)get_tsc_frequency_in_mhz())*1000000)/mean_cycles);
 #endif
+      free(io_desc);
+      delete notify;
     }
 
     /********************************************************************
