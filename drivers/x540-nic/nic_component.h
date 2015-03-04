@@ -32,44 +32,64 @@
   @author Jilong Kuang (jilong.kuang@samsung.com)
 */
 
-#ifndef __EXO_MSG_PROCESSOR_H__
-#define __EXO_MSG_PROCESSOR_H__
-
-#include "../lib/libexo/libexo.h"
+#include <libexo.h>
+#include <network/nic_itf.h>
+#include <network/stack_itf.h>
 #include <network/memory_itf.h>
- 
+#include "x540/x540_device.h"
+#include "x540/xml_config_parser.h"
+#include <component/base.h>
+
 using namespace Exokernel;
+using namespace Component;
 
-namespace Exokernel
+/** 
+ * Interface INic implementation
+ * 
+ */
+class INic_impl : public INic
 {
+  state_t _state;
+  IStack * _stack;
+  IMem * _mem;
+  Intel_x540_uddk_device **  _dev;
+  Config_params * _params;
+  unsigned _nic_num;
 
-  typedef void* obj_handle_t;
+public:
+  INic_impl();
 
-  class Msg_processor
-  {
+  status_t send_packets(pkt_buffer_t * p, size_t& cnt, unsigned device, unsigned queue);
 
-  public:
-    IMem * _imem;
-    IStack * _istack;
+  status_t send_packets_simple(pkt_buffer_t * p, size_t& cnt, unsigned device, unsigned queue);
 
-    Msg_processor(IMem * imem, IStack * istack) : _imem(imem), _istack(istack) {}
+  status_t bind(interface_t itf);
 
-    /** 
-     * To process network packet. The actual implementation of the method should be in 
-     * inherited class for server side and client side.
-     *
-     * @param data The packet data struct pointer.
-     * @param nic_id The NIC id.
-     * @param tid The local thread/channel id.
-     * @param core The global cpu id.
-     * @param flag The packet reuse flag.
-     * @return The return status.
-     */
-    virtual status_t process(void * data, unsigned nic_id, unsigned tid, unsigned core, bool& flag) = 0;
+  device_handle_t driver(unsigned device);
 
-    virtual void create_tx_threads(void * ptr) = 0;
-  };
+  status_t init(arg_t arg);
 
-}
+  void run();
 
-#endif
+  status_t cpu_allocation(cpu_mask_t mask);
+};
+
+/** 
+ * Definition of the component
+ * 
+ */
+class NicComponent : public Component::IBase,
+                     public INic_impl
+{
+public:  
+  DECLARE_COMPONENT_UUID(0x51a5efbb,0xa76b,0x47a8,0x9fb8,0xe3fe,0x757e,0x155b);
+
+  void * query_interface(Component::uuid_t& itf_uuid) {
+    if(itf_uuid == INic::iid()) {
+      add_ref(); // implicitly add reference
+      return (void *) static_cast<INic *>(this);
+    }
+    else 
+      return NULL; // we don't support this interface
+  }
+};

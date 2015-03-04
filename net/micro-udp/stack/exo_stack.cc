@@ -1,4 +1,31 @@
 /*
+   Copyright (c) 2001-2004 Swedish Institute of Computer Science. 
+   All rights reserved. 
+   
+   Redistribution and use in source and binary forms, with or without modification, 
+   are permitted provided that the following conditions are met: 
+   
+   1. Redistributions of source code must retain the above copyright notice, 
+   this list of conditions and the following disclaimer. 
+   2. Redistributions in binary form must reproduce the above copyright notice, 
+   this list of conditions and the following disclaimer in the documentation 
+   and/or other materials provided with the distribution. 
+   3. The name of the author may not be used to endorse or promote products 
+   derived from this software without specific prior written permission. 
+   
+   THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS AND ANY EXPRESS OR IMPLIED 
+   WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
+   MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT 
+   SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, 
+   EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT 
+   OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
+   INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
+   CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING 
+   IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY 
+   OF SUCH DAMAGE.
+*/
+
+/*
    eXokernel Development Kit (XDK)
 
    Based on code by Samsung Research America Copyright (C) 2013
@@ -27,29 +54,24 @@
    in files containing the exception.  
 */
 
-
-
-
-
-
 /*
   Author(s):
   @author Jilong Kuang (jilong.kuang@samsung.com)
 */
 
 #include "exo_stack.h"
-#include <network_stack/protocol.h>
 #include <x540/x540_types.h>
 #include <x540/x540_device.h>
 #include <arpa/inet.h>
-#include <exo/cycles.h>
+#include <common/cycles.h>
 
-void Exo_stack::send_udp_pkt_test(unsigned tid) {
+void Exo_stack::send_udp_pkt_test(unsigned tid, unsigned stream) {
 
-  enum { PACKET_LEN = 22 };
-  unsigned bytes_to_alloc = PACKET_LEN;
+  enum { PACKET_LEN = 64 };
 
 #if 0
+  unsigned bytes_to_alloc = PACKET_LEN;
+
   /* allocate pkt memory */
   size_t BLOCK_SIZE = bytes_to_alloc;
   size_t NUM_BLOCKS = 1;
@@ -100,25 +122,52 @@ void Exo_stack::send_udp_pkt_test(unsigned tid) {
 
   void * pkt_v = temp;
 
+
+  if (_imem->alloc((addr_t *)&temp, PACKET_ALLOCATOR, _index, rx_core[tid]) != Exokernel::S_OK) {
+    panic("PACKET_ALLOCATOR failed!\n");
+  }
+  assert(temp);
+
+  addr_t pkt_p1;
+  pkt_p1 = _imem->get_phys_addr(temp, PACKET_ALLOCATOR, _index);
+  assert(pkt_p1);
+
+  void * pkt_v1 = temp;
+
   unsigned queue = 2*tid+1;
 
   unsigned counter = 0;
   cpu_time_t start_time=0;
   cpu_time_t finish_time=0;
 
+  //struct timespec interval;
+  //interval.tv_sec = 0;
+  //interval.tv_nsec = 1L;
+
+  /* setting flow director signature */
+  uint8_t * tmp = (uint8_t *)pkt_v1;
+  tmp[6] = 0;
+  tmp[7] = 0xf & 1;
+
   while (1) {
+    //nanosleep(&interval, NULL);
+    //sleep(1);
     if (counter==0)
       start_time=rdtsc();
 
-    udp_send_pkt((uint8_t *)pkt_v, pkt_p, PACKET_LEN, queue, false, PACKET_ALLOCATOR);
+    if (counter % 2 == 0)
+      udp_send_pkt((uint8_t *)pkt_v, pkt_p, PACKET_LEN, queue, false, PACKET_ALLOCATOR);
+    else
+      udp_send_pkt((uint8_t *)pkt_v1, pkt_p1, PACKET_LEN, queue, false, PACKET_ALLOCATOR);
+
     counter++;
 
     if (counter >= stats_num) {
       finish_time=rdtsc();
-      printf("[NIC %u QUEUE %u] TX THROUGHPUT (UDP %u bytes) %llu PPS\n",
+      printf("[NIC %u TX %u] TX THROUGHPUT (UDP payload %u bytes) %llu PPS\n",
              _index,
              tid,
-             PACKET_LEN + 42,
+             PACKET_LEN,
              (((unsigned long long)counter) * cpu_freq) / (finish_time - start_time));
       counter = 0;
     }
@@ -230,8 +279,8 @@ void Exo_stack::send_pkt_test(unsigned tid) {
       /* transmit more than the max burst, in chunks of TX_MAX_BURST */
       unsigned nb_pkts = pkt_burst_size;
       while(nb_pkts) {
-        uint16_t ret, n;
-        n = (uint16_t)EXO_MIN(nb_pkts, IXGBE_TX_MAX_BURST);
+        size_t ret, n;
+        n = (uint16_t)EXO_MIN(nb_pkts, (unsigned)IXGBE_TX_MAX_BURST);
         ret = n;
         ethernet_output_simple(&xmit_addr_pool[counter % 512], (size_t&)ret, queue);
         //ethernet_output(&xmit_addr_pool[counter % 512], (size_t&)ret, queue);
@@ -252,6 +301,38 @@ void Exo_stack::send_pkt_test(unsigned tid) {
       counter = 0;
     }
   }
+}
+
+void Exo_stack::add_ip(char* myip) {
+  int len = strlen(myip);
+  char s[len+1];
+  __builtin_memcpy(s,myip,len);
+  s[len]='\0';
+  parse_ip_format(s,ip);
+  printf("CLIENT IP: %d.%d.%d.%d is added to STACK[%u]\n",ip[0],ip[1],ip[2],ip[3],_index);
+  uint32_t temp=0;
+  temp=(ip[0]<<24)+(ip[1]<<16)+(ip[2]<<8)+ip[3];
+  remote_ip_addr.addr=ntohl(temp);
+}
+
+void Exo_stack::parse_ip_format(char *s, uint8_t * ip) {
+  char* tmp = s;
+  int i=0;
+  while (*tmp) {
+    if (*tmp == '.') {
+       *tmp='\0';
+        ip[i++] = atoi(s);
+        tmp++;
+        s = tmp;
+    }
+    else {
+      tmp++;
+    }
+  }
+  if (i!=3)  {
+    panic("IP address is wrong. [e.g. 105.144.29.xxx]");
+  }
+  ip[i]=atoi(s);
 }
 
 void Exo_stack::init_param() {
@@ -279,17 +360,6 @@ void Exo_stack::init_param() {
   ethaddr = ((Raw_device *)(_inic->driver(_index)))->_ethaddr;
   ip_addr = ((Raw_device *)(_inic->driver(_index)))->_ip_addr;
 #endif
-
-  uint8_t client_ip[4];
-  client_ip[0] = 10;
-  client_ip[1] = 0;
-  client_ip[2] = 0;
-  client_ip[3] = 101 + _index;
-  uint32_t temp = 0;
-  temp = (client_ip[0]<<24) + (client_ip[1]<<16) + (client_ip[2]<<8) + client_ip[3];
-  remote_ip_addr.addr = ntohl(temp);
-
-  remote_port = 56789; //default client udp port
 
   for (i = 0; i < NUM_RX_QUEUES; i++) {
     __builtin_memset(&recv_counter[i], 0, sizeof(recv_counter[i]));
@@ -345,13 +415,11 @@ void Exo_stack::init_param() {
 }
 
 status_t Exo_stack::ethernet_output(struct exo_mbuf ** pkt, size_t& cnt, unsigned queue) {
-  size_t to_be_sent = cnt;
   status_t s = _inic->send_packets((pkt_buffer_t *)pkt, cnt, _index, queue);
   return s;
 }
 
 status_t Exo_stack::ethernet_output_simple(struct exo_mbuf ** pkt, size_t& cnt, unsigned queue) {
-  size_t to_be_sent = cnt;
   status_t s = _inic->send_packets_simple((pkt_buffer_t *)pkt, cnt, _index, queue);
   return s;
 }
@@ -360,8 +428,8 @@ pkt_status_t Exo_stack::ethernet_input(uint8_t * pkt, size_t len, unsigned queue
   struct eth_hdr* ethhdr;
   uint16_t type;
   pkt_status_t t;
-  unsigned tid = queue >> 1;
-  unsigned core = rx_core[tid];
+  //unsigned tid = queue >> 1;
+  //unsigned core = rx_core[tid];
 
   if (len <= SIZEOF_ETH_HDR) {
     return PACKET_ERROR_BAD_ETH;
@@ -791,6 +859,38 @@ pkt_status_t Exo_stack::icmp_input(uint8_t *pkt) {
   return REUSE_THIS_PACKET;
 }
 
+inline
+uint16_t ip_checksum(void* vdata, size_t length) {
+    // Cast the data pointer to one that can be indexed.
+    char* data=(char*)vdata;
+
+    // Initialise the accumulator.
+    uint32_t acc=0xffff;
+
+    // Handle complete 16-bit blocks.
+    for (size_t i=0;i+1<length;i+=2) {
+        uint16_t word;
+        __builtin_memcpy(&word,data+i,2);
+        acc+=ntohs(word);
+        if (acc>0xffff) {
+            acc-=0xffff;
+        }
+    }
+
+    // Handle any partial block at the end of the data.
+    if (length&1) {
+        uint16_t word=0;
+        __builtin_memcpy(&word,data+length-1,1);
+        acc+=ntohs(word);
+        if (acc>0xffff) {
+            acc-=0xffff;
+        }
+    }
+
+    // Return the checksum in network byte order.
+    return htons(~acc);
+}
+
 void Exo_stack::send_ping_reply(uint8_t *pkt) {
   struct eth_hdr *ethhdr;
   struct ip_hdr *iphdr;
@@ -821,6 +921,7 @@ void Exo_stack::send_ping_reply(uint8_t *pkt) {
   len = ntohs(IPH_LEN(iphdr));
   pkt_len = len + SIZEOF_ETH_HDR;
 
+  iphdr->_chksum = ip_checksum((void *)iphdr, len);
   /* The actual sending routine */
   unsigned tx_queue = 0;
   void * temp;
@@ -878,11 +979,9 @@ pkt_status_t Exo_stack::udp_input(pbuf_t *pbuf_list, unsigned queue) {
   struct udp_hdr *udphdr;
   pbuf_t * tmp;
   unsigned frag_number=0;
-  unsigned udp_size;
+  //unsigned udp_size;
   unsigned tid = queue >> 1;
   unsigned core = rx_core[tid];
-
-  pkt_status_t t = REUSE_THIS_PACKET;
 
   for (tmp = pbuf_list; tmp != NULL; tmp = tmp->next) {
     frag_number++;
@@ -899,22 +998,25 @@ pkt_status_t Exo_stack::udp_input(pbuf_t *pbuf_list, unsigned queue) {
   ip_addr_copy(current_iphdr_src, iphdr->src);
 
   udphdr = (struct udp_hdr *)(pbuf_list->pkt + SIZEOF_ETH_HDR + IPH_HL(iphdr) * 4);
-  udp_size = ntohs(udphdr->len);
+  //udp_size = ntohs(udphdr->len);
 
-  uint16_t src, dest;
+  uint16_t src;
+  //uint16_t dest;
 
   /* convert src and dest ports to host byte order */
   src = ntohs(udphdr->src);
-  dest = ntohs(udphdr->dest);
+  //dest = ntohs(udphdr->dest);
 
   remote_port = src;
 
+#if 0
   /* if this udp is not kvcache request, we discard it */
   if (dest != server_port) {
     PINF("Discard non-memcached protocol udp packets!!! (dest port %u)",dest);
     free_packets(pbuf_list, false);
     return t;
   }
+#endif
 
   /* if the arp table does not contain the source IP, we discard it */
   int i;
@@ -981,22 +1083,23 @@ pkt_status_t Exo_stack::udp_input(pbuf_t *pbuf_list, unsigned queue) {
   }
 #endif
 
-#if 1
   bool pkt_reuse;
   if (_msg_processor->process(pbuf_list, _index, tid, core, pkt_reuse) == S_OK) {
     if (pkt_reuse == true) {
       free_packets(pbuf_list, false);
       return REUSE_THIS_PACKET;
     }
-    else
+    else {
+      // packet has been pushed into the channel
+      // free_packets(pbuf_list, true);
       return KEEP_THIS_PACKET;
+    }
   }
   else {
-    //printf("msg_processor returned error!!!");
+    //printf("msg_processor returned error!!!\n");
     free_packets(pbuf_list, false);
     return REUSE_THIS_PACKET;
   }
-#endif
 
   //free_packets(pbuf_list, false);
   //return KEEP_THIS_PACKET;
@@ -1259,7 +1362,6 @@ void Exo_stack::udp_send_pkt(uint8_t *vaddr,
   if (recycle == true)
     assert(nb_ip_needed == 1);
 
-  void * temp;
   unsigned pkt_index = 0;
   // main loop for IP fragmentation
   while (remaining_bytes > 0) {
@@ -1289,7 +1391,7 @@ void Exo_stack::udp_send_pkt(uint8_t *vaddr,
     iphdr->_ttl=0x3f; //TTL value
     iphdr->_chksum=0; //Hardware will do the IP checksum
     iphdr->_v_hl_tos=htons(0x4500); //ipv4 and ip header 20 bytes
-    iphdr->_proto=0x11; //udp  
+    iphdr->_proto=0x11; //udp 
 
     if (remaining_bytes <= MAX_IP_PAYLOAD) {
       if (need_fragment == false) {
@@ -1298,21 +1400,26 @@ void Exo_stack::udp_send_pkt(uint8_t *vaddr,
         // last fragment
         iphdr->_offset=htons(curr_offset);
       }
-      if (first_ip==true)
+      if (first_ip==true) {
         app_len = remaining_bytes - UDP_HLEN;
-      else
-        app_len = remaining_bytes;
-
+      }
+      else {
+        app_len = remaining_bytes;  
+      }
+      iphdr->_len=htons((uint16_t)(remaining_bytes + 20));
       remaining_bytes = 0;
     }
     else {
       remaining_bytes = remaining_bytes - MAX_IP_PAYLOAD;
       iphdr->_offset=htons(curr_offset|(1<<13)); // more fragments flag
       curr_offset += MAX_IP_PAYLOAD/8;
-      if (first_ip==true)
+      if (first_ip==true) {
         app_len = MAX_IP_PAYLOAD - UDP_HLEN;
-      else
+      }
+      else {
         app_len = MAX_IP_PAYLOAD;
+      }
+      iphdr->_len=htons((uint16_t)(MAX_IP_PAYLOAD + 20));
     }
 
     ethhdr = (struct eth_hdr *)network_hdr;
@@ -1379,146 +1486,6 @@ void Exo_stack::udp_send_pkt(uint8_t *vaddr,
     pkt_index ++;
   }
 
-  unsigned sent_num = 0;
-  while (sent_num < nb_ip_needed) {
-    cnt = nb_ip_needed - sent_num;
-    ethernet_output(&mbuf[tid][sent_num], cnt, queue);
-    sent_num += cnt;
-  }
-}
-
-void Exo_stack::udp_send_get_reply(uint8_t *app_hdr_vaddr, 
-                                   addr_t app_hdr_paddr, 
-                                   uint32_t app_hdr_len,
-                                   pbuf_t* pbuf_list, 
-                                   unsigned queue) {
-  struct udp_hdr * udphdr_new;
-  struct udp_hdr * udphdr_old;
-  unsigned tid = queue >> 1;
-  unsigned core = rx_core[tid];
-  pbuf_t * tmp;
-
-  /* obtain IP identification number in a partitioned space */
-  uint16_t ip_iden = ip_iden_counter[queue].ctr + ip_iden_base[queue];
-  ip_iden_counter[queue].ctr++;
-  ip_iden_counter[queue].ctr = ip_iden_counter[queue].ctr % ip_iden_space_per_queue;
-
-  bool first_ip = true;
-  struct ip_hdr *iphdr_new;
-  struct ip_hdr *iphdr_old;
-  struct eth_hdr *ethhdr_new;
-  addr_t app_phys;
-  uint8_t* app_virt;
-  unsigned app_len; 
-
-  /* calculate how many frames in the list */
-  unsigned nb_ip_needed = pbuf_list->total_frames;
-  assert(nb_ip_needed > 0);
-
-  void * temp;
-  unsigned pkt_index = 0;
-  /* main sending loop for all frames in the pbuf_list */
-  for (tmp = pbuf_list; tmp != NULL; tmp = tmp->next) {
-    /* create net header */
-    if (_imem->alloc((addr_t *)&temp, NET_HEADER_ALLOCATOR, _index, core) != Exokernel::S_OK) {
-      panic("NET_HEADER_ALLOCATOR failed!\n");
-    }
-    assert(temp);
-
-    uint8_t * network_hdr=(uint8_t *)temp;
-
-    if (first_ip) {
-      udphdr_new = (struct udp_hdr *)(network_hdr + SIZEOF_ETH_IP_HLEN);
-      udphdr_old = (struct udp_hdr *)(tmp->pkt + SIZEOF_ETH_IP_HLEN);
-      // populate UDP header
-      udphdr_new->src = htons(udp_port);
-      udphdr_new->dest = htons(remote_port);
-      udphdr_new->len = udphdr_old->len;
-      // UDP checksum is used for flow direction on client side.
-      udphdr_new->chksum = htons(ip_iden % client_rx_flow_num);
-    }
-    
-    iphdr_old = (struct ip_hdr *)(tmp->pkt + SIZEOF_ETH_HDR);
-    iphdr_new = (struct ip_hdr *)(network_hdr + SIZEOF_ETH_HDR);
-
-    /* populate ip header fields */
-    ip_addr_copy(iphdr_new->src,ip_addr);
-    ip_addr_copy(iphdr_new->dest,remote_ip_addr);
-    iphdr_new->_id = htons(ip_iden);
-    iphdr_new->_ttl = 0x3f; //TTL value
-    iphdr_new->_chksum = 0; //Hardware will do the IP checksum
-    iphdr_new->_v_hl_tos = htons(0x4500); //ipv4 and ip header 20 bytes
-    iphdr_new->_proto = 0x11; //udp  
-    iphdr_new->_offset = iphdr_old->_offset;
-
-    /* populate eth header fields */
-    unsigned i;
-    for (i = 0; i < ARP_TABLE_SIZE; i++) {
-      if (ip_addr_cmp(&remote_ip_addr,&arp_table[i].ipaddr)) break;
-    }
-    if (i >= ARP_TABLE_SIZE) {
-      panic("no arp entry for this outgoing IP address\n");
-    }
-
-    ethhdr_new = (struct eth_hdr *)network_hdr;
-    ETHADDR16_COPY(&ethhdr_new->dest, &(arp_table[i].ethaddr));
-    ETHADDR16_COPY(&ethhdr_new->src, &ethaddr);
-    ethhdr_new->type = htons(0x0800);// type: ip datagram;
-
-    unsigned net_hdr_len; 
-    addr_t net_hdr_paddr;
-    net_hdr_paddr = _imem->get_phys_addr(network_hdr, NET_HEADER_ALLOCATOR, _index);
-    assert(net_hdr_paddr);
-
-    __builtin_memset(mbuf[tid][pkt_index], 0, sizeof(struct exo_mbuf));
-    if (first_ip) {
-      /* first IP packet in the pbuf_list with udp header and app header */
-      net_hdr_len = NETWORK_HDR_SIZE;
-      unsigned net_app_total_hdr = NETWORK_HDR_SIZE + app_hdr_len;  
-      app_virt = (uint8_t *)(tmp->pkt + net_app_total_hdr); 
-      app_phys = (addr_t)(_imem->get_phys_addr(tmp->pkt, PACKET_ALLOCATOR, _index)) + net_app_total_hdr;
-
-      app_len = tmp->ippayload_len - UDP_HLEN - app_hdr_len;
-
-      //populate three segments    
-      mbuf[tid][pkt_index]->phys_addr = net_hdr_paddr;
-      mbuf[tid][pkt_index]->virt_addr = (addr_t)network_hdr;
-      mbuf[tid][pkt_index]->len = net_hdr_len;
-      mbuf[tid][pkt_index]->flag = 1 | NET_HEADER_ALLOCATOR << 4;
-      mbuf[tid][pkt_index]->nb_segment = 3;
-      mbuf[tid][pkt_index]->phys_addr_seg[0] = (addr_t)app_hdr_paddr;
-      mbuf[tid][pkt_index]->virt_addr_seg[0] = (addr_t)app_hdr_vaddr;
-      mbuf[tid][pkt_index]->seg_len[0] = app_hdr_len;
-      mbuf[tid][pkt_index]->seg_flag[0] = 1 | APP_HEADER_ALLOCATOR << 4;
-      mbuf[tid][pkt_index]->phys_addr_seg[1] = app_phys;
-      mbuf[tid][pkt_index]->virt_addr_seg[1] = (addr_t)app_virt;
-      mbuf[tid][pkt_index]->seg_len[1] = app_len;
-      mbuf[tid][pkt_index]->pbuf_list = (void *)pbuf_list;
-    }
-    else {
-      /* non-first IP packet in the pbuf_list */
-      net_hdr_len = NETWORK_HDR_SIZE - UDP_HLEN;
-      app_virt = (uint8_t *)(tmp->pkt + net_hdr_len);
-      app_phys = (addr_t)(_imem->get_phys_addr(tmp->pkt, PACKET_ALLOCATOR, _index)) + net_hdr_len;
-
-      app_len = tmp->ippayload_len;
-
-      //populate two segments
-      mbuf[tid][pkt_index]->phys_addr = net_hdr_paddr;
-      mbuf[tid][pkt_index]->virt_addr = (addr_t)network_hdr;
-      mbuf[tid][pkt_index]->len = net_hdr_len;
-      mbuf[tid][pkt_index]->flag = 1 | NET_HEADER_ALLOCATOR << 4;
-      mbuf[tid][pkt_index]->nb_segment = 2;
-      mbuf[tid][pkt_index]->phys_addr_seg[0] = app_phys;
-      mbuf[tid][pkt_index]->virt_addr_seg[0] = (addr_t)app_virt;
-      mbuf[tid][pkt_index]->seg_len[0] = app_len;
-    }
-
-    pkt_index++;
-    first_ip = false;
-  }
-
-  size_t cnt;
   unsigned sent_num = 0;
   while (sent_num < nb_ip_needed) {
     cnt = nb_ip_needed - sent_num;

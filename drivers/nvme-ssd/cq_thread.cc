@@ -122,9 +122,14 @@ void* CQ_thread::entry(void* qb) {
 #ifndef CONFIG_DISABLE_CALLBACK
       /* perform call back */
       PLOG("IRQ handler calling callback ccs->command_id=%d queue-id=%u",ccs->command_id, _qid);
-      s = _queues->callback_manager()->call(ccs->command_id);
-      assert(s == Exokernel::S_OK);
+      //s = _queues->callback_manager()->call(ccs->command_id);
+      //assert(s == Exokernel::S_OK);
 #endif
+
+      /* update batch info */
+      s = _queues->update_batch_manager(ccs->command_id);
+      assert(s == Exokernel::S_OK);
+
       /* free slot */
       _queues->release_slot(ccs->command_id-1);
 
@@ -134,6 +139,7 @@ void* CQ_thread::entry(void* qb) {
       //   _queues->_pending_reader.wake_one();
       // }
       g_entries_cleared++;
+      PLOG("cleared = %lu (Q:%u)", g_entries_cleared, _qid);
 
       // if(g_entries_cleared % 1024 == 0) 
       //   PLOG("CQ thread cleared %lu entries",g_entries_cleared);

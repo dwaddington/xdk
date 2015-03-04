@@ -27,10 +27,10 @@
    in files containing the exception.  
 */
 
-
-
-
-
+/*
+  Author(s):
+  @author Jilong Kuang (jilong.kuang@samsung.com)
+*/
 
 #ifndef __X540_DEVICE_H__
 #define __X540_DEVICE_H__
@@ -41,7 +41,7 @@
 #include <network/nic_itf.h>
 #include <network/stack_itf.h>
 #include <network/memory_itf.h>
-#include <network_stack/protocol.h>
+#include <net/udp.h>
 #include <x540/xml_config_parser.h>
 
 #define PKT_MAX_SIZE                          (2048-64)
@@ -76,7 +76,7 @@ public:
    * 
    */
   Intel_x540_uddk_device(INic * inic, IStack * istack, 
-                         IMem * imem, unsigned index, Config_params * params) : Exokernel::Pci_express_device(index+2, 0x8086, 0x1528) {
+                         IMem * imem, unsigned index, Config_params * params) : Exokernel::Pci_express_device(index, 0x8086, 0x1528) {
     _params = params;
     rx_threads_cpu_mask = _params->rx_threads_cpu_mask;
     cpus_per_nic = _params->cpus_per_nic;
@@ -118,8 +118,8 @@ private:
 
   class Nic_memory {
   private:
-    addr_t         _vaddr;
     addr_t         _paddr;
+    addr_t         _vaddr;
     uint32_t       _size;
     Exokernel::Pci_express_device * _owner;
 

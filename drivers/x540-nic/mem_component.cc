@@ -27,48 +27,29 @@
    in files containing the exception.  
 */
 
+/*
+  Author(s):
+  @author Jilong Kuang (jilong.kuang@samsung.com)
+*/
 
-
-
-
-
-#include <libexo.h>
-#include <network/memory_itf.h>
-#include <network/stack_itf.h>
-#include <network/nic_itf.h>
-#include "x540/x540_device.h"
-#include <exo/shm_table.h>
-#include "x540/xml_config_parser.h"
+#include "mem_component.h"
 
 using namespace Exokernel;
 using namespace Exokernel::Memory;
+using namespace Component;
 
 /** 
  * Interface IMem implementation
  * 
  */
-class IMem_impl : public IMem
-{
-public:
-  Numa_slab_allocator *** _allocator;
-  IStack * _stack;
-  INic * _nic;
-  unsigned** _allocator_core;
-  unsigned _nic_num;
-  unsigned _rx_threads_per_nic;
-  unsigned _cpus_per_nic;
-  uint64_t _shm_max_size;
-  std::string _rx_threads_cpu_mask;
-  Config_params * _params;
-
-public:
-  IMem_impl() {
+IMem_impl::IMem_impl() {
     component_t t = MEM_COMPONENT;
     set_comp_type(t);
     set_comp_state(MEM_INIT_STATE, 0);
-  }
+}
 
-  status_t init(arg_t arg) {
+status_t
+IMem_impl::init(arg_t arg) {
     assert(arg);
     unsigned i, j;
     mem_arg_t * p = (mem_arg_t *)arg;
@@ -180,7 +161,7 @@ public:
           per_core_block_quota = NUM_BLOCKS/_rx_threads_per_nic;
 
         //create numa_allocator object
-        if ((id == DESC_ALLOCATOR) || (id == PACKET_ALLOCATOR) || (id == NET_HEADER_ALLOCATOR) || (id == APP_HEADER_ALLOCATOR))
+        if ((id == DESC_ALLOCATOR) || (id == PACKET_ALLOCATOR) || (id == NET_HEADER_ALLOCATOR))
           _allocator[j][i] = new Numa_slab_allocator(space_v,
                                                 total_size,
                                                 per_core_block_quota,
@@ -219,26 +200,31 @@ public:
     set_comp_state(MEM_READY_STATE, 0);  // Other components can start memory allocations now
 
     return Exokernel::S_OK;
-  }
+}
 
-  addr_t get_phys_addr(void *virt_addr, allocator_t id, unsigned device) {
+addr_t
+IMem_impl::get_phys_addr(void *virt_addr, allocator_t id, unsigned device) {
     assert(virt_addr);
     return _allocator[device][id]->get_phy_addr(virt_addr);
-  }
+}
 
-  uint64_t get_num_avail_per_core(allocator_t id, unsigned device, core_id_t core) {
+uint64_t 
+IMem_impl::get_num_avail_per_core(allocator_t id, unsigned device, core_id_t core) {
     return (uint64_t)(_allocator[device][id]->num_avail(core));
-  }
+}
 
-  uint64_t get_total_avail(allocator_t id, unsigned device) {
+uint64_t
+IMem_impl::get_total_avail(allocator_t id, unsigned device) {
     return (uint64_t)(_allocator[device][id]->num_total_avail());
-  }
+}
 
-  allocator_handle_t get_allocator(allocator_t id, unsigned device) {
+allocator_handle_t
+IMem_impl::get_allocator(allocator_t id, unsigned device) {
     return (allocator_handle_t) _allocator[device][id];
-  }
+}
 
-  status_t bind(interface_t itf) {
+status_t 
+IMem_impl::bind(interface_t itf) {
     assert(itf);
     Interface_base * itf_base = (Interface_base *)itf;
     switch (itf_base->get_comp_type()) {
@@ -248,74 +234,61 @@ public:
       case NIC_COMPONENT:
            _nic = (INic *)itf;
            break;
-      defaulf:
+      default:
            printf("binding wrong component types!!!");
            assert(0);
     }
     
     return Exokernel::S_OK;
-  }
+}
 
-  status_t alloc(addr_t *p, allocator_t id, unsigned device, core_id_t core) {
+status_t 
+IMem_impl::alloc(addr_t *p, allocator_t id, unsigned device, core_id_t core) {
     *p = (addr_t)_allocator[device][id]->alloc(core);
     //if (*p == (addr_t) NULL) printf("%u %u %u\n",id, device, core);
     assert(*p);
     return Exokernel::S_OK;
-  }
+}
  
-  status_t free(void *p, allocator_t id, unsigned device) {
+status_t 
+IMem_impl::free(void *p, allocator_t id, unsigned device) {
     //if (p == NULL) printf("id: %u, device: %u \n", id, device);
     assert(p);
     _allocator[device][id]->free(p);
     return Exokernel::S_OK;
-  }
+}
 
-  void run() {
+void 
+IMem_impl::run() {
     printf("Memory Component is up running...\n");
-  }
+}
 
-  void * alloc(size_t n) {
+void * 
+IMem_impl::alloc(size_t n) {
     //TODO
     printf("%s Not implemented yet!\n",__func__);
     return NULL;
-  }
+}
 
-  status_t free(void * p) {
+status_t 
+IMem_impl::free(void * p) {
     //TODO
     printf("%s Not implemented yet!\n",__func__);
     return Exokernel::S_OK;
-  }
+}
 
-  status_t cpu_allocation(cpu_mask_t mask) {
+status_t 
+IMem_impl::cpu_allocation(cpu_mask_t mask) {
     //TODO
     printf("%s Not implemented yet!\n",__func__);
     return Exokernel::S_OK;
-  }
+}
 
-};
-
-/** 
- * Definition of the component
- * 
- */
-class MemComponent : public Exokernel::Component_base,
-                     public IMem_impl
+extern "C" void * factory_createInstance(Component::uuid_t& component_id)
 {
-public:  
-  DECLARE_COMPONENT_UUID(0xe1ad1bc2,0x63c5,0x4011,0xb877,0xa018,0x89ae,0x463d);
-
-  void * query_interface(Exokernel::uuid_t& itf_uuid) {
-    if(itf_uuid == IMem::uuid()) {
-      add_ref(); // implicitly add reference
-      return (void *) static_cast<IMem *>(this);
-    }
-    else 
-      return NULL; // we don't support this interface
+  if(component_id == MemComponent::component_id()) {
+    printf("Creating 'MemComponent' component.\n");
+    return static_cast<void*>(new MemComponent());
   }
-};
-
-
-extern "C" void * factory_createInstance()
-{
-  return static_cast<void*>(new MemComponent());
+  else return NULL;
 }

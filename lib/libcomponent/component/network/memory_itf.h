@@ -1,14 +1,44 @@
-/* 
-   LICENCE TO BE APPENDED
+/*
+   eXokernel Development Kit (XDK)
+
+   Based on code by Samsung Research America Copyright (C) 2013
+ 
+   The GNU C Library is free software; you can redistribute it and/or
+   modify it under the terms of the GNU Lesser General Public
+   License as published by the Free Software Foundation; either
+   version 2.1 of the License, or (at your option) any later version.
+
+   The GNU C Library is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   Lesser General Public License for more details.
+
+   You should have received a copy of the GNU Lesser General Public
+   License along with the GNU C Library; if not, see
+   <http://www.gnu.org/licenses/>.
+
+   As a special exception, if you link the code in this file with
+   files compiled with a GNU compiler to produce an executable,
+   that does not cause the resulting executable to be covered by
+   the GNU Lesser General Public License.  This exception does not
+   however invalidate any other reasons why the executable file
+   might be covered by the GNU Lesser General Public License.
+   This exception applies to code released by its copyright holders
+   in files containing the exception.  
+*/
+
+/*
+  Author(s):
+  @author Jilong Kuang (jilong.kuang@samsung.com)
 */
 
 #ifndef _MEM_ITF_H_
 #define _MEM_ITF_H_
 
-#include "../component.h"
+#include "../base.h"
 #include "../interface.h"
 
-using namespace Exokernel;
+using namespace Component;
 
 /**
  * Slab allocator IDs.
@@ -16,15 +46,12 @@ using namespace Exokernel;
 enum {
   DESC_ALLOCATOR        = 0,  /**< The network ring descriptor allocator. */
   PACKET_ALLOCATOR      = 1,  /**< The packet buffer allocator. */
-  JOB_DESC_ALLOCATOR    = 2,  /**< The job descriptor block allocator. */
-  MBUF_ALLOCATOR        = 3,  /**< The mbuf struct allocator. */
-  META_DATA_ALLOCATOR   = 4,  /**< The meta data allocator for an array of burst packets. */
-  PBUF_ALLOCATOR        = 5,  /**< The pbuf allocator for IP packet meta data. */
-  NET_HEADER_ALLOCATOR  = 6,  /**< The network header allocator (42 bytes). */
-  IP_REASS_ALLOCATOR    = 7,  /**< The IP reassembly data buffer allocator. */
-  UDP_PCB_ALLOCATOR     = 8,  /**< The UDP protocol control block allocator. */
-  FRAME_LIST_ALLOCATOR     = 9,  /**< The frame list allocator. */
-  APP_HEADER_ALLOCATOR     = 10,  /**< The application header allocator. */
+  MBUF_ALLOCATOR        = 2,  /**< The mbuf struct allocator. */
+  META_DATA_ALLOCATOR   = 3,  /**< The meta data allocator for an array of burst packets. */
+  PBUF_ALLOCATOR        = 4,  /**< The pbuf allocator for IP packet meta data. */
+  NET_HEADER_ALLOCATOR  = 5,  /**< The network header allocator (42 bytes). */
+  IP_REASS_ALLOCATOR    = 6,  /**< The IP reassembly data buffer allocator. */
+  UDP_PCB_ALLOCATOR     = 7,  /**< The UDP protocol control block allocator. */
   // Always at the end  
   TOTAL_ALLOCATOR_NUM         /**< Total number of allocators. */
 };
@@ -42,9 +69,6 @@ const char* slab_alloc_2_str(int a) {
   else if (a == NET_HEADER_ALLOCATOR) { return "Net Header Allocator"; }
   else if (a == IP_REASS_ALLOCATOR)  { return "IP Reass. Buffer Allocator"; }
   else if (a == UDP_PCB_ALLOCATOR)   { return "UDP Control Block Allocator"; }
-  else if (a == JOB_DESC_ALLOCATOR)  { return "Job Desc. Allocator"; }
-  else if (a == FRAME_LIST_ALLOCATOR)  { return "Frame List Allocator"; }
-  else if (a == APP_HEADER_ALLOCATOR)  { return "App Header Allocator"; }
   else { return "Unknown slab allocator"; }
 }
 
@@ -72,15 +96,12 @@ enum {
 enum {
   SMT_DESC_ALLOCATOR       = 0,      /**< The network ring descriptor allocator. */
   SMT_PACKET_ALLOCATOR     = 1,      /**< The packet buffer allocator. */
-  SMT_JOB_DESC_ALLOCATOR   = 2,      /**< The job descriptor block allocator */
-  SMT_MBUF_ALLOCATOR       = 3,      /**< The mbuf struct allocator. */
-  SMT_META_DATA_ALLOCATOR  = 4,      /**< The meta data allocator for an array of burst packets. */
-  SMT_PBUF_ALLOCATOR       = 5,      /**< The pbuf allocator for IP packet meta data. */
-  SMT_NET_HEADER_ALLOCATOR = 6,      /**< The network header allocator (42 bytes). */
-  SMT_IP_REASS_ALLOCATOR   = 7,      /**< The ip reassembly data buffer allocator */
-  SMT_UDP_PCB_ALLOCATOR    = 8,      /**< The UDP protocol control block allocator */
-  SMT_FRAME_LIST_ALLOCATOR = 9,      /**< The frame list allocator */
-  SMT_APP_HEADER_ALLOCATOR = 10,     /**< The app header allocator */
+  SMT_MBUF_ALLOCATOR       = 2,      /**< The mbuf struct allocator. */
+  SMT_META_DATA_ALLOCATOR  = 3,      /**< The meta data allocator for an array of burst packets. */
+  SMT_PBUF_ALLOCATOR       = 4,      /**< The pbuf allocator for IP packet meta data. */
+  SMT_NET_HEADER_ALLOCATOR = 5,      /**< The network header allocator (42 bytes). */
+  SMT_IP_REASS_ALLOCATOR   = 6,      /**< The ip reassembly data buffer allocator */
+  SMT_UDP_PCB_ALLOCATOR    = 7,      /**< The UDP protocol control block allocator */
 };
 
 /**
@@ -114,7 +135,7 @@ typedef struct {
  * Interface definition for IMem.
  * 
  */
-class IMem : public Exokernel::Interface_base
+class IMem : public Component::Interface_base
 {
 public:
   DECLARE_INTERFACE_UUID(0xb7343bf4,0x0636,0x47b4,0xb3d2,0xe072,0x5203,0xce45);

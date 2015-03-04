@@ -53,7 +53,7 @@
 #endif
 
 /* Compile read-write barrier */
-#define barrier() asm volatile("": : :"memory")
+#define xdk_barrier() asm volatile("": : :"memory")
 
 /* Pause instruction to prevent excess processor bus usage */ 
 #define cpu_relax() asm volatile("pause\n": : :"memory")
@@ -114,7 +114,7 @@ namespace Exokernel
     }
 
     INLINE void unlock() {
-      barrier();
+      xdk_barrier();
       s.ticket++;
     }
 
@@ -132,7 +132,7 @@ namespace Exokernel
 
     int lockable()
     {
-      barrier();
+      xdk_barrier();
       return (s.ticket == s.users);
     }
 

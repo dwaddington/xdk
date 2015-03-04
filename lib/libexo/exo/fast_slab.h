@@ -33,6 +33,7 @@
   Copyright (C) 2013, Juan A. Colmenares <juan.col@samsung.com>
   Copyright (C) 2013, Fengguang Song <f.song@samsung.com>
   Copyright (C) 2013, Daniel G. Waddington <d.waddington@samsung.com>
+  Copyright (C) 2013, Jilong Kuang <jilong.kuang@samsung.com>
 */
 
 #ifndef __EXO_FAST_SLAB_ALLOCATOR__
@@ -155,9 +156,11 @@ namespace Exokernel {
        * @param id allocator identifier (user-defined)
        */
 
-      //WARNING: if needs_phys_addr is true, the following two conditions must be met
-      //first, actual block size (block_len + header) must be less or equal to a page.
-      //second, page size must be multiple of actual block size or the mem_len is less or equal to a page.
+      /*
+         WARNING: if physical memory address is needed, the following two conditions must be met
+         1. Actual block size (block_len + header) must be no larger than a huge page.
+         2. Huge page size must be multiple of actual block size or the total needed memory size is less than a huge page.
+      */
 
       Fast_slab_allocator_T(void* mem_area, 
                             size_t mem_len, 
