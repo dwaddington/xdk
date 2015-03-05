@@ -75,6 +75,8 @@
 #define PLOG(f, a...)
 #endif
 
+#define PTEST(f, a...)   fprintf( stdout, "[XDK]: %s:" f "\n",  __func__ , ## a)
+
 #define PINF(f, a...)   fprintf( stderr, "%s" f "%s\n", ESC_INF, ## a, ESC_END)
 #define PWRN(f, a...)   fprintf( stderr, "%s[XDK]: %s:" f "%s\n",  ESC_WRN, __func__ , ## a, ESC_END)
 #define PERR(f, a...)   fprintf( stderr, "[XDK]: ERROR %s:" f "\n",  __func__ , ## a); 
