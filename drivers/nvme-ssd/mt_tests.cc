@@ -17,8 +17,8 @@
 #include "nvme_device.h"
 #include "nvme_types.h"
 
-//#define COUNT (10240000)
-#define COUNT (1024)
+#define COUNT (1024000)
+//#define COUNT (1024)
 #define IO_PER_BATCH (1)
 #define NUM_QUEUES (1)
 #define SLAB_SIZE (2048)
@@ -26,8 +26,8 @@
 
 #define TEST_RANDOM_IO
 #define TEST_IO_READ
-#define TEST_VERIFY
-#define TEST_VERIFY_SIMPLE
+//#define TEST_VERIFY
+//#define TEST_VERIFY_SIMPLE
 
 class Read_thread : public Exokernel::Base_thread {
   private:
@@ -62,7 +62,67 @@ class Read_thread : public Exokernel::Base_thread {
         }
     };
 
+    /**
+     * Throuput measurement without considering batch
+     */
     void read_throughput_test()
+    {
+      using namespace Exokernel;
+
+      NVME_IO_queue * ioq = _dev->io_queue(_qid);
+
+      io_descriptor_t* io_desc = (io_descriptor_t *)malloc(SLAB_SIZE * sizeof(io_descriptor_t));
+
+//#define N_PAGES 102400
+      uint64_t N_PAGES = COUNT;
+#ifdef TEST_RANDOM_IO
+      boost::random::random_device rng;
+      boost::random::uniform_int_distribution<> rnd_page_offset(1, 64*1024*1024); //max 781,422,768 sectors
+#endif
+
+      uint64_t counter = 0;
+      Notify *notify = new Notify_Async_Cnt(&counter);
+
+      for(unsigned idx = 0; idx < N_PAGES; idx++) {
+
+        if(idx%100000 == 0) printf("count = %u (Q: %u)\n", idx, _qid);
+
+        io_descriptor_t* io_desc_ptr = io_desc + idx % SLAB_SIZE ;
+        memset(io_desc_ptr, 0, sizeof(io_descriptor_t));
+
+#ifdef TEST_IO_READ
+        io_desc_ptr->action = NVME_READ;
+#else
+        io_desc_ptr->action = NVME_WRITE;
+#endif
+        io_desc_ptr->buffer_virt = _virt_array_local[idx % SLAB_SIZE];
+        io_desc_ptr->buffer_phys = _phys_array_local[idx % SLAB_SIZE];
+#ifdef TEST_RANDOM_IO
+        io_desc_ptr->offset = PAGE_SIZE * rnd_page_offset(rng);
+#else
+        io_desc_ptr->offset = PAGE_SIZE * ((_qid-1)*N_PAGES + idx);
+#endif
+        io_desc_ptr->num_blocks = NUM_BLOCKS;
+
+        //memset(io_desc_ptr->buffer_virt, 0, PAGE_SIZE);
+        //hexdump(io_desc_ptr->buffer_virt, 32);
+
+        status_t st = _itf->async_io_batch((io_request_t*)io_desc_ptr, 1, notify, _qid);
+      }
+      _itf->wait_io_completion(_qid); //wait for IO completion
+
+      PLOG("all sends complete (Q:%u).", _qid);
+
+      printf("** Total 4K I/O = %lu (Q: %u)\n", counter, _qid);
+      free(io_desc);
+      delete notify;
+    }
+
+
+    /**
+     * Throuput measurement with considering batch submission
+     */
+    void read_throughput_test_v2()
     {
       using namespace Exokernel;
 
@@ -177,10 +237,8 @@ class Read_thread : public Exokernel::Base_thread {
 
           for(unsigned i = 0; i<_size; i++) {
             if(((uint8_t*)_p)[i]!=_content) {
-              //printf("offset = 0x%lx (%lu), t = %x%x\n", _offset, _offset, 0xf & (_content >> 4), 0xf & _content);
               PTEST("FAIL: offset = %lx, virt_p = %p", _offset/PAGE_SIZE, _p);
               hexdump(((uint8_t*)_p), 16);
-              //printf("%u: c = %x%x size=%u\n", i, 0xf & (((uint8_t*)_p)[i] >> 4), 0xf & ((uint8_t*)_p)[i], _size);
             }
             assert(((uint8_t*)_p)[i]==_content);
           }
@@ -197,7 +255,6 @@ class Read_thread : public Exokernel::Base_thread {
     void verification()
     {
       using namespace Exokernel;
-      const uint8_t fill_char = 0xC;
 
       PLOG("** VERIFY CORRECTNESS FOR Q:%p (_qid=%u)\n",(void *) ioq, _qid);
       NVME_IO_queue * ioq = _dev->io_queue(_qid);
@@ -297,6 +354,9 @@ class Read_thread : public Exokernel::Base_thread {
     }
 
 
+    /**
+     * Verification test without considering batch
+     */
     void verification_simple()
     {
       using namespace Exokernel;
@@ -410,6 +470,7 @@ class Read_thread : public Exokernel::Base_thread {
       verification();
 #else
       read_throughput_test();
+      //read_throughput_test_v2();
 #endif
 #endif
     }
@@ -468,17 +529,16 @@ class mt_tests {
         Read_thread * thr[NUM_QUEUES];
 
 #define N_QUEUE_MAP 8
-        unsigned cq_map[N_QUEUE_MAP] = {4, 8, 12, 16, 20, 24, 28, 32};
+        unsigned sq_map[N_QUEUE_MAP] = {4, 8, 12, 16, 20, 24, 28, 32};
 
         for(unsigned i=1;i<=NUM_QUEUES;i++) {
           assert(NUM_QUEUES <= N_QUEUE_MAP);
 
-          printf("********** i = %u, cq_map = %u \n", i, cq_map[i-1]);
+          printf("********** i = %u, sq_map = %u \n", i, sq_map[i-1]);
 
           thr[i-1] = new Read_thread(itf,
-              i, //(2*(i-1))+1, /* qid */
-              cq_map[i-1],
-              //i+3, //*2-1); //1,3,5,7 /* core for read thread */
+              i,                         /* qid */
+              sq_map[i-1],               /* sq core */
               phys_array[i-1],
               virt_array[i-1]
               );
