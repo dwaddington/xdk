@@ -45,7 +45,7 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
-
+#include <vector>
 
 #define DECLARE_UUID(name,f1,f2,f3,f4,f5,f6,f7) \
   const Component::uuid_t name = {f1,f2,f3,f4,{f5,f6,f7}};
@@ -116,6 +116,14 @@ namespace Component
     /* optional unload */
     virtual void unload() {}
 
+    /** 
+     * [optional] Connect to another component
+     * 
+     * @param component Component to connect to 
+     * 
+     * @return Number of connections made, -1 on error
+     */
+    virtual signed connect(IBase * component) {}
 
     /** 
      * Reference counting
@@ -154,6 +162,16 @@ namespace Component
    */
   IBase * load_component(const char * dllname, Component::uuid_t component_id);
 
+
+  /** 
+   * Third party binding of two or more components
+   * 
+   * @param left 
+   * @param right 
+   * 
+   * @return 
+   */
+  status_t bind(std::vector<IBase *> components);
 };
 
 

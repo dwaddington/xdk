@@ -406,14 +406,52 @@ namespace Exokernel
      * DMA contiguous memory management
      *-------------------------------------------------------------- 
      */
+
+    /** 
+     * Allocate physically contiguous memory and map with 4K TLB entries
+     * 
+     * @param num_pages Number of 4K pages to allocate
+     * @param phys_addr Return physical address
+     * @param numa_node NUMA node from which to allocate memory
+     * 
+     * @return Virtual address of allocated memory
+     */
     void * alloc_dma_pages(size_t num_pages, 
                            addr_t * phys_addr, 
-                           unsigned numa_node = -1, 
+                           int numa_node = -1,
                            int flags = 0);
 
-    void   free_dma_pages(void * p); 
+    /** 
+     * Free memory allocated with alloc_dma_pages
+     * 
+     * @param p Pointer to previously allocated memory
+     */
+    void free_dma_pages(void * p);
 
-    /**------------------------------------------------------------- 
+
+    /** 
+     * Allocate physically contiguous memory and map with 2MB TLB (huge page) entries
+     * 
+     * @param num_pages Number of 2MB pages
+     * @param phys_addr Return physical address
+     * @param numa_node NUMA node from which to allocate memory
+     * 
+     * @return Virtual address of allocated memory
+     */
+    void * alloc_dma_huge_pages(size_t num_pages, 
+                                addr_t * phys_addr, 
+                                int numa_node = -1,
+                                int flags = 0); 
+
+    /** 
+     * Free memory allocated with alloc_dma_huge_pages
+     * 
+     * @param p Pointer to previously allocated memory
+     */
+    void free_dma_huge_pages(void * p);
+
+
+    /**----------------------------------------------------------- 
      * MSI and MSI-X interrupt services
      *-------------------------------------------------------------- 
      */

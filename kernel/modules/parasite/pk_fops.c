@@ -178,7 +178,7 @@ static int fops_mmap(struct file *file, struct vm_area_struct *vma)
   //  unsigned long offset = vma->vm_pgoff * PAGE_SIZE;
 
   /* PDBG("file->private_data = %p",file->private_data); */
-  /* PDBG("fops_mmap: start = %lx ; size = %lx ; offset = %lx", start, size, offset); */
+  PLOG("fops_mmap: start = %lx ; size = %lx", start, size);
 
   //vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot); /* disable cache */
   //vma->vm_page_prot = pgprot_writecombine(vma->vm_page_prot); /* cache write combine */
