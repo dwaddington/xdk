@@ -71,4 +71,14 @@ void NVME_INFO(const char *format, ...) __attribute__((format(printf, 1, 2)));
 #define NVME_LOOP( condition, needStop )           \
         NVME_LOOP_LABEL( condition, needStop, "")
 
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Macros for performance optimization
+///////////////////////////////////////////////////////////////////////////////
+
+#define likely(x)    __builtin_expect (!!(x), 1)
+#define unlikely(x)  __builtin_expect (!!(x), 0)
+
+
 #endif
