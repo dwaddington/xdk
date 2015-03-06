@@ -74,17 +74,20 @@ class Read_thread : public Exokernel::Base_thread {
 
       NVME_IO_queue * ioq = _dev->io_queue(_qid);
 
+      //slab size should be large enough, so that there is no overlap
+      assert(SLAB_SIZE > 4*(ioq->queue_length()));
       io_descriptor_t* io_desc = (io_descriptor_t *)malloc(SLAB_SIZE * sizeof(io_descriptor_t));
 
 //#define N_PAGES 102400
       const uint64_t N_PAGES = COUNT;
 #ifdef TEST_RANDOM_IO
       boost::random::random_device rng;
-      boost::random::uniform_int_distribution<> rnd_page_offset(1, 64*1024*1024-1); //max 781,422,768 sectors
+      boost::random::uniform_int_distribution<> rnd_page_offset(1, 64*1024*1024-1); //offset based on page; 781,422,768 sectors(logical block) in total
 #endif
 
       uint64_t counter = 0;
       Notify *notify = new Notify_Async_Cnt(&counter);
+      unsigned npages_per_io = (NVME::BLOCK_SIZE)*NUM_BLOCKS/PAGE_SIZE;
 
       for(unsigned idx = 0; idx < N_PAGES; idx++) {
 
@@ -98,8 +101,9 @@ class Read_thread : public Exokernel::Base_thread {
 #else /* Write */
         io_desc_ptr->action = NVME_WRITE;
 #endif
-        io_desc_ptr->buffer_virt = _virt_array_local[idx % SLAB_SIZE];
-        io_desc_ptr->buffer_phys = _phys_array_local[idx % SLAB_SIZE];
+        unsigned slab_idx_local = (idx * npages_per_io) % SLAB_SIZE;
+        io_desc_ptr->buffer_virt = _virt_array_local[slab_idx_local];
+        io_desc_ptr->buffer_phys = _phys_array_local[slab_idx_local];
 #ifdef TEST_RANDOM_IO
         assert(NUM_BLOCKS == 8);
         io_desc_ptr->offset = rnd_page_offset(rng) * (PAGE_SIZE/NVME::BLOCK_SIZE);
@@ -120,7 +124,7 @@ class Read_thread : public Exokernel::Base_thread {
       PLOG("all sends complete (Q:%u).", _qid);
 
       //assert(counter == COUNT);
-      printf("** Total 4K I/O = %lu (Q: %u)\n", counter, _qid);
+      printf("** Total 4K I/O = %lu (Q: %u)\n", counter*npages_per_io, _qid);
       free(io_desc);
       delete notify;
     }
@@ -144,15 +148,17 @@ class Read_thread : public Exokernel::Base_thread {
       assert(SLAB_SIZE > 4*(ioq->queue_length()));
       io_descriptor_t* io_desc = (io_descriptor_t *)malloc(SLAB_SIZE * sizeof(io_descriptor_t));
 
+#ifdef TEST_RANDOM_IO
+      boost::random::random_device rng;
+      boost::random::uniform_int_distribution<> rnd_page_offset(1, 64*1024*1024-1); //offset based on page; 781,422,768 sectors(logical block) in total
+#endif
+
       uint64_t counter = 0;
       Notify *notify = new Notify_Async_Cnt(&counter);
       //Notify *notify = new Notify_Async(false);
-      unsigned io_req_idx = (_qid-1)*COUNT*IO_PER_BATCH;
-
-#ifdef TEST_RANDOM_IO
-      boost::random::random_device rng;
-      boost::random::uniform_int_distribution<> rnd_page_offset(1, 80*1024); //max 781,422,768 sectors
-#endif
+      unsigned npages_per_io = (NVME::BLOCK_SIZE)*NUM_BLOCKS/PAGE_SIZE;
+      //unsigned io_req_idx = (_qid-1)*COUNT*IO_PER_BATCH;
+      unsigned io_req_idx = 0;
 
       for(unsigned long i=0;i<COUNT;i++) {
 
@@ -161,7 +167,6 @@ class Read_thread : public Exokernel::Base_thread {
         cpu_time_t start = rdtsc();
 
         //prepare io descriptors
-        unsigned npages_per_io = (NVME::BLOCK_SIZE)*NUM_BLOCKS/PAGE_SIZE;
         io_descriptor_t* io_desc_base = io_desc + (io_req_idx%SLAB_SIZE);
         assert((io_req_idx % SLAB_SIZE) + IO_PER_BATCH - 1 < SLAB_SIZE);
 
@@ -179,10 +184,14 @@ class Read_thread : public Exokernel::Base_thread {
           io_desc_ptr->buffer_virt = _virt_array_local[slab_idx_local];
           io_desc_ptr->buffer_phys = _phys_array_local[slab_idx_local];
 #ifdef TEST_RANDOM_IO
-          io_desc_ptr->offset = PAGE_SIZE * rnd_page_offset(rng);
+          assert(NUM_BLOCKS == 8);
+          io_desc_ptr->offset = rnd_page_offset(rng) * (PAGE_SIZE/NVME::BLOCK_SIZE);
 #else
           io_desc_ptr->offset = PAGE_SIZE * npages_per_io * io_req_idx;
+          unsigned n_partitions = round_up_log2(NUM_QUEUES);
+          io_desc_ptr->offset = ((uint64_t)(MAX_LBA/n_partitions)*(_qid-1) + io_req_idx*npages_per_io*NUM_BLOCKS) % MAX_LBA;
 #endif
+          assert(io_desc_ptr->offset < MAX_LBA);
           io_desc_ptr->num_blocks = NUM_BLOCKS;
 
           io_req_idx++;
@@ -190,7 +199,7 @@ class Read_thread : public Exokernel::Base_thread {
 
         status_t st = _itf->async_io_batch((io_request_t*)io_desc_base, IO_PER_BATCH, notify, _qid);
 
-        PLOG("sent %d blocks (%u pages) in iteration = %lu (Q:%u) \n", IO_PER_BATCH*NUM_BLOCKS, IO_PER_BATCH*npages_per_io, i, _qid);
+        PLOG("sent %d blocks (%u pages) in iteration = %lu (Q:%u) \n", IO_PER_BATCH*npages_per_io*NUM_BLOCKS, IO_PER_BATCH*npages_per_io, i, _qid);
 
 #if 0
         /* collect stats */
@@ -207,12 +216,12 @@ class Read_thread : public Exokernel::Base_thread {
         }
 #endif
       }
-      assert( io_req_idx == _qid*COUNT*IO_PER_BATCH);
+      assert( io_req_idx == COUNT*IO_PER_BATCH);
       _itf->wait_io_completion(_qid); //wait for IO completion
 
       PLOG("all sends complete (Q:%u).", _qid);
 
-      printf("** Total 4K I/O = %lu (Q: %u)\n", counter * IO_PER_BATCH, _qid);
+      printf("** Total 4K I/O = %lu (Q: %u)\n", counter * npages_per_io * IO_PER_BATCH, _qid);
 #if 0
       ioq->dump_stats();
 
