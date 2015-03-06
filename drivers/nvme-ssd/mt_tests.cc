@@ -17,7 +17,9 @@
 #include "nvme_device.h"
 #include "nvme_types.h"
 
-#define COUNT (1024000)
+#define MAX_LBA (512*1024*1024) //max 781,422,768 sectors
+
+#define COUNT (10240000)
 //#define COUNT (1024)
 #define IO_PER_BATCH (1)
 #define NUM_QUEUES (1)
@@ -57,7 +59,7 @@ class Read_thread : public Exokernel::Base_thread {
         }
 
         void action() {
-          (*_cnt)++;
+          //(*_cnt)++;
           PLOG(" Notification called (id = %u) !!", _id);
         }
     };
@@ -68,16 +70,17 @@ class Read_thread : public Exokernel::Base_thread {
     void read_throughput_test()
     {
       using namespace Exokernel;
+      assert(IO_PER_BATCH == 1);
 
       NVME_IO_queue * ioq = _dev->io_queue(_qid);
 
       io_descriptor_t* io_desc = (io_descriptor_t *)malloc(SLAB_SIZE * sizeof(io_descriptor_t));
 
 //#define N_PAGES 102400
-      uint64_t N_PAGES = COUNT;
+      const uint64_t N_PAGES = COUNT;
 #ifdef TEST_RANDOM_IO
       boost::random::random_device rng;
-      boost::random::uniform_int_distribution<> rnd_page_offset(1, 64*1024*1024); //max 781,422,768 sectors
+      boost::random::uniform_int_distribution<> rnd_page_offset(1, 64*1024*1024-1); //max 781,422,768 sectors
 #endif
 
       uint64_t counter = 0;
@@ -92,16 +95,17 @@ class Read_thread : public Exokernel::Base_thread {
 
 #ifdef TEST_IO_READ
         io_desc_ptr->action = NVME_READ;
-#else
+#else /* Write */
         io_desc_ptr->action = NVME_WRITE;
 #endif
         io_desc_ptr->buffer_virt = _virt_array_local[idx % SLAB_SIZE];
         io_desc_ptr->buffer_phys = _phys_array_local[idx % SLAB_SIZE];
 #ifdef TEST_RANDOM_IO
-        io_desc_ptr->offset = PAGE_SIZE * rnd_page_offset(rng);
-#else
-        io_desc_ptr->offset = PAGE_SIZE * ((_qid-1)*N_PAGES + idx);
+        io_desc_ptr->offset = rnd_page_offset(rng) * (PAGE_SIZE/NVME::BLOCK_SIZE);
+#else /* sequential IO */
+        io_desc_ptr->offset = ((uint64_t)(MAX_LBA/8)*(_qid-1) + idx*(PAGE_SIZE/NVME::BLOCK_SIZE)) % MAX_LBA;
 #endif
+        assert(io_desc_ptr->offset < MAX_LBA);
         io_desc_ptr->num_blocks = NUM_BLOCKS;
 
         //memset(io_desc_ptr->buffer_virt, 0, PAGE_SIZE);
@@ -113,6 +117,7 @@ class Read_thread : public Exokernel::Base_thread {
 
       PLOG("all sends complete (Q:%u).", _qid);
 
+      //assert(counter == COUNT);
       printf("** Total 4K I/O = %lu (Q: %u)\n", counter, _qid);
       free(io_desc);
       delete notify;
@@ -144,7 +149,7 @@ class Read_thread : public Exokernel::Base_thread {
 
 #ifdef TEST_RANDOM_IO
       boost::random::random_device rng;
-      boost::random::uniform_int_distribution<> rnd_page_offset(1, 32*1024*1024); //max 781,422,768 sectors
+      boost::random::uniform_int_distribution<> rnd_page_offset(1, 80*1024); //max 781,422,768 sectors
 #endif
 
       for(unsigned long i=0;i<COUNT;i++) {
@@ -361,19 +366,24 @@ class Read_thread : public Exokernel::Base_thread {
     {
       using namespace Exokernel;
 
+      assert(_qid == 1);
+      assert(NUM_QUEUES == 1);
       NVME_IO_queue * ioq = _dev->io_queue(_qid);
 
-#define N_PAGES 1024
-      io_descriptor_t* io_desc = (io_descriptor_t *)malloc(2 * N_PAGES * sizeof(io_descriptor_t));
+//#define N_PAGES 10240
+      uint64_t N_PAGES = COUNT;
+      io_descriptor_t* io_desc = (io_descriptor_t *)malloc(SLAB_SIZE * sizeof(io_descriptor_t));
+#if 0
       //Fill first
       for(unsigned idx = 0; idx < N_PAGES; idx++) {
-        io_descriptor_t* io_desc_ptr = io_desc + idx;
+        if(idx%100000 == 0) printf("count = %u (Q: %u)\n", idx, _qid);
+        io_descriptor_t* io_desc_ptr = io_desc + idx % SLAB_SIZE;
 
         memset(io_desc_ptr, 0, sizeof(io_descriptor_t));
 
         io_desc_ptr->action = NVME_WRITE;
-        io_desc_ptr->buffer_virt = _virt_array_local[idx];
-        io_desc_ptr->buffer_phys = _phys_array_local[idx];
+        io_desc_ptr->buffer_virt = _virt_array_local[idx%SLAB_SIZE];
+        io_desc_ptr->buffer_phys = _phys_array_local[idx%SLAB_SIZE];
         io_desc_ptr->offset = PAGE_SIZE * idx;
         io_desc_ptr->num_blocks = NUM_BLOCKS;
 
@@ -389,19 +399,21 @@ class Read_thread : public Exokernel::Base_thread {
       _itf->flush(1, _qid);
 
       printf("** All writes complete. start to read (Q:%u).\n", _qid);
-
+      sleep(5);
+#endif
 #ifdef TEST_RANDOM_IO
       boost::random::random_device rng;
-      boost::random::uniform_int_distribution<> rnd_page_offset(1, N_PAGES); //max 781,422,768 sectors
+      boost::random::uniform_int_distribution<> rnd_page_offset(1, N_PAGES-1); //max 781,422,768 sectors
 #endif
 
       for(unsigned idx = 0; idx < N_PAGES; idx++) {
-        io_descriptor_t* io_desc_ptr = io_desc + idx + N_PAGES;
+        if(idx%100000 == 0) printf("count = %u (Q: %u)\n", idx, _qid);
+        io_descriptor_t* io_desc_ptr = io_desc + idx % SLAB_SIZE;
         memset(io_desc_ptr, 0, sizeof(io_descriptor_t));
 
         io_desc_ptr->action = NVME_READ;
-        io_desc_ptr->buffer_virt = _virt_array_local[idx+N_PAGES];
-        io_desc_ptr->buffer_phys = _phys_array_local[idx+N_PAGES];
+        io_desc_ptr->buffer_virt = _virt_array_local[idx%SLAB_SIZE];
+        io_desc_ptr->buffer_phys = _phys_array_local[idx%SLAB_SIZE];
 #ifdef TEST_RANDOM_IO
         io_desc_ptr->offset = PAGE_SIZE * rnd_page_offset(rng);
 #else
@@ -462,7 +474,6 @@ class Read_thread : public Exokernel::Base_thread {
       std::stringstream str;
       str << "rt-client-qt-" << _qid;
       Exokernel::set_thread_name(str.str().c_str());
-
 #ifdef TEST_VERIFY_SIMPLE
       verification_simple();
 #else
@@ -473,6 +484,7 @@ class Read_thread : public Exokernel::Base_thread {
       //read_throughput_test_v2();
 #endif
 #endif
+      //read_block(0x162d5);
     }
 
 };
