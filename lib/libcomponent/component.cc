@@ -38,7 +38,7 @@
 #include <stdio.h>
 
 #include <component/base.h>
-
+#include <common/errors.h>
 
 namespace Component
 {
@@ -80,5 +80,30 @@ namespace Component
     comp->add_ref();
 
     return comp;
+  }
+
+
+  /** 
+   * Perform pairwise binding of components
+   * 
+   * @param components List of components to bind
+   * 
+   * @return S_OK on success.
+   */
+  status_t bind(std::vector<IBase *> components) {
+
+    for(int i=0;i<components.size();i++) {
+      assert(components[i]);
+      for(int j=0;j<components.size();j++) {
+        assert(components[j]);
+        if(i==j) continue;
+        if(components[i]->connect(components[j]) == -1) {
+          PDBG("connect call in pairwise bind failed.");
+          return E_FAIL;
+        }
+      }
+    }
+
+    return S_OK;
   }
 }
