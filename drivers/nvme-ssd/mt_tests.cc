@@ -40,6 +40,9 @@ class Read_thread : public Exokernel::Base_thread {
     addr_t* _phys_array_local;
     void ** _virt_array_local;
 
+    /**
+     * A simple notification callback
+     */
     class Notify_Async_Cnt : public Notify {
       private:
         unsigned _id;
@@ -82,12 +85,13 @@ class Read_thread : public Exokernel::Base_thread {
       const uint64_t N_PAGES = COUNT;
 #ifdef TEST_RANDOM_IO
       boost::random::random_device rng;
-      boost::random::uniform_int_distribution<> rnd_page_offset(1, 64*1024*1024-1); //offset based on page; 781,422,768 sectors(logical block) in total
+      boost::random::uniform_int_distribution<> rnd_page_offset(1, 64*1024*1024-1); //PAGE offset; 781,422,768 sectors(logical block) in total
 #endif
 
       uint64_t counter = 0;
       Notify *notify = new Notify_Async_Cnt(&counter);
       unsigned npages_per_io = (NVME::BLOCK_SIZE)*NUM_BLOCKS/PAGE_SIZE;
+      unsigned n_lba_partitions = round_up_log2(NUM_QUEUES);
 
       for(unsigned idx = 0; idx < N_PAGES; idx++) {
 
@@ -108,8 +112,7 @@ class Read_thread : public Exokernel::Base_thread {
         assert(NUM_BLOCKS == 8);
         io_desc_ptr->offset = rnd_page_offset(rng) * (PAGE_SIZE/NVME::BLOCK_SIZE);
 #else /* sequential IO */
-        unsigned n_partitions = round_up_log2(NUM_QUEUES);
-        io_desc_ptr->offset = ((uint64_t)(MAX_LBA/n_partitions)*(_qid-1) + idx*NUM_BLOCKS) % MAX_LBA;
+        io_desc_ptr->offset = ((uint64_t)(MAX_LBA/n_lba_partitions)*(_qid-1) + idx*NUM_BLOCKS) % MAX_LBA;
 #endif
         assert(io_desc_ptr->offset < MAX_LBA);
         io_desc_ptr->num_blocks = NUM_BLOCKS;
@@ -133,7 +136,7 @@ class Read_thread : public Exokernel::Base_thread {
     /**
      * Throuput measurement with considering batch submission
      */
-    void read_throughput_test_v2()
+    void read_throughput_test_batch()
     {
       using namespace Exokernel;
 
@@ -492,7 +495,7 @@ class Read_thread : public Exokernel::Base_thread {
       verification();
 #else
       read_throughput_test();
-      //read_throughput_test_v2();
+      //read_throughput_test_batch();//v2
 #endif
 #endif
       //read_block(0x162d5);
