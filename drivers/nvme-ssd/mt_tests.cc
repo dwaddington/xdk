@@ -19,12 +19,12 @@
 
 #define MAX_LBA (512*1024*1024) //max 781,422,768 sectors
 
-#define COUNT (10240000)
+#define COUNT (1024000)
 //#define COUNT (1024)
 #define IO_PER_BATCH (1)
 #define NUM_QUEUES (1)
 #define SLAB_SIZE (2048)
-#define NUM_BLOCKS (8)
+#define NUM_BLOCKS (8)//(8*32)
 
 #define TEST_RANDOM_IO
 #define TEST_IO_READ
@@ -101,9 +101,11 @@ class Read_thread : public Exokernel::Base_thread {
         io_desc_ptr->buffer_virt = _virt_array_local[idx % SLAB_SIZE];
         io_desc_ptr->buffer_phys = _phys_array_local[idx % SLAB_SIZE];
 #ifdef TEST_RANDOM_IO
+        assert(NUM_BLOCKS == 8);
         io_desc_ptr->offset = rnd_page_offset(rng) * (PAGE_SIZE/NVME::BLOCK_SIZE);
 #else /* sequential IO */
-        io_desc_ptr->offset = ((uint64_t)(MAX_LBA/8)*(_qid-1) + idx*(PAGE_SIZE/NVME::BLOCK_SIZE)) % MAX_LBA;
+        unsigned n_partitions = round_up_log2(NUM_QUEUES);
+        io_desc_ptr->offset = ((uint64_t)(MAX_LBA/n_partitions)*(_qid-1) + idx*NUM_BLOCKS) % MAX_LBA;
 #endif
         assert(io_desc_ptr->offset < MAX_LBA);
         io_desc_ptr->num_blocks = NUM_BLOCKS;
@@ -585,7 +587,7 @@ class mt_tests {
         uint64_t total_io = COUNT * IO_PER_BATCH * (io_size_in_KB/4) * NUM_QUEUES;
         printf("**********************\n");
 
-        printf("COUNT = %u, IO_PER_BATCH = %u, NUM_QUEUES = %u, total_io = %lu\n", (unsigned)COUNT, (unsigned)IO_PER_BATCH, (unsigned)NUM_QUEUES, total_io);
+        printf("COUNT = %u, IO_PER_BATCH = %u, NUM_QUEUES = %u, NUM_BLOCKS = %u, total_io = %lu\n", (unsigned)COUNT, (unsigned)IO_PER_BATCH, (unsigned)NUM_QUEUES, (unsigned)NUM_BLOCKS, total_io);
 
         /*use gettimeofday*/
         double gtod_delta = ((tv_end.tv_sec - tv_start.tv_sec) * 1000000.0) +
