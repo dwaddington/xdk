@@ -27,13 +27,11 @@
    in files containing the exception.  
 */
 
-
-
-
-
-
 #ifndef __NVME_TYPES_H__
 #define __NVME_TYPES_H__
+
+#define likely(x)    __builtin_expect (!!(x), 1)
+#define unlikely(x)  __builtin_expect (!!(x), 0)
 
 typedef unsigned vector_t;
 typedef unsigned core_id_t;
