@@ -322,7 +322,7 @@ alloc_dma_pages(size_t num_pages, addr_t * phys_addr, int numa_node, int flags)
       p = mmap(NULL,
                num_pages * PAGE_SIZE, 
                PROT_READ | PROT_WRITE, // prot
-               MAP_PRIVATE | flags,
+               MAP_SHARED | flags,
                fd,
                paddr);
         
@@ -419,7 +419,7 @@ alloc_dma_huge_pages(size_t num_pages, addr_t * phys_addr, int numa_node, int fl
       p = mmap(NULL,
                num_pages * HUGE_PAGE_SIZE, 
                PROT_READ | PROT_WRITE, // prot
-               MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | flags,     // flags
+               MAP_SHARED | MAP_ANONYMOUS | MAP_HUGETLB | flags,     // flags
                fd,
                paddr);
         
