@@ -19,8 +19,8 @@
 
 #define MAX_LBA (512*1024*1024) //max 781,422,768 sectors
 
-#define COUNT (1024000)
-//#define COUNT (1024)
+//#define COUNT (1024000)
+#define COUNT (128)
 #define IO_PER_BATCH (1)
 #define NUM_QUEUES (1)
 #define SLAB_SIZE (2048)
@@ -29,7 +29,6 @@
 #define TEST_RANDOM_IO
 #define TEST_IO_READ
 //#define TEST_VERIFY
-//#define TEST_VERIFY_SIMPLE
 
 class Read_thread : public Exokernel::Base_thread {
   private:
@@ -251,13 +250,14 @@ class Read_thread : public Exokernel::Base_thread {
         ~Notify_Verify() {}
 
         void action() {
-          PTEST("offset = %lx, virt_p = %p", _offset/PAGE_SIZE, _p);
+          PTEST("page offset = 0x%lx (marker: 0x%x%x), virt_p = %p", _offset, 0xf & (_content >> 4), 0xf & _content, _p);
           //hexdump(((uint8_t*)_p), 16);
 
           for(unsigned i = 0; i<_size; i++) {
             if(((uint8_t*)_p)[i]!=_content) {
-              PTEST("FAIL: offset = %lx, virt_p = %p", _offset/PAGE_SIZE, _p);
-              hexdump(((uint8_t*)_p), 16);
+              PTEST("FAIL: page offset = 0x%lx (marker: 0x%x%x), virt_p = %p", _offset, 0xf & (_content >> 4), 0xf & _content, _p);
+              hexdump(((uint8_t*)_p), _size);
+              return;
             }
             assert(((uint8_t*)_p)[i]==_content);
           }
@@ -270,158 +270,64 @@ class Read_thread : public Exokernel::Base_thread {
         }
     };
 
-    
-    void verification()
-    {
-      using namespace Exokernel;
-
-      PLOG("** VERIFY CORRECTNESS FOR Q:%p (_qid=%u)\n",(void *) ioq, _qid);
-      NVME_IO_queue * ioq = _dev->io_queue(_qid);
-
-#define IO_PER_BATCH_FILL 1 //32
-      //io_desc array size (slab size) should be large enough
-      //so that there is no overlap
-      assert(SLAB_SIZE > 4*(ioq->queue_length()));
-      
-      io_descriptor_t* io_desc = (io_descriptor_t *)malloc(SLAB_SIZE * sizeof(io_descriptor_t));
-
-      //Notify *notify_fill = new Notify_Async(false);
-      //Fill first 
-      unsigned io_req_idx = (_qid-1)*COUNT*IO_PER_BATCH_FILL;
-
-      for(unsigned long i=0;i<COUNT;i++) {
-
-        if(i%1000 == 0) printf("Write count = %lu (Q: %u)\n", i, _qid);
-
-        //prepare io descriptors
-        unsigned npages_per_io = (NVME::BLOCK_SIZE)*NUM_BLOCKS/PAGE_SIZE;
-        io_descriptor_t* io_desc_base = io_desc + (io_req_idx%SLAB_SIZE);
-        assert((io_req_idx % SLAB_SIZE) + IO_PER_BATCH_FILL - 1 < SLAB_SIZE);
-        for(unsigned long j = 0; j < IO_PER_BATCH_FILL; j++) {
-          io_descriptor_t* io_desc_ptr = io_desc_base + j;
-
-          memset(io_desc_ptr, 0, sizeof(io_descriptor_t));
-          unsigned slab_idx_local = io_req_idx % SLAB_SIZE;
-          io_desc_ptr->action = NVME_WRITE;
-          io_desc_ptr->buffer_virt = _virt_array_local[slab_idx_local];
-          io_desc_ptr->buffer_phys = _phys_array_local[slab_idx_local];
-          io_desc_ptr->offset = PAGE_SIZE * npages_per_io * io_req_idx;
-          io_desc_ptr->num_blocks = NUM_BLOCKS;
-
-          uint8_t marker = (uint8_t)((io_desc_ptr->offset/PAGE_SIZE) & 0xff);
-          memset(io_desc_ptr->buffer_virt, marker, NVME::BLOCK_SIZE * NUM_BLOCKS);
-
-          io_req_idx++;
-        }
-
-        assert(IO_PER_BATCH_FILL==1);
-        Notify *notify_fill = new Notify_Verify(io_desc_base->offset, io_desc_base->buffer_virt, (io_desc_base->offset/PAGE_SIZE) & 0xff, NVME::BLOCK_SIZE * NUM_BLOCKS);
-
-        status_t st = _itf->async_io_batch((io_request_t*)io_desc_base, IO_PER_BATCH_FILL, notify_fill, _qid);
-
-        PLOG("sent %d blocks (%u pages) in iteration = %lu (Q:%u) \n", IO_PER_BATCH_VEFIRY*NUM_BLOCKS, IO_PER_BATCH_VEFIRY*npages_per_io, i, _qid);
-
-      }
-      assert( io_req_idx == _qid*COUNT*IO_PER_BATCH_FILL);
-
-      _itf->wait_io_completion(_qid); //wait for IO completion
-      _itf->flush(1, _qid);
-      //delete notify_fill;
-
-      printf("** All writes complete. start to read (Q:%u).\n", _qid);
-
-      //Then Read and Verify
-#ifdef TEST_RANDOM_IO
-      boost::random::random_device rng;
-      boost::random::uniform_int_distribution<> rnd_page_offset(1, COUNT*IO_PER_BATCH_FILL*NUM_QUEUES-1); //max 781,422,768 sectors
-#endif
-
-      io_req_idx = (_qid-1)*COUNT*IO_PER_BATCH_FILL;
-      for(unsigned long i=0;i<COUNT*IO_PER_BATCH_FILL;i++)
-      {
-        if(i%1000 == 0) printf("Read count = %lu (Q: %u)\n", i, _qid);
-
-        //prepare io descriptors
-        unsigned npages_per_io = (NVME::BLOCK_SIZE)*NUM_BLOCKS/PAGE_SIZE;
-        io_descriptor_t* io_desc_ptr = io_desc + io_req_idx % SLAB_SIZE;
-        memset(io_desc_ptr, 0, sizeof(io_descriptor_t));
-
-        io_desc_ptr->action = NVME_READ;
-        //unsigned slab_idx_local = (i*npages_per_io) % SLAB_SIZE;
-        unsigned slab_idx_local = io_req_idx % SLAB_SIZE;
-        io_desc_ptr->buffer_virt = _virt_array_local[slab_idx_local];
-        io_desc_ptr->buffer_phys = _phys_array_local[slab_idx_local];
-#ifdef TEST_RANDOM_IO
-        io_desc_ptr->offset = PAGE_SIZE * rnd_page_offset(rng);
-        assert(io_desc_ptr->offset/PAGE_SIZE < COUNT*IO_PER_BATCH_FILL);
-        PTEST("Sent READ io_req_idx = %lx (offset = %lx, virt_p1 = %p)\n", io_desc_ptr->offset/PAGE_SIZE, io_desc_ptr->offset, io_desc_ptr->buffer_virt);
-#else
-        io_desc_ptr->offset = PAGE_SIZE * npages_per_io * io_req_idx;
-        PTEST("Sent READ io_req_idx = %x (offset = %lx, virt_p1 = %p)\n", io_req_idx, io_desc_ptr->offset, io_desc_ptr->buffer_virt);
-#endif
-        io_desc_ptr->num_blocks = NUM_BLOCKS;
-        io_req_idx++;
-
-        Notify *notify_verify = new Notify_Verify(io_desc_ptr->offset, io_desc_ptr->buffer_virt, (io_desc_ptr->offset/PAGE_SIZE) & 0xff, NVME::BLOCK_SIZE * NUM_BLOCKS);
-        status_t st = _itf->async_io_batch((io_request_t*)io_desc_ptr, 1, notify_verify, _qid);
-
-        PLOG("sent %d blocks (%u pages) in iteration = %lu (Q:%u) \n", NUM_BLOCKS, npages_per_io, i, _qid);
-      }
-      _itf->wait_io_completion(_qid); //wait for IO completion
-
-      free(io_desc);
-    }
-
-
     /**
      * Verification test without considering batch
      */
-    void verification_simple()
+    void verify()
     {
       using namespace Exokernel;
 
       assert(_qid == 1);
       assert(NUM_QUEUES == 1);
+      assert(NUM_BLOCKS == 8);
+
       NVME_IO_queue * ioq = _dev->io_queue(_qid);
+
+      assert(SLAB_SIZE > 4*(ioq->queue_length()));
+      io_descriptor_t* io_desc = (io_descriptor_t *)malloc(SLAB_SIZE * sizeof(io_descriptor_t));
 
 //#define N_PAGES 10240
       uint64_t N_PAGES = COUNT;
-      io_descriptor_t* io_desc = (io_descriptor_t *)malloc(SLAB_SIZE * sizeof(io_descriptor_t));
-#if 0
+      assert(N_PAGES < MAX_LBA/8);
+
       //Fill first
       for(unsigned idx = 0; idx < N_PAGES; idx++) {
-        if(idx%100000 == 0) printf("count = %u (Q: %u)\n", idx, _qid);
-        io_descriptor_t* io_desc_ptr = io_desc + idx % SLAB_SIZE;
 
+        if(idx%100000 == 0) printf("count = %u (Q: %u)\n", idx, _qid);
+
+        io_descriptor_t* io_desc_ptr = io_desc + idx % SLAB_SIZE;
         memset(io_desc_ptr, 0, sizeof(io_descriptor_t));
 
         io_desc_ptr->action = NVME_WRITE;
         io_desc_ptr->buffer_virt = _virt_array_local[idx%SLAB_SIZE];
         io_desc_ptr->buffer_phys = _phys_array_local[idx%SLAB_SIZE];
-        io_desc_ptr->offset = PAGE_SIZE * idx;
+        io_desc_ptr->offset = idx * NUM_BLOCKS;
         io_desc_ptr->num_blocks = NUM_BLOCKS;
 
-        uint8_t marker = (uint8_t)((io_desc_ptr->offset/PAGE_SIZE) & 0xff);
+        uint8_t marker = (uint8_t)((io_desc_ptr->offset/NUM_BLOCKS) & 0xff);
         memset(io_desc_ptr->buffer_virt, marker, NVME::BLOCK_SIZE * NUM_BLOCKS);
 
-        Notify *notify_fill = new Notify_Verify(io_desc_ptr->offset, io_desc_ptr->buffer_virt, marker, NVME::BLOCK_SIZE * NUM_BLOCKS);
+        Notify *notify_fill = new Notify_Verify(io_desc_ptr->offset/NUM_BLOCKS, io_desc_ptr->buffer_virt, marker, NVME::BLOCK_SIZE * NUM_BLOCKS);
 
         status_t st = _itf->async_io_batch((io_request_t*)io_desc_ptr, 1, notify_fill, _qid);
+        //status_t st = _itf->sync_io((io_request_t)io_desc_ptr, _qid);
       }
 
       _itf->wait_io_completion(_qid); //wait for IO completion
       _itf->flush(1, _qid);
 
-      printf("** All writes complete. start to read (Q:%u).\n", _qid);
+      printf("** All writes complete. Start to read (Q:%u).\n", _qid);
       sleep(5);
-#endif
+
 #ifdef TEST_RANDOM_IO
       boost::random::random_device rng;
       boost::random::uniform_int_distribution<> rnd_page_offset(1, N_PAGES-1); //max 781,422,768 sectors
 #endif
 
       for(unsigned idx = 0; idx < N_PAGES; idx++) {
+
         if(idx%100000 == 0) printf("count = %u (Q: %u)\n", idx, _qid);
+
         io_descriptor_t* io_desc_ptr = io_desc + idx % SLAB_SIZE;
         memset(io_desc_ptr, 0, sizeof(io_descriptor_t));
 
@@ -429,17 +335,17 @@ class Read_thread : public Exokernel::Base_thread {
         io_desc_ptr->buffer_virt = _virt_array_local[idx%SLAB_SIZE];
         io_desc_ptr->buffer_phys = _phys_array_local[idx%SLAB_SIZE];
 #ifdef TEST_RANDOM_IO
-        io_desc_ptr->offset = PAGE_SIZE * rnd_page_offset(rng);
-#else
-        io_desc_ptr->offset = PAGE_SIZE * idx;
+        io_desc_ptr->offset = rnd_page_offset(rng) * NUM_BLOCKS;
+#else  /* Sequential IO */
+        io_desc_ptr->offset = idx * NUM_BLOCKS;
 #endif
         io_desc_ptr->num_blocks = NUM_BLOCKS;
 
         memset(io_desc_ptr->buffer_virt, 0, PAGE_SIZE);
         //hexdump(io_desc_ptr->buffer_virt, 32);
 
-        uint8_t marker = (uint8_t)((io_desc_ptr->offset/PAGE_SIZE) & 0xff);
-        Notify *notify_verify = new Notify_Verify(io_desc_ptr->offset, io_desc_ptr->buffer_virt, marker, NVME::BLOCK_SIZE * NUM_BLOCKS);
+        uint8_t marker = (uint8_t)((io_desc_ptr->offset/NUM_BLOCKS) & 0xff);
+        Notify *notify_verify = new Notify_Verify(io_desc_ptr->offset/NUM_BLOCKS, io_desc_ptr->buffer_virt, marker, NVME::BLOCK_SIZE * NUM_BLOCKS);
         status_t st = _itf->async_io_batch((io_request_t*)io_desc_ptr, 1, notify_verify, _qid);
       }
       _itf->wait_io_completion(_qid); //wait for IO completion
@@ -448,9 +354,10 @@ class Read_thread : public Exokernel::Base_thread {
     }
 
 
-    void read_block(off_t block_offset) 
+    void read_data(off_t lba) 
     {
       using namespace Exokernel;
+      assert(NUM_BLOCKS == 8);
 
       NVME_IO_queue * ioq = _dev->io_queue(_qid);
 
@@ -460,13 +367,13 @@ class Read_thread : public Exokernel::Base_thread {
       io_desc_ptr->action = NVME_READ;
       io_desc_ptr->buffer_virt = _virt_array_local[1];
       io_desc_ptr->buffer_phys = _phys_array_local[1];
-      io_desc_ptr->offset = PAGE_SIZE * block_offset;
+      io_desc_ptr->offset = lba;
       io_desc_ptr->num_blocks = NUM_BLOCKS;
 
       memset(io_desc_ptr->buffer_virt, 0, PAGE_SIZE);
       hexdump(io_desc_ptr->buffer_virt, 32);
 
-      Notify *notify_verify = new Notify_Verify(io_desc_ptr->offset, io_desc_ptr->buffer_virt, (io_desc_ptr->offset/PAGE_SIZE) & 0xff, NVME::BLOCK_SIZE * NUM_BLOCKS);
+      Notify *notify_verify = new Notify_Verify(io_desc_ptr->offset/8, io_desc_ptr->buffer_virt, (io_desc_ptr->offset/8) & 0xff, NVME::BLOCK_SIZE * NUM_BLOCKS);
       status_t st = _itf->async_io_batch((io_request_t*)io_desc_ptr, 1, notify_verify, _qid);
 
       _itf->wait_io_completion(_qid); //wait for IO completion
@@ -488,17 +395,13 @@ class Read_thread : public Exokernel::Base_thread {
       std::stringstream str;
       str << "rt-client-qt-" << _qid;
       Exokernel::set_thread_name(str.str().c_str());
-#ifdef TEST_VERIFY_SIMPLE
-      verification_simple();
-#else
 #ifdef TEST_VERIFY
-      verification();
+      verify();
+      //read_data(0xac*8);
 #else
       read_throughput_test();
       //read_throughput_test_batch();//v2
 #endif
-#endif
-      //read_block(0x162d5);
     }
 
 };
