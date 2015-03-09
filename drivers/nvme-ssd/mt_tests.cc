@@ -20,10 +20,10 @@
 #define MAX_LBA (512*1024*1024) //max 781,422,768 sectors
 
 #define COUNT (1024000)
-//#define COUNT (128)
+#define COUNT_VERIFY (128)
 #define IO_PER_BATCH (1)
 #define NUM_QUEUES (1)
-#define SLAB_SIZE (2048)
+#define SLAB_SIZE (1024)
 #define NUM_BLOCKS (8)//(8*32)
 
 #define TEST_RANDOM_IO
@@ -76,7 +76,7 @@ class Read_thread : public Exokernel::Base_thread {
 
       NVME_IO_queue * ioq = _dev->io_queue(_qid);
 
-      //slab size should be large enough, so that there is no overlap
+      //slab size should be large enough, so that there is no overlap. only for testing purpose
       assert(SLAB_SIZE > 4*(ioq->queue_length()));
       io_descriptor_t* io_desc = (io_descriptor_t *)malloc(SLAB_SIZE * sizeof(io_descriptor_t));
 
@@ -146,7 +146,7 @@ class Read_thread : public Exokernel::Base_thread {
       unsigned long long total_cycles = 0;
       unsigned long long sample_count = 0;
 
-      //slab size should be large enough, so that there is no overlap
+      //slab size should be large enough, so that there is no overlap. only for testing purpose
       assert(SLAB_SIZE > 4*(ioq->queue_length()));
       io_descriptor_t* io_desc = (io_descriptor_t *)malloc(SLAB_SIZE * sizeof(io_descriptor_t));
 
@@ -286,10 +286,13 @@ class Read_thread : public Exokernel::Base_thread {
       assert(SLAB_SIZE > 4*(ioq->queue_length()));
       io_descriptor_t* io_desc = (io_descriptor_t *)malloc(SLAB_SIZE * sizeof(io_descriptor_t));
 
-//#define N_PAGES 10240
-      uint64_t N_PAGES = COUNT;
+//#define N_PAGES 128
+      uint64_t N_PAGES = COUNT_VERIFY;
       assert(N_PAGES < MAX_LBA/8);
 
+#define SCALE 1
+#define VERIFY_FILL
+#ifdef VERIFY_FILL
       //Fill first
       for(unsigned idx = 0; idx < N_PAGES; idx++) {
 
@@ -301,16 +304,21 @@ class Read_thread : public Exokernel::Base_thread {
         io_desc_ptr->action = NVME_WRITE;
         io_desc_ptr->buffer_virt = _virt_array_local[idx%SLAB_SIZE];
         io_desc_ptr->buffer_phys = _phys_array_local[idx%SLAB_SIZE];
-        io_desc_ptr->offset = idx * NUM_BLOCKS;
+        io_desc_ptr->offset = idx * NUM_BLOCKS * SCALE;
         io_desc_ptr->num_blocks = NUM_BLOCKS;
 
         uint8_t marker = (uint8_t)((io_desc_ptr->offset/NUM_BLOCKS) & 0xff);
         memset(io_desc_ptr->buffer_virt, marker, NVME::BLOCK_SIZE * NUM_BLOCKS);
 
+#define ASYNC_FILL
+#ifdef ASYNC_FILL
         Notify *notify_fill = new Notify_Verify(io_desc_ptr->offset/NUM_BLOCKS, io_desc_ptr->buffer_virt, marker, NVME::BLOCK_SIZE * NUM_BLOCKS);
 
         status_t st = _itf->async_io_batch((io_request_t*)io_desc_ptr, 1, notify_fill, _qid);
-        //status_t st = _itf->sync_io((io_request_t)io_desc_ptr, _qid);
+        //status_t st = _itf->async_io((io_request_t)io_desc_ptr, notify_fill, _qid);
+#else
+        status_t st = _itf->sync_io((io_request_t)io_desc_ptr, _qid);
+#endif
       }
 
       _itf->wait_io_completion(_qid); //wait for IO completion
@@ -318,6 +326,7 @@ class Read_thread : public Exokernel::Base_thread {
 
       printf("** All writes complete. Start to read (Q:%u).\n", _qid);
       sleep(5);
+#endif // VERIFY_FILL
 
 #ifdef TEST_RANDOM_IO
       boost::random::random_device rng;
@@ -337,7 +346,7 @@ class Read_thread : public Exokernel::Base_thread {
 #ifdef TEST_RANDOM_IO
         io_desc_ptr->offset = rnd_page_offset(rng) * NUM_BLOCKS;
 #else  /* Sequential IO */
-        io_desc_ptr->offset = idx * NUM_BLOCKS;
+        io_desc_ptr->offset = idx * NUM_BLOCKS * SCALE;
 #endif
         io_desc_ptr->num_blocks = NUM_BLOCKS;
 
@@ -406,6 +415,10 @@ class Read_thread : public Exokernel::Base_thread {
 
 };
 
+#define SHMEM_HUGEPAGE_ALLOC 0
+#define DMA_HUGEPAGE_ALLOC 0
+#define DMA_PAGE_ALLOC 1
+
 class mt_tests {
 
   int h; /*mem handler*/
@@ -414,9 +427,12 @@ class mt_tests {
   addr_t phys_array[NUM_QUEUES][SLAB_SIZE];
   void * virt_array[NUM_QUEUES][SLAB_SIZE];
   Exokernel::Pagemap pm;
+  std::vector<void *> hugepage_list;
+  std::vector<void *> page_list;
 
   private:
-    void allocMem() {
+#if (SHMEM_HUGEPAGE_ALLOC == 1)
+    void allocMem(IBlockDevice * itf) {
 
       using namespace Exokernel;
       /* allocate slab of memory */
@@ -440,10 +456,92 @@ class mt_tests {
       PLOG("Memory allocated OK!!");
     }
 
-    void freeMem() {
+    void freeMem(IBlockDevice * itf) {
       Exokernel::Memory::huge_shmem_free(vaddr,h);
       PLOG("Memory freed OK!!");
     }
+#elif (DMA_HUGEPAGE_ALLOC == 1)
+    void allocMem(IBlockDevice * itf) {
+
+      using namespace Exokernel;
+      Device * dev = itf->get_device();
+
+      /* note Linux off-the-shelf is limited to 4MB contiguous memory */
+      addr_t paddr;
+      void* vaddr;
+      char *p_v, *p_p;
+      unsigned page_count= 0;
+      const unsigned n_page_per_hugepage = HUGE_PAGE_SIZE/PAGE_SIZE;
+      for(unsigned i=0; i<NUM_QUEUES; i++) {
+        for(unsigned j=0; j<SLAB_SIZE; j++) {
+          if(page_count % n_page_per_hugepage == 0) {
+            vaddr = dev->alloc_dma_huge_pages(1, &paddr, 0, MAP_HUGETLB);
+            hugepage_list.push_back(vaddr);
+            p_v = (char *)vaddr;
+            p_p = (char *)paddr;
+            touch_pages(vaddr, HUGE_PAGE_SIZE); /* eager map */
+          }
+          virt_array[i][j] = p_v;
+          phys_array[i][j] = (addr_t)p_p;
+          assert(virt_array[i][j]);
+          assert(phys_array[i][j]);
+          //printf("[%d, %d]: virt = %p, phys = %lx\n", i, j, virt_array[i][j], phys_array[i][j]);
+
+          p_v += PAGE_SIZE;
+          p_p += PAGE_SIZE;
+          page_count++;
+        }
+      }
+      PLOG("Memory allocated OK!!");
+    }
+
+    void freeMem(IBlockDevice * itf) {
+      using namespace Exokernel;
+      Device * dev = itf->get_device();
+      for(unsigned i = 0; i < hugepage_list.size(); i++) {
+        dev->free_dma_huge_pages(hugepage_list[i]);
+      }
+      PLOG("Memory freed OK!!");
+    }
+#elif (DMA_PAGE_ALLOC == 1)
+    void allocMem(IBlockDevice * itf) {
+      using namespace Exokernel;
+      Device * dev = itf->get_device();
+
+      assert(SLAB_SIZE == 1024);
+      for(unsigned i=0; i<NUM_QUEUES; i++) {
+        addr_t phys_addr = 0;
+        void *p = dev->alloc_dma_pages(SLAB_SIZE, &phys_addr);
+        page_list.push_back(p);
+        memset(p, 0, PAGE_SIZE*SLAB_SIZE);
+
+        char *p_char = (char *)p;
+        for(unsigned j=0; j<SLAB_SIZE; j++) {
+          virt_array[i][j] = p_char;
+          phys_array[i][j] = phys_addr;
+          p_char += PAGE_SIZE;
+          phys_addr += PAGE_SIZE;
+          //printf("[%d, %d]: virt = %p, phys = %lx\n", i, j, virt_array[i][j], phys_array[i][j]);
+        }
+      }
+      PLOG("Memory allocated OK!!");
+    }
+    void freeMem(IBlockDevice * itf) {
+      using namespace Exokernel;
+      Device * dev = itf->get_device();
+      for(unsigned i = 0; i < page_list.size(); i++) {
+        dev->free_dma_pages(page_list[i]);
+      }
+      PLOG("Memory freed OK!!");
+    }
+#else
+    void allocMem(IBlockDevice * itf) {
+      assert(false);
+    }
+    void freeMem(IBlockDevice * itf) {
+      assert(false);
+    }
+#endif
 
   public:
     void runTest(IBlockDevice * itf) {
@@ -452,7 +550,7 @@ class mt_tests {
       const cpu_time_t tsc_per_sec = (unsigned long long)get_tsc_frequency_in_mhz() * 1000000UL;
       PLOG("tsc_per_sec = %lu", tsc_per_sec);
 
-      allocMem();
+      allocMem(itf);
 
       {
         Read_thread * thr[NUM_QUEUES];
@@ -533,6 +631,6 @@ class mt_tests {
 
       }
 
-      freeMem();
+      freeMem(itf);
     }
 };
