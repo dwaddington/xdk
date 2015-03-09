@@ -176,7 +176,48 @@ Completion_command_slot * NVME_queues_base::get_next_completion()
        _comp_cmd[curr_head].status,
        _queue_id);
 
+  /* check status code */
+  unsigned status =  _comp_cmd[curr_head].status;
 
+  unsigned DNR  = 0x1  & (status >> 31);
+  unsigned More = 0x1  & (status >> 30);
+  unsigned SCT  = 0x7  & (status >> 25);
+  unsigned SC   = 0xff & status;
+
+  PLOG("DNR = 0x%x, More = 0x%x, SCT = 0x%x, SC = 0x%x",
+        DNR,
+        More,
+        SCT,
+        SC
+      );
+
+  if(SCT == 0x0) {
+    PDBG("Generic Command Status");
+    if(unlikely(SC != 0x0)) {  /* not Successful Completion */
+      PERR("DNR = 0x%x, More = 0x%x, SCT = 0x%x, SC = 0x%x",
+              DNR,
+              More,
+              SCT,
+              SC
+             );
+      assert(false);
+    }
+  } else if (SCT == 0x1) {
+    PDBG("Command Specific Status");
+    assert(false);
+  } else if (SCT == 0x2) {
+    PDBG("Media Error");
+    assert(false);
+  } else if (SCT == 0x7) {
+    PDBG("Vendor Specific");
+    assert(false);
+  } else {
+    PDBG("Reserved");
+    assert(false);
+  }
+
+  //////////////////////////////////////////
+ 
   // if((_comp_cmd[curr_head].phase_tag != _cq_phase) ||
   //    (_comp_cmd[curr_head].status == 0xB)) {
   
@@ -831,6 +872,7 @@ uint16_t NVME_IO_queue::issue_async_io_batch(io_descriptor_t* io_desc,
       PERR("Unrecoganized Operaton !!");
       assert(false);
     }
+    //printf("issue cmdid = %u, offset = %lu(%lx, %lx)\n", cmdid, io_desc_ptr->offset, io_desc_ptr->offset, io_desc_ptr->offset/8);
   }
   assert(cmdid == bi.end_cmdid);
 }
