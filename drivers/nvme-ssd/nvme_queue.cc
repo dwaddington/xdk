@@ -641,6 +641,12 @@ NVME_IO_queue::NVME_IO_queue(NVME_device * dev,
   _queue_id = queue_id; 
   assert(_queue_id > 0); /* admin Q is id 0 */
 
+  /* init batch counters */
+  _sq_batch_counter = 0;
+  prev_tsc = 0;
+  cur_tsc = 0;
+  drain_tsc = (unsigned long long)get_tsc_frequency_in_mhz() * US_PER_RING;
+
   /* allocate memory for the completion queue */
   num_pages = round_up_page(CQ_entry_size_bytes * _queue_items)/PAGE_SIZE;
   PLOG("allocating %ld pages for IO completion queue",num_pages);
@@ -763,8 +769,13 @@ uint16_t NVME_IO_queue::issue_async_read(addr_t prp1,
                     access_lat,
                     false);  
 
-
-  ring_submission_doorbell();
+  cur_tsc = rdtsc();
+  _sq_batch_counter++;
+  if(unlikely(_sq_batch_counter >= MAX_BATCH_TO_RING || cur_tsc - prev_tsc >= drain_tsc)) {
+    ring_submission_doorbell();
+    prev_tsc = cur_tsc;
+    _sq_batch_counter = 0;
+  }
 
   /* collect statistics */
   cpu_time_t delta = rdtsc() - start;
@@ -810,7 +821,13 @@ uint16_t NVME_IO_queue::issue_async_write(addr_t prp1,
                     access_lat,
                     true);
 
-  ring_submission_doorbell();
+  cur_tsc = rdtsc();
+  _sq_batch_counter++;
+  if(unlikely(_sq_batch_counter >= MAX_BATCH_TO_RING || cur_tsc - prev_tsc >= drain_tsc)) {
+    ring_submission_doorbell();
+    prev_tsc = cur_tsc;
+    _sq_batch_counter = 0;
+  }
 
   return slot_id;
 }
@@ -879,6 +896,8 @@ uint16_t NVME_IO_queue::issue_async_io_batch(io_descriptor_t* io_desc,
 
 status_t NVME_IO_queue::wait_io_completion()
 {
+  ring_submission_doorbell(); /* make sure the doorbell is rang */
+
   NVME_LOOP( ( !(_batch_manager->wasEmpty()) ), false);
 
   return Exokernel::S_OK;

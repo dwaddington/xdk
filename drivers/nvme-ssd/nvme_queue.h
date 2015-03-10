@@ -37,6 +37,7 @@
 
 #include <exo/spinlocks.h>
 #include <common/utils.h>
+#include <common/cycles.h>
 #include "nvme_common.h"
 #include "nvme_registers.h"
 #include "nvme_command.h"
@@ -415,6 +416,10 @@ private:
 
   CQ_thread *      _cq_thread;
   Callback_manager _callback_manager;
+
+  unsigned         _sq_batch_counter;
+  cpu_time_t prev_tsc, cur_tsc, diff_tsc;
+  cpu_time_t drain_tsc;
 
 public:
   NVME_IO_queue(NVME_device * dev, 

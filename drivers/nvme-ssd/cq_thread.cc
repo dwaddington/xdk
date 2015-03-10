@@ -116,6 +116,7 @@ void* CQ_thread::entry(void* qb) {
 
   retry:
 
+    unsigned cq_batch_counter = 0;
     /* iterate through the completed completion slots (looking at phase tag) */
     while((ccs = _queues->get_next_completion())!=NULL) {
 
@@ -143,6 +144,13 @@ void* CQ_thread::entry(void* qb) {
       g_entries_cleared++;
       PLOG("cleared = %lu (Q:%u)", g_entries_cleared, _qid);
 
+#define CQ_MAX_BATCH_TO_RING (8)
+      cq_batch_counter++;
+      if(unlikely(cq_batch_counter >= CQ_MAX_BATCH_TO_RING)) {
+        _queues->ring_completion_doorbell();
+        cq_batch_counter = 0;
+      }
+
       // if(g_entries_cleared % 1024 == 0) 
       //   PLOG("CQ thread cleared %lu entries",g_entries_cleared);
     }
@@ -157,6 +165,7 @@ void* CQ_thread::entry(void* qb) {
     if(found_completion) {
       PLOG("ringing completion doorbell");
       _queues->ring_completion_doorbell();
+      cq_batch_counter = 0;
     }
     // else {
     //    _queues->dump_queue_info();
