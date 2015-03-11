@@ -110,8 +110,8 @@ int main()
 
   itf->init_device(0);
 
-  //basic_test(itf);
-  (new mt_tests())->runTest(itf);
+  basic_test(itf);
+  //(new mt_tests())->runTest(itf);
 
   itf->shutdown_device();
 
