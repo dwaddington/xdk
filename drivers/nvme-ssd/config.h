@@ -45,6 +45,10 @@ private:
   std::vector< struct mapping > _core_qid_mappings;
   unsigned _cores_len;
 
+  /*For submission queue. TODO: This class needs to be cleaned. */
+  unsigned _num_sub_queues;
+  std::map<unsigned, unsigned> _sq_qid_core_map;
+
 public:
   Config_IO_Queues() : _num_queues(0), _cores_len(64) {
   }
@@ -59,6 +63,15 @@ public:
     _core_qid_mappings.push_back(m);
   }
 
+  void add_sub_queue(const char * id, const char * core) {
+    _num_sub_queues++;
+    int i = atoi(id);
+    int c = atoi(core);
+    assert(c <= sysconf(_SC_NPROCESSORS_ONLN));
+
+    _sq_qid_core_map[i] = c;
+  }
+
   unsigned num_io_queues() const { return _num_queues; }
   unsigned io_queue_get_assigned_core(unsigned index, core_id_t * core) { 
     assert(index < _core_qid_mappings.size());
@@ -68,6 +81,12 @@ public:
   core_id_t get_core(unsigned index) {
     assert(index < _core_qid_mappings.size());
     return _core_qid_mappings[index].core;
+  }
+
+  unsigned num_sub_queues() const { return _num_sub_queues; }
+  unsigned get_sub_core_from_qid (unsigned qid) {
+    assert(_sq_qid_core_map.find(qid) != _sq_qid_core_map.end() );
+    return _sq_qid_core_map[qid];
   }
 };
 
@@ -122,9 +141,15 @@ private:
         /* Completion_queues */
         if(child->ValueStr()=="Completion_queue") {
           add_IO_queue(child->Attribute("id"), child->Attribute("core"));
+        } else if (child->ValueStr()=="Submission_queue") {
+          add_sub_queue(child->Attribute("id"), child->Attribute("core"));
+        } else {
+          PERR("Not Recognized!!");
+          assert(false);
         }
         child = child->NextSiblingElement();
       }
+      assert(num_io_queues() == num_sub_queues());
     }    
   }
 

@@ -555,17 +555,20 @@ class mt_tests {
       {
         Read_thread * thr[NUM_QUEUES];
 
-#define N_QUEUE_MAP 8
-        unsigned sq_map[N_QUEUE_MAP] = {4, 8, 12, 16, 20, 24, 28, 32};
+//#define N_QUEUE_MAP 8
+//        unsigned sq_map[N_QUEUE_MAP] = {4, 8, 12, 16, 20, 24, 28, 32};
 
-        for(unsigned i=1;i<=NUM_QUEUES;i++) {
-          assert(NUM_QUEUES <= N_QUEUE_MAP);
+        Config config = ((NVME_device*)(itf->get_device()) )->config();
+        assert(NUM_QUEUES <= config.num_io_queues());
 
-          printf("********** i = %u, sq_map = %u \n", i, sq_map[i-1]);
+        for(unsigned i = 1; i <= NUM_QUEUES; i++) {
+
+          unsigned sq_core = config.get_sub_core_from_qid(i);
+          printf("********** qid = %u, core = %u\n", i, sq_core);
 
           thr[i-1] = new Read_thread(itf,
               i,                         /* qid */
-              sq_map[i-1],               /* sq core */
+              sq_core,                   /* sq core */
               phys_array[i-1],
               virt_array[i-1]
               );
