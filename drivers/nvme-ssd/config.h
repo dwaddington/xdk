@@ -50,7 +50,7 @@ private:
   std::map<unsigned, unsigned> _sq_qid_core_map;
 
 public:
-  Config_IO_Queues() : _num_queues(0), _cores_len(64) {
+  Config_IO_Queues() : _num_queues(0), _cores_len(64), _num_sub_queues(0) {
   }
   
   void add_IO_queue(const char * id, const char * core) {
