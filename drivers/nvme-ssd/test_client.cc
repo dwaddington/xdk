@@ -49,6 +49,7 @@ void basic_test(IBlockDevice * itf)
 
   addr_t phys = 0;
   void * p = dev->alloc_dma_pages(1,&phys);
+  const off_t lba = 10;//max 781,422,766;
     
   memset(p,0xA,PAGE_SIZE);
 
@@ -65,11 +66,10 @@ void basic_test(IBlockDevice * itf)
   io_desc->action = NVME_WRITE;
   io_desc->buffer_virt = p;
   io_desc->buffer_phys = phys;
-  io_desc->offset = 10;
+  io_desc->offset = lba;
   io_desc->num_blocks = 1;
-  io_desc->port = 1;
    
-  itf->sync_write_block((io_request_t)io_desc, 1, 0);
+  itf->sync_io((io_request_t)io_desc, 1, 0);
 #endif
 
   PLOG("======= DONE WRITE ========");
@@ -88,11 +88,10 @@ void basic_test(IBlockDevice * itf)
   io_desc->action = NVME_READ;
   io_desc->buffer_virt = p;
   io_desc->buffer_phys = phys;
-  io_desc->offset = 10;
+  io_desc->offset = lba;
   io_desc->num_blocks = 1;
-  io_desc->port = 1;
 
-  itf->sync_read_block((io_request_t)io_desc, 1, 0);
+  itf->sync_io((io_request_t)io_desc, 1, 0);
 #endif
 
   hexdump(p,512);

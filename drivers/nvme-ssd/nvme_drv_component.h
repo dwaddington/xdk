@@ -55,28 +55,16 @@ public:
                             unsigned port       /* device port */
                             );
 
-  status_t sync_read_block(io_request_t io_request,
-                           unsigned port,
-                           unsigned device
-                          );
+  status_t sync_io(io_request_t io_request,
+                   unsigned port,
+                   unsigned device
+                  );
 
-  status_t sync_write_block(io_request_t io_request,
-                            unsigned port,
-                            unsigned device
-                           );
-
-
-  status_t async_read_block(io_request_t io_request,
-                            notify_t notify,
-                            unsigned port,
-                            unsigned device
-                           );
-
-  status_t async_write_block(io_request_t io_request,
-                             notify_t notify,
-                             unsigned port,
-                             unsigned device
-                            );
+  status_t async_io(io_request_t io_request,
+                    notify_t notify,
+                    unsigned port,
+                    unsigned device
+                   );
 
   status_t async_io_batch(io_request_t* io_requests,
                           size_t length,
@@ -85,9 +73,9 @@ public:
                           unsigned device
                           );
 
-  status_t io_suspend(unsigned port,
-                      unsigned device
-                      );
+  status_t wait_io_completion(unsigned port,
+                              unsigned device
+                             );
 
   status_t flush(unsigned nsid,
                  unsigned port,

@@ -116,7 +116,9 @@ NVME_queues_base::~NVME_queues_base()
 status_t NVME_queues_base::increment_submission_tail(queue_ptr_t * tptr) {
 
   /* check if the SQ is full */
-  if(_sq_tail + 1 == _sq_head || _sq_tail == _queue_items && _sq_head == 0 ) {
+  uint16_t new_tail = _sq_tail + 1;
+  if( unlikely(new_tail >= _queue_items) ) new_tail -= _queue_items;
+  if( new_tail == _sq_head ) {
     PLOG("Queue %d is full !!", _queue_id);
     return Exokernel::E_FULL;
   }
@@ -174,7 +176,48 @@ Completion_command_slot * NVME_queues_base::get_next_completion()
        _comp_cmd[curr_head].status,
        _queue_id);
 
+  /* check status code */
+  unsigned status =  _comp_cmd[curr_head].status;
 
+  unsigned DNR  = 0x1  & (status >> 31);
+  unsigned More = 0x1  & (status >> 30);
+  unsigned SCT  = 0x7  & (status >> 25);
+  unsigned SC   = 0xff & status;
+
+  PLOG("DNR = 0x%x, More = 0x%x, SCT = 0x%x, SC = 0x%x",
+        DNR,
+        More,
+        SCT,
+        SC
+      );
+
+  if(SCT == 0x0) {
+    PDBG("Generic Command Status");
+    if(unlikely(SC != 0x0)) {  /* not Successful Completion */
+      PERR("DNR = 0x%x, More = 0x%x, SCT = 0x%x, SC = 0x%x",
+              DNR,
+              More,
+              SCT,
+              SC
+             );
+      assert(false);
+    }
+  } else if (SCT == 0x1) {
+    PDBG("Command Specific Status");
+    assert(false);
+  } else if (SCT == 0x2) {
+    PDBG("Media Error");
+    assert(false);
+  } else if (SCT == 0x7) {
+    PDBG("Vendor Specific");
+    assert(false);
+  } else {
+    PDBG("Reserved");
+    assert(false);
+  }
+
+  //////////////////////////////////////////
+ 
   // if((_comp_cmd[curr_head].phase_tag != _cq_phase) ||
   //    (_comp_cmd[curr_head].status == 0xB)) {
   
@@ -230,7 +273,7 @@ Submission_command_slot * NVME_queues_base::next_sub_slot(signed * cmdid) {
   assert(*cmdid > 0);
 
   status_t st;
-  while ( (st = increment_submission_tail(&curr_ptr)) != Exokernel::S_OK );
+  NVME_LOOP( ((st = increment_submission_tail(&curr_ptr)) != Exokernel::S_OK), false);
 
   PLOG("sub_slot = %u", curr_ptr);
   return &_sub_cmd[curr_ptr];
@@ -598,6 +641,12 @@ NVME_IO_queue::NVME_IO_queue(NVME_device * dev,
   _queue_id = queue_id; 
   assert(_queue_id > 0); /* admin Q is id 0 */
 
+  /* init batch counters */
+  _sq_batch_counter = 0;
+  prev_tsc = 0;
+  cur_tsc = 0;
+  drain_tsc = (unsigned long long)get_tsc_frequency_in_mhz() * US_PER_RING;
+
   /* allocate memory for the completion queue */
   num_pages = round_up_page(CQ_entry_size_bytes * _queue_items)/PAGE_SIZE;
   PLOG("allocating %ld pages for IO completion queue",num_pages);
@@ -720,8 +769,13 @@ uint16_t NVME_IO_queue::issue_async_read(addr_t prp1,
                     access_lat,
                     false);  
 
-
-  ring_submission_doorbell();
+  cur_tsc = rdtsc();
+  _sq_batch_counter++;
+  if(unlikely(_sq_batch_counter >= MAX_BATCH_TO_RING || cur_tsc - prev_tsc >= drain_tsc)) {
+    ring_submission_doorbell();
+    prev_tsc = cur_tsc;
+    _sq_batch_counter = 0;
+  }
 
   /* collect statistics */
   cpu_time_t delta = rdtsc() - start;
@@ -767,7 +821,13 @@ uint16_t NVME_IO_queue::issue_async_write(addr_t prp1,
                     access_lat,
                     true);
 
-  ring_submission_doorbell();
+  cur_tsc = rdtsc();
+  _sq_batch_counter++;
+  if(unlikely(_sq_batch_counter >= MAX_BATCH_TO_RING || cur_tsc - prev_tsc >= drain_tsc)) {
+    ring_submission_doorbell();
+    prev_tsc = cur_tsc;
+    _sq_batch_counter = 0;
+  }
 
   return slot_id;
 }
@@ -799,7 +859,7 @@ uint16_t NVME_IO_queue::issue_async_io_batch(io_descriptor_t* io_desc,
   assert(end_cmdid >= start_cmdid);
   
   //check availability
-  while(!_batch_manager->is_available(start_cmdid, end_cmdid));
+  NVME_LOOP( (!_batch_manager->is_available(start_cmdid, end_cmdid)), false);
 
   bi.start_cmdid = start_cmdid;
   bi.end_cmdid = end_cmdid;
@@ -810,10 +870,11 @@ uint16_t NVME_IO_queue::issue_async_io_batch(io_descriptor_t* io_desc,
   bi.complete = false;
 
   //push to the buffer
-  while( !(_batch_manager->push(bi)) );
+  NVME_LOOP( (!(_batch_manager->push(bi))), false);
 
   //issue all IOs
   uint16_t cmdid = 0;
+  assert(io_desc);
   for(int idx = 0; idx < length; idx++) {
     io_descriptor_t* io_desc_ptr = io_desc + idx;
     if(io_desc_ptr->action == NVME_READ) {
@@ -828,13 +889,16 @@ uint16_t NVME_IO_queue::issue_async_io_batch(io_descriptor_t* io_desc,
       PERR("Unrecoganized Operaton !!");
       assert(false);
     }
+    //printf("issue cmdid = %u, offset = %lu(%lx, %lx)\n", cmdid, io_desc_ptr->offset, io_desc_ptr->offset, io_desc_ptr->offset/8);
   }
   assert(cmdid == bi.end_cmdid);
 }
 
-status_t NVME_IO_queue::io_suspend()
+status_t NVME_IO_queue::wait_io_completion()
 {
-  while( !(_batch_manager->wasEmpty()) );
+  ring_submission_doorbell(); /* make sure the doorbell is rang */
+
+  NVME_LOOP( ( !(_batch_manager->wasEmpty()) ), false);
 
   return Exokernel::S_OK;
 }

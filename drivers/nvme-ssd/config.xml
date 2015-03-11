@@ -1,10 +1,13 @@
 <?xml version="1.0" ?>
 <NVME_driver>
     <!-- Settings for NVME -->
-    <IO_queue_config length="32" />
+    <IO_queue_config length="128" />
     <IO_queues>
-      <Completion_queue id="1" core="1" />
-      <Completion_queue id="2" core="2" />
-      <Completion_queue id="3" core="3" />
+      <Completion_queue id="1" core="2" />
+      <Completion_queue id="2" core="6" />
+      <Completion_queue id="3" core="10" />
+      <Submission_queue id="1" core="4" />
+      <Submission_queue id="2" core="8" />
+      <Submission_queue id="3" core="12" />
     </IO_queues>    
 </NVME_driver>

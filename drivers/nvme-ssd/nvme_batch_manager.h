@@ -135,7 +135,7 @@ typedef struct {
 }__attribute__((aligned(64))) batch_info_t;
 
 
-#define BATCH_INFO_BUFFER_SIZE 32 
+#define BATCH_INFO_BUFFER_SIZE 256 
 
 typedef RingBuffer<batch_info_t, BATCH_INFO_BUFFER_SIZE> batch_info_buffer_t;
 
@@ -239,7 +239,8 @@ class NVME_batch_manager {
 
       if(head > tail) tail += BATCH_INFO_BUFFER_SIZE;
 
-      assert(head != tail); //Should not be empty
+      //FIXME: not true for flush command, as flush command is not recorded in the batch manager
+      //assert(head != tail); //Should not be empty
 
       //TODO: maybe need a better search algo, e.g., binary search
       for(size_t idx = head; idx < tail; idx++){
@@ -253,7 +254,7 @@ class NVME_batch_manager {
       }
       //we may reach here?? because the tail we got can be a stale value
       PLOG("Did NOT find the right range!!");
-      return false;
+      return true; //FIXME: flush command is not recorded in the batch manager
     }
 
     void _process_update_batch_info(size_t idx, size_t head, size_t tail) {

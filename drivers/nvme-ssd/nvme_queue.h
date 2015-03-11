@@ -37,6 +37,8 @@
 
 #include <exo/spinlocks.h>
 #include <common/utils.h>
+#include <common/cycles.h>
+#include "nvme_common.h"
 #include "nvme_registers.h"
 #include "nvme_command.h"
 #include "nvme_types.h"
@@ -156,13 +158,17 @@ public:
   }
 
   void reset_cmdid() {
-    while( !(_batch_manager->can_reset_cmdid(_cmdid_counter)) );
+    NVME_LOOP( (!(_batch_manager->can_reset_cmdid(_cmdid_counter)) ), false);
     _cmdid_counter = 0;
   }
 
   void release_slot(uint16_t slot) {
     //status_t s = _bitmap->mark_free(slot);
     //assert(s==Exokernel::S_OK);
+  }
+
+  void update_sq_head(Completion_command_slot *ccs) {
+    _sq_head = ccs->get_sq_head();
   }
 
   status_t update_batch_manager(uint16_t cmdid) {
@@ -291,7 +297,7 @@ class NVME_admin_queue : public NVME_queues_base
 
 private:
   enum { 
-    Admin_queue_len  = 8,
+    Admin_queue_len  = 32,
   };
 
   void ring_doorbell_single_completion();
@@ -411,6 +417,10 @@ private:
   CQ_thread *      _cq_thread;
   Callback_manager _callback_manager;
 
+  unsigned         _sq_batch_counter;
+  cpu_time_t prev_tsc, cur_tsc, diff_tsc;
+  cpu_time_t drain_tsc;
+
 public:
   NVME_IO_queue(NVME_device * dev, 
                  unsigned queue_id, 
@@ -478,7 +488,7 @@ public:
                                 Notify *notify
                                 );
 
-  status_t io_suspend();
+  status_t wait_io_completion();
 
   /** 
    * Issue flush command

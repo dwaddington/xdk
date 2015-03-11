@@ -45,4 +45,50 @@ void NVME_INFO(const char *format, ...) __attribute__((format(printf, 1, 2)));
 #define NVME_INFO(...)
 #endif
 
+
+//#define NVME_LOOP_VERBOSE
+#ifdef  NVME_LOOP_VERBOSE
+#define NVME_PRINT(f, a...)  fprintf( stdout, "[NVME]: %s:" f "\n",  __func__ , ## a)
+#else
+#define NVME_PRINT(f, a...)
+#endif
+
+#define NVME_LOOP_LABEL( condition, needStop, label )         \
+{                                                             \
+  unsigned long long attempts = 0;                            \
+  while( condition ) {                                        \
+    attempts++;                                               \
+    if(attempts%100000 == 0){                                 \
+      NVME_PRINT("attempts = %llu (%s)", attempts, label);    \
+    }                                                         \
+    if(needStop && attempts > 1000000000ULL) {                \
+      NVME_PRINT("Timed out !!!!!");                          \
+      assert(false);                                          \
+    }                                                         \
+  }                                                           \
+}
+
+#define NVME_LOOP( condition, needStop )           \
+        NVME_LOOP_LABEL( condition, needStop, "")
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Macros for performance optimization
+///////////////////////////////////////////////////////////////////////////////
+
+#define likely(x)    __builtin_expect (!!(x), 1)
+#define unlikely(x)  __builtin_expect (!!(x), 0)
+
+//////////////////
+//Ring Burst
+//////////////////
+
+#define MAX_BATCH_TO_RING (8)
+#define US_PER_RING (100) /* Ring every ~100us */
+
+
+
+
+
 #endif

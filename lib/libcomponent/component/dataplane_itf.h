@@ -25,20 +25,6 @@ public:
                                    ) = 0;
   
   /** 
-   * Synchronously read a block of data
-   * 
-   * @param io_request Opaque pointer to an IO operation
-   * @param port Device port to read from
-   * @param device Device instance
-   * 
-   * @return S_OK on success.
-   */
-  virtual status_t sync_read_block(io_request_t io_request,
-                                   unsigned port,
-                                   unsigned device=0
-                                   ) = 0;
-
-  /** 
    * Synchronously write a block of data
    * 
    * @param buffer_virt Virtual address of client allocated buffer. Must be 512 byte aligned.
@@ -57,7 +43,7 @@ public:
                                     ) = 0;
 
   /** 
-   * Synchronously write a block of data
+   * Synchronously read/write a block of data
    * 
    * @param io_request Opaque pointer to an IO operation
    * @param port Device port to write to
@@ -65,44 +51,27 @@ public:
    * 
    * @return S_OK on success.
    */
-  virtual status_t sync_write_block(io_request_t io_request,
-                                    unsigned port,
-                                    unsigned device=0
-                                    ) = 0;
+  virtual status_t sync_io(io_request_t io_request,
+                           unsigned port,
+                           unsigned device=0
+                           ) = 0;
 
 
   /** 
-   * Asynchronously read a block of data
+   * Asynchronously read/write a block of data
    * 
    * @param io_request 
    * @param notify 
    * @param port 
    * @param device 
    * 
-   * @return 
+   * @return S_OK on success.
    */
-  virtual status_t async_read_block(io_request_t io_request,
-                                    notify_t notify,
-                                    unsigned port,
-                                    unsigned device=0
-                                    ) = 0;
-
-  /** 
-   * Asynchronously write a block of data
-   * 
-   * @param io_request 
-   * @param notify 
-   * @param port 
-   * @param device 
-   * 
-   * @return 
-   */
-  virtual status_t async_write_block(io_request_t io_request,
-                                     notify_t notify,
-                                     unsigned port,
-                                     unsigned device=0
-                                     ) = 0;
-
+  virtual status_t async_io(io_request_t io_request,
+                            notify_t notify,
+                            unsigned port,
+                            unsigned device=0
+                            ) = 0;
 
   /** 
    * Asynchronously issue a batch (group) of IO operations.
@@ -123,16 +92,16 @@ public:
                                   ) = 0;
 
   /** 
-   * Suspend IO on device
+   * Wait for all I/O operations to complete
    * 
    * @param port Device port
    * @param device Device instance
    * 
-   * @return S_OK
+   * @return S_OK on success.
    */
-  virtual status_t io_suspend(unsigned port,
-                              unsigned device=0
-                              ) = 0;
+  virtual status_t wait_io_completion(unsigned port,
+                                      unsigned device=0
+                                     ) = 0;
 
   /** 
    * Flush IO device
