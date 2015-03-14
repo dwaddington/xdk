@@ -97,7 +97,7 @@ namespace Component
       for(int j=0;j<components.size();j++) {
         assert(components[j]);
         if(i==j) continue;
-        if(components[i]->connect(components[j]) == -1) {
+        if(components[i]->bind(components[j]) == -1) {
           PDBG("connect call in pairwise bind failed.");
           return E_FAIL;
         }

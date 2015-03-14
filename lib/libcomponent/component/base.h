@@ -98,7 +98,7 @@ namespace Component
   class IBase
   {
   private:
-    boost::atomic<unsigned> _ref_count;
+    boost::atomic<unsigned> _ref_count; /* component level reference counting */
     void *                  _dll_handle;
 
   public:
@@ -121,7 +121,8 @@ namespace Component
      * 
      * @param component Component to connect to 
      * 
-     * @return Number of connections remaining to be made. Returns -1 on error and 0 when all bindings are complete.
+     * @return Number of connections remaining to be made. Returns -1
+     * on error and 0 when all bindings are complete.
      */
     virtual int bind(IBase * component) {}
 
