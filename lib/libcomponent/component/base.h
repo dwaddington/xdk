@@ -117,13 +117,13 @@ namespace Component
     virtual void unload() {}
 
     /** 
-     * [optional] Connect to another component
+     * [optional] Connect to another component.  Used for third-party binding.
      * 
      * @param component Component to connect to 
      * 
-     * @return Number of connections made, -1 on error
+     * @return Number of connections remaining to be made. Returns -1 on error and 0 when all bindings are complete.
      */
-    virtual signed connect(IBase * component) {}
+    virtual int bind(IBase * component) {}
 
     /** 
      * Reference counting
