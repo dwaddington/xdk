@@ -84,7 +84,7 @@ void NVME_INFO(const char *format, ...) __attribute__((format(printf, 1, 2)));
 //Ring Burst
 //////////////////
 
-#define MAX_BATCH_TO_RING (8)
+#define MAX_BATCH_TO_RING (1)
 #define US_PER_RING (100) /* Ring every ~100us */
 
 

@@ -192,7 +192,7 @@ Completion_command_slot * NVME_queues_base::get_next_completion()
       );
 
   if(SCT == 0x0) {
-    PDBG("Generic Command Status");
+    //PDBG("Generic Command Status");
     if(unlikely(SC != 0x0)) {  /* not Successful Completion */
       PERR("DNR = 0x%x, More = 0x%x, SCT = 0x%x, SC = 0x%x",
               DNR,
@@ -237,6 +237,7 @@ Completion_command_slot * NVME_queues_base::get_next_completion()
 
 
 
+#if 0
 /** 
  * Debugging
  * 
@@ -263,7 +264,7 @@ void NVME_queues_base::dump_queue_info() {
          );
   }
 }
-
+#endif
 
 Submission_command_slot * NVME_queues_base::next_sub_slot(signed * cmdid) {
 
@@ -880,11 +881,13 @@ uint16_t NVME_IO_queue::issue_async_io_batch(io_descriptor_t* io_desc,
     if(io_desc_ptr->action == NVME_READ) {
       cmdid = issue_async_read(io_desc_ptr->buffer_phys, 
                        io_desc_ptr->offset,
-                       io_desc_ptr->num_blocks);    
+                       io_desc_ptr->num_blocks);
+      PLOG("READ: issued cmdid = %u, offset = %lu(0x%lx), page_offset = %lu(0x%lx)\n", cmdid, io_desc_ptr->offset, io_desc_ptr->offset, io_desc_ptr->offset/8, io_desc_ptr->offset/8);
     } else if (io_desc_ptr->action == NVME_WRITE) {
       cmdid = issue_async_write(io_desc_ptr->buffer_phys, 
                        io_desc_ptr->offset,
-                       io_desc_ptr->num_blocks);    
+                       io_desc_ptr->num_blocks);
+      PLOG("WRITE: issued cmdid = %u, offset = %lu(0x%lx), page_offset = %lu(0x%lx)\n", cmdid, io_desc_ptr->offset, io_desc_ptr->offset, io_desc_ptr->offset/8, io_desc_ptr->offset/8);
     } else {
       PERR("Unrecoganized Operaton !!");
       assert(false);

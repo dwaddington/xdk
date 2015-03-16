@@ -41,6 +41,7 @@
 #include "nvme_drv_component.h"
 #include "tests.h"
 #include "mt_tests.cc"
+#include "verify_tests.cc"
 
 /* very basic test */
 void basic_test(IBlockDevice * itf)
@@ -110,8 +111,9 @@ int main()
 
   itf->init_device(0);
 
-  basic_test(itf);
+  //basic_test(itf);
   //(new mt_tests())->runTest(itf);
+  (new verify_tests())->runTest(itf);
 
   itf->shutdown_device();
 
