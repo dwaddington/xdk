@@ -149,7 +149,7 @@ namespace Component
      * @return Number of connections remaining to be made. Returns -1
      * on error and 0 when all bindings are complete.
      */
-    virtual int bind(IBase * component) { return -1; }
+    virtual int bind(IBase * component) { return 0; /* by default, no bindings to perform */ }
 
     /** 
      * Reference counting
