@@ -47,18 +47,15 @@
 #include <iomanip>
 #include <vector>
 
-#define DECLARE_UUID(name,f1,f2,f3,f4,f5,f6,f7) \
-  const Component::uuid_t name = {f1,f2,f3,f4,{f5,f6,f7}};
-
-#define DECLARE_INTERFACE_UUID(f1,f2,f3,f4,f5,f6,f7)              \
-  static Component::uuid_t& iid() {                              \
-    static Component::uuid_t itf_uuid = {f1,f2,f3,f4,{f5,f6,f7}}; \
+#define DECLARE_INTERFACE_UUID(f1,f2,f3,f4,f5,f6,f7,f8,f9,f10)      \
+  static Component::uuid_t& iid() {                                     \
+    static Component::uuid_t itf_uuid = {f1,f2,f3,f4,{f5,f6,f7,f8,f9,f10}}; \
     return itf_uuid;                                              \
   }
 
-#define DECLARE_COMPONENT_UUID(f1,f2,f3,f4,f5,f6,f7)                \
+#define DECLARE_COMPONENT_UUID(f1,f2,f3,f4,f5,f6,f7,f8,f9,f10)             \
   static Component::uuid_t component_id() {                                \
-    static Component::uuid_t comp_uuid = {f1,f2,f3,f4,{f5,f6,f7}};  \
+    static Component::uuid_t comp_uuid = {f1,f2,f3,f4,{f5,f6,f7,f8,f9,f10}}; \
     return comp_uuid;                                               \
   }
 
@@ -74,7 +71,7 @@ namespace Component
     uint16_t uuid1;
     uint16_t uuid2;
     uint16_t uuid3;
-    uint16_t uuid4[3];
+    uint8_t  uuid4[6];
 
     std::string toString() {
       std::stringstream ss;
@@ -82,11 +79,33 @@ namespace Component
          << std::setfill('0') << std::setw(4) << uuid1 << "-" 
          << std::setfill('0') << std::setw(4) << uuid2 << "-" 
          << std::setfill('0') << std::setw(4) << uuid3 << "-" 
-         << std::setfill('0') << std::setw(4) << uuid4[0] 
-         << std::setfill('0') << std::setw(4) << uuid4[1] 
-         << std::setfill('0') << std::setw(4) << uuid4[2];
+         << std::setfill('0') << std::setw(2) << (int) uuid4[0] 
+         << std::setfill('0') << std::setw(2) << (int) uuid4[1] 
+         << std::setfill('0') << std::setw(2) << (int) uuid4[2]
+         << std::setfill('0') << std::setw(2) << (int) uuid4[3] 
+         << std::setfill('0') << std::setw(2) << (int) uuid4[4] 
+         << std::setfill('0') << std::setw(2) << (int) uuid4[5];
+
       return ss.str();
     }
+
+    void fromString(const std::string& str) {
+
+      unsigned long p0;
+      unsigned int p1, p2, p3;
+      unsigned int q[6];
+
+      int err = sscanf(str.c_str(), "%08lx-%04x-%04x-%04x-%02x%02x%02x%02x%02x%02x",
+                       &p0, &p1, &p2, &p3, &q[0], &q[1], &q[2], &q[3], &q[4], &q[5]);
+
+      uuid0 = p0;
+      uuid1 = p1;
+      uuid2 = p2;
+      uuid3 = p3;
+      for(unsigned i=0;i<8;i++)
+        uuid4[i] = (uint8_t) q[i];
+    }
+
   };
 
   bool operator==(const Component::uuid_t& lhs, const Component::uuid_t& rhs);
