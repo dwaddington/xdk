@@ -29,7 +29,7 @@
 
 /*
   Authors:
-  Copyright (C) 2014, Daniel G. Waddington <daniel.waddington@acm.org>
+  Copyright (C) 2015, Daniel G. Waddington <daniel.waddington@acm.org>
 */
 
 #ifndef __COMPONENT_BASE_H__
