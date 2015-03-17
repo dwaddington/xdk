@@ -68,7 +68,7 @@ typedef struct {
 class INic : public Component::Interface_base
 {
 public:
-  DECLARE_INTERFACE_UUID(0x211dc467,0x81a0,0x4061,0x90e1,0x8ba7,0x5412,0x03fd);
+  DECLARE_INTERFACE_UUID(0x211dc467,0x81a0,0x4061,0x90e1,0x8b,0xa7,0x54,0x12,0x03,0xfd);
 
   /**
    * To send a burst of packets out with simple path. No offloading feature. No segments.

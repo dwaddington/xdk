@@ -82,7 +82,7 @@ class NicComponent : public Component::IBase,
                      public INic_impl
 {
 public:  
-  DECLARE_COMPONENT_UUID(0x51a5efbb,0xa76b,0x47a8,0x9fb8,0xe3fe,0x757e,0x155b);
+  DECLARE_COMPONENT_UUID(0x51a5efbb,0xa76b,0x47a8,0x9fb8,0xe3,0xfe,0x75,0x7e,0x15,0x5b);
 
   void * query_interface(Component::uuid_t& itf_uuid) {
     if(itf_uuid == INic::iid()) {

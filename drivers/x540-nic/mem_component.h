@@ -100,7 +100,7 @@ class MemComponent : public Component::IBase,
                      public IMem_impl
 {
 public:
-  DECLARE_COMPONENT_UUID(0xe1ad1bc2,0x63c5,0x4011,0xb877,0xa018,0x89ae,0x463d);
+  DECLARE_COMPONENT_UUID(0xe1ad1bc2,0x63c5,0x4011,0xb877,0xa0,0x18,0x89,0xae,0x46,0x3d);
 
   void * query_interface(Component::uuid_t& itf_uuid) {
     if(itf_uuid == IMem::iid()) {
