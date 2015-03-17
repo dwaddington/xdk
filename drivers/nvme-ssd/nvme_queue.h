@@ -168,7 +168,12 @@ public:
   }
 
   void update_sq_head(Completion_command_slot *ccs) {
+    //PLOG("(%p)sq_head = %u, ccs->get_sq_head = %u, cq_head = %u, cmdid = %u (qid=%u)\n", ccs, _sq_head, ccs->get_sq_head(), _cq_head, ccs->command_id, _queue_id);
     _sq_head = ccs->get_sq_head();
+  }
+
+  void update_admin_sq_head() {
+    _sq_head = _cq_head;
   }
 
   status_t update_batch_manager(uint16_t cmdid) {
@@ -232,16 +237,18 @@ public:
    * Debug functions
    * 
    */
-  void dump_queue_info() {
+#define N_ITEMS (128)//(64+4)
+  void dump_queue_info(unsigned n_entries = N_ITEMS) {
+
+    unsigned max_entries = _queue_items>n_entries?n_entries:_queue_items; 
 
     PLOG("SQ_Tail=%u SQ_HEAD=%u CQ_Head=%u",_sq_tail, _sq_head, _cq_head);
     //PLOG("CQ hd vaddr=%p (paddr=0x%lx)",_comp_cmd, (unsigned long) pm.virt_to_phys(_comp_cmd));
 
     __sync_synchronize();
 
-#define N_ITEMS (128)//(64+4)
     PLOG("===== SQ dump ======");
-    for(unsigned i=0;i < N_ITEMS;i++) { // _queue_items
+    for(unsigned i=0; i<max_entries; i++) { // _queue_items
       struct nvme_rw_command * c = (struct nvme_rw_command *) _sub_cmd[i].raw();
       PLOG("SQCMD[%u] (%s) command cid=%u prp1=0x%lx nsid=%d slba=%ld nblocks=%u control=0x%x dsmgmt=0x%x",
           i,
@@ -257,7 +264,7 @@ public:
     }
 
     PLOG("===== CQ dump ======");
-    for(unsigned i=0;i < N_ITEMS;i++) { // _queue_items
+    for(unsigned i=0; i<max_entries; i++) { // _queue_items
       PLOG("CQCMD[%u][cid=%u](status=0x%x)(sct=0x%x)(phase=%u)(sqhd=%u)(result=%x)",
           i,
           _comp_cmd[i].command_id,
@@ -332,7 +339,7 @@ class NVME_admin_queue : public NVME_queues_base
 
 private:
   enum { 
-    Admin_queue_len  = 32,
+    Admin_queue_len  = 8,
   };
 
   void ring_doorbell_single_completion();

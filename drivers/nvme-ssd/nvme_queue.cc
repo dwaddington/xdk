@@ -119,7 +119,7 @@ status_t NVME_queues_base::increment_submission_tail(queue_ptr_t * tptr) {
   uint16_t new_tail = _sq_tail + 1;
   if( unlikely(new_tail >= _queue_items) ) new_tail -= _queue_items;
   if( new_tail == _sq_head ) {
-    PLOG("Queue %d is full !!", _queue_id);
+    PLOG("Queue %d is full (sq_head = %u, sq_tail = %u) !!", _queue_id, _sq_head, _sq_tail);
     return Exokernel::E_FULL;
   }
 
@@ -374,6 +374,12 @@ NVME_admin_queue::~NVME_admin_queue()
  */
 void NVME_admin_queue::ring_doorbell_single_completion()
 {
+  assert(_queue_id == 0);
+  //FIXME: the completion queue entries seem empty?!
+  //dump_queue_info(Admin_queue_len);
+  //update_sq_head( curr_comp_slot() );
+  update_admin_sq_head(); /*_sq_head = _cq_head --  assuming admin queue are only synchronous */
+
   ring_completion_doorbell();   /* current slot is handled */
   increment_completion_head();  /* record next free */
 }
