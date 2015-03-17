@@ -58,7 +58,7 @@ void NVME_INFO(const char *format, ...) __attribute__((format(printf, 1, 2)));
   unsigned long long attempts = 0;                            \
   while( condition ) {                                        \
     attempts++;                                               \
-    if(attempts%100000 == 0){                                 \
+    if(attempts%1000000 == 0){                                \
       NVME_PRINT("attempts = %llu (%s)", attempts, label);    \
     }                                                         \
     if(needStop && attempts > 1000000000ULL) {                \
@@ -88,7 +88,7 @@ void NVME_INFO(const char *format, ...) __attribute__((format(printf, 1, 2)));
 #define US_PER_RING (100) /* Ring every ~100us */
 
 
-
+#define MemBar() asm volatile("mfence":::"memory")
 
 
 #endif

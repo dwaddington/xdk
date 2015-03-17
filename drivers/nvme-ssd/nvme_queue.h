@@ -234,34 +234,31 @@ public:
    */
   void dump_queue_info() {
 
-    PLOG("SQ_Tail=%u CQ_Head=%u",_sq_tail,_cq_head);
+    PLOG("SQ_Tail=%u SQ_HEAD=%u CQ_Head=%u",_sq_tail, _sq_head, _cq_head);
     //PLOG("CQ hd vaddr=%p (paddr=0x%lx)",_comp_cmd, (unsigned long) pm.virt_to_phys(_comp_cmd));
 
     __sync_synchronize();
 
-#define N_ITEMS 64
-    PLOG("===== SQ ======");
+#define N_ITEMS (128)//(64+4)
+    PLOG("===== SQ dump ======");
     for(unsigned i=0;i < N_ITEMS;i++) { // _queue_items
       struct nvme_rw_command * c = (struct nvme_rw_command *) _sub_cmd[i].raw();
-      PLOG("SQCMD[%u] (%s) command prp1=0x%lx nsid=%d slba=%ld nblocks=%u cmdid=%u control=0x%x dsmgmt=0x%x!!!",
+      PLOG("SQCMD[%u] (%s) command cid=%u prp1=0x%lx nsid=%d slba=%ld nblocks=%u control=0x%x dsmgmt=0x%x",
           i,
           (_sub_cmd[i].opcode == 0x1) ? "write" : "read",
+          c->command_id,
           c->prp1,
           c->nsid,
           c->slba,
           c->length,
-          c->command_id,
           c->control,
           c->dsmgmt
           );
     }
 
-    PLOG("===== CQ ======");
+    PLOG("===== CQ dump ======");
     for(unsigned i=0;i < N_ITEMS;i++) { // _queue_items
-      PLOG("SQCMD[%u][cid=%d](0x%x) CQCMD[%u][cid=%u](status=0x%x)(sct=0x%x)(phase=%u)(sqhd=%u)(result=%x)",
-          i,
-          _sub_cmd[i].command_id,
-          _sub_cmd[i].opcode,
+      PLOG("CQCMD[%u][cid=%u](status=0x%x)(sct=0x%x)(phase=%u)(sqhd=%u)(result=%x)",
           i,
           _comp_cmd[i].command_id,
           _comp_cmd[i].status & 0xff,
