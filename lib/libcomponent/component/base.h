@@ -42,6 +42,7 @@
 #include <stdio.h>
 #include <common/types.h>
 #include <common/logging.h>
+#include <common/errors.h>
 #include <string>
 #include <sstream>
 #include <iomanip>
@@ -89,7 +90,7 @@ namespace Component
       return ss.str();
     }
 
-    void fromString(const std::string& str) {
+    status_t fromString(const std::string& str) {
 
       unsigned long p0;
       unsigned int p1, p2, p3;
@@ -98,12 +99,17 @@ namespace Component
       int err = sscanf(str.c_str(), "%08lx-%04x-%04x-%04x-%02x%02x%02x%02x%02x%02x",
                        &p0, &p1, &p2, &p3, &q[0], &q[1], &q[2], &q[3], &q[4], &q[5]);
 
+      if(err != 10) 
+        return E_FAIL;
+
       uuid0 = p0;
       uuid1 = p1;
       uuid2 = p2;
       uuid3 = p3;
-      for(unsigned i=0;i<8;i++)
+      for(unsigned i=0;i<6;i++)
         uuid4[i] = (uint8_t) q[i];
+
+      return S_OK;
     }
 
   };
@@ -143,7 +149,7 @@ namespace Component
      * @return Number of connections remaining to be made. Returns -1
      * on error and 0 when all bindings are complete.
      */
-    virtual int bind(IBase * component) {}
+    virtual int bind(IBase * component) { return -1; }
 
     /** 
      * Reference counting
@@ -181,6 +187,10 @@ namespace Component
    * @return Pointer to IBase interface
    */
   IBase * load_component(const char * dllname, Component::uuid_t component_id);
+
+  inline IBase * load_component(std::string& dllname, Component::uuid_t component_id) {
+    return load_component(dllname.c_str(), component_id);
+  }
 
 
   /** 
