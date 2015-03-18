@@ -30,7 +30,7 @@ used to demonstrate its capability.
 ---------------------------
 Ubuntu Package Dependencies
 ---------------------------
-sudo apt-get install make gcc g++ libnuma-dev libtinyxml-dev libboost-dev libboost-thread-dev libboost-system-dev libboost-program-options-dev libboost-filesystem-dev
+sudo apt-get install make gcc g++ libnuma-dev libtinyxml-dev libboost-dev libboost-thread-dev libboost-system-dev libboost-program-options-dev libboost-filesystem-dev libboost-random-dev
 
 
 -------------

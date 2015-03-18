@@ -29,7 +29,7 @@
 
 /*
   Authors:
-  Copyright (C) 2014, Daniel G. Waddington <daniel.waddington@acm.org>
+  Copyright (C) 2015, Daniel G. Waddington <daniel.waddington@acm.org>
 */
 
 #ifndef __COMPONENT_BASE_H__
@@ -42,23 +42,21 @@
 #include <stdio.h>
 #include <common/types.h>
 #include <common/logging.h>
+#include <common/errors.h>
 #include <string>
 #include <sstream>
 #include <iomanip>
 #include <vector>
 
-#define DECLARE_UUID(name,f1,f2,f3,f4,f5,f6,f7) \
-  const Component::uuid_t name = {f1,f2,f3,f4,{f5,f6,f7}};
-
-#define DECLARE_INTERFACE_UUID(f1,f2,f3,f4,f5,f6,f7)              \
-  static Component::uuid_t& iid() {                              \
-    static Component::uuid_t itf_uuid = {f1,f2,f3,f4,{f5,f6,f7}}; \
+#define DECLARE_INTERFACE_UUID(f1,f2,f3,f4,f5,f6,f7,f8,f9,f10)      \
+  static Component::uuid_t& iid() {                                     \
+    static Component::uuid_t itf_uuid = {f1,f2,f3,f4,{f5,f6,f7,f8,f9,f10}}; \
     return itf_uuid;                                              \
   }
 
-#define DECLARE_COMPONENT_UUID(f1,f2,f3,f4,f5,f6,f7)                \
+#define DECLARE_COMPONENT_UUID(f1,f2,f3,f4,f5,f6,f7,f8,f9,f10)             \
   static Component::uuid_t component_id() {                                \
-    static Component::uuid_t comp_uuid = {f1,f2,f3,f4,{f5,f6,f7}};  \
+    static Component::uuid_t comp_uuid = {f1,f2,f3,f4,{f5,f6,f7,f8,f9,f10}}; \
     return comp_uuid;                                               \
   }
 
@@ -74,7 +72,7 @@ namespace Component
     uint16_t uuid1;
     uint16_t uuid2;
     uint16_t uuid3;
-    uint16_t uuid4[3];
+    uint8_t  uuid4[6];
 
     std::string toString() {
       std::stringstream ss;
@@ -82,11 +80,38 @@ namespace Component
          << std::setfill('0') << std::setw(4) << uuid1 << "-" 
          << std::setfill('0') << std::setw(4) << uuid2 << "-" 
          << std::setfill('0') << std::setw(4) << uuid3 << "-" 
-         << std::setfill('0') << std::setw(4) << uuid4[0] 
-         << std::setfill('0') << std::setw(4) << uuid4[1] 
-         << std::setfill('0') << std::setw(4) << uuid4[2];
+         << std::setfill('0') << std::setw(2) << (int) uuid4[0] 
+         << std::setfill('0') << std::setw(2) << (int) uuid4[1] 
+         << std::setfill('0') << std::setw(2) << (int) uuid4[2]
+         << std::setfill('0') << std::setw(2) << (int) uuid4[3] 
+         << std::setfill('0') << std::setw(2) << (int) uuid4[4] 
+         << std::setfill('0') << std::setw(2) << (int) uuid4[5];
+
       return ss.str();
     }
+
+    status_t fromString(const std::string& str) {
+
+      unsigned long p0;
+      unsigned int p1, p2, p3;
+      unsigned int q[6];
+
+      int err = sscanf(str.c_str(), "%08lx-%04x-%04x-%04x-%02x%02x%02x%02x%02x%02x",
+                       &p0, &p1, &p2, &p3, &q[0], &q[1], &q[2], &q[3], &q[4], &q[5]);
+
+      if(err != 10) 
+        return E_FAIL;
+
+      uuid0 = p0;
+      uuid1 = p1;
+      uuid2 = p2;
+      uuid3 = p3;
+      for(unsigned i=0;i<6;i++)
+        uuid4[i] = (uint8_t) q[i];
+
+      return S_OK;
+    }
+
   };
 
   bool operator==(const Component::uuid_t& lhs, const Component::uuid_t& rhs);
@@ -98,7 +123,7 @@ namespace Component
   class IBase
   {
   private:
-    boost::atomic<unsigned> _ref_count;
+    boost::atomic<unsigned> _ref_count; /* component level reference counting */
     void *                  _dll_handle;
 
   public:
@@ -117,13 +142,14 @@ namespace Component
     virtual void unload() {}
 
     /** 
-     * [optional] Connect to another component
+     * [optional] Connect to another component.  Used for third-party binding.
      * 
      * @param component Component to connect to 
      * 
-     * @return Number of connections made, -1 on error
+     * @return Number of connections remaining to be made. Returns -1
+     * on error and 0 when all bindings are complete.
      */
-    virtual signed connect(IBase * component) {}
+    virtual int bind(IBase * component) { return 0; /* by default, no bindings to perform */ }
 
     /** 
      * Reference counting
@@ -161,6 +187,10 @@ namespace Component
    * @return Pointer to IBase interface
    */
   IBase * load_component(const char * dllname, Component::uuid_t component_id);
+
+  inline IBase * load_component(std::string& dllname, Component::uuid_t component_id) {
+    return load_component(dllname.c_str(), component_id);
+  }
 
 
   /** 

@@ -70,7 +70,7 @@ public:
 class DummyBlockDeviceComponent : public IBlockDevice_impl                    
 {
 public:  
-  DECLARE_COMPONENT_UUID(0x3aa3813c,0xe0cf,0x46cc,0x8ad9,0x1e74,0x08b9,0xb882);
+  DECLARE_COMPONENT_UUID(0x3aa3813c,0xe0cf,0x46cc,0x8ad9,0x1e,0x74,0x08,0xb9,0xb8,0x82);
 
 public:
   void * query_interface(Component::uuid_t& itf_uuid) {

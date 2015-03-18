@@ -39,8 +39,6 @@
 #include <stdio.h>
 #include "logging.h"
 
-#define CONFIG_BUILD_DEBUG
-
 #if defined(__cplusplus)
 extern "C" 
 #endif

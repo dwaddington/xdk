@@ -58,7 +58,7 @@ namespace Component
     void * dll = dlopen(dllname,RTLD_LAZY);
 
     if(!dll) {
-      fprintf(stderr,"Unable to load library (%s) - check dependencies with ldd tool.\n",dllname);
+      PERR("Unable to load library (%s) - check dependencies with ldd tool.",dllname);
       return NULL;
     }
 
@@ -66,15 +66,17 @@ namespace Component
     *(void **) (&factory_createInstance) = dlsym(dll,"factory_createInstance");
 
     if ((error = dlerror()) != NULL)  {
-      fprintf(stderr, "Error: %s\n", error);
+      PERR("Error: %s\n", error);
       return NULL;
     }
 
     IBase* comp = (IBase*) factory_createInstance(component_id);
 
     if(!comp) {
-      fprintf(stderr,"Error: factory create instance returned null.\n");
+      PERR("Error: factory create instance returned null.");
+      return NULL;
     }
+
     assert(comp);
     comp->set_dll_handle(dll); /* record so we can call dlclose() */
     comp->add_ref();
@@ -97,7 +99,7 @@ namespace Component
       for(int j=0;j<components.size();j++) {
         assert(components[j]);
         if(i==j) continue;
-        if(components[i]->connect(components[j]) == -1) {
+        if(components[i]->bind(components[j]) == -1) {
           PDBG("connect call in pairwise bind failed.");
           return E_FAIL;
         }
