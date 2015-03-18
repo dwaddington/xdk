@@ -159,6 +159,7 @@ status_t Command_admin_identify::check_controller_result(NVME_device * dev)
   assert(((id->cqes >> 4) & 0xf) == 4); // 16 bytes
   assert((id->cqes & 0xf) == 4); // 16 bytes
   NVME_INFO("[ID:NN]    %u\n",id->nn);
+  NVME_INFO("[ID:AWUN]  %u\n",id->awun);
   {
     uint16_t oacs = id->oacs;
     NVME_INFO("Supports firmware active/download : %s\n", (oacs & 0x4) ? "yes":"no"); 

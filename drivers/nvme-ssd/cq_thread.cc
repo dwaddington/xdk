@@ -95,6 +95,9 @@ void* CQ_thread::entry(void* qb) {
   Completion_command_slot * ccs;
   status_t s;
 
+  //printf("++ CQ sleeping .............\n");
+  //sleep(5);
+
   //  _queues->_pending_reader.wake_all();
   
   /* hmm, should be some other condition instead of while(1) !! */
@@ -144,7 +147,7 @@ void* CQ_thread::entry(void* qb) {
       g_entries_cleared++;
       PLOG("cleared = %lu (Q:%u)", g_entries_cleared, _qid);
 
-#define CQ_MAX_BATCH_TO_RING (8)
+#define CQ_MAX_BATCH_TO_RING (1)
       cq_batch_counter++;
       if(unlikely(cq_batch_counter >= CQ_MAX_BATCH_TO_RING)) {
         _queues->ring_completion_doorbell();

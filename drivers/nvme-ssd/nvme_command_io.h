@@ -108,11 +108,12 @@ public:
 
     __builtin_memcpy(&c->dsmgmt,&dsm,1);
 
-    PLOG("!!! issuing (%s) command prp1=0x%lx nsid=%d slba=%ld cmdid=%u control=0x%x dsmgmt=0x%x!!!",
+    PLOG("!!! issuing (%s) command prp1=0x%lx nsid=%d slba=%ld nblocks=%u cmdid=%u control=0x%x dsmgmt=0x%x!!!",
            iswrite ? "write" : "read",
            c->prp1,
            c->nsid,
            c->slba,
+           c->length,
            c->command_id,
            c->control,
            c->dsmgmt
