@@ -276,6 +276,7 @@ Submission_command_slot * NVME_queues_base::next_sub_slot(signed * cmdid) {
   status_t st;
   NVME_LOOP( ((st = increment_submission_tail(&curr_ptr)) != Exokernel::S_OK), false);
 
+  memset(&_sub_cmd[curr_ptr], 0, sizeof(Submission_command_slot));
   PLOG("sub_slot = %u (Q:%u)", curr_ptr, _queue_id);
   return &_sub_cmd[curr_ptr];
 }
