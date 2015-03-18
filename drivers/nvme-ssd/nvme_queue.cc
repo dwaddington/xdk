@@ -179,9 +179,9 @@ Completion_command_slot * NVME_queues_base::get_next_completion()
   /* check status code */
   unsigned status =  _comp_cmd[curr_head].status;
 
-  unsigned DNR  = 0x1  & (status >> 31);
-  unsigned More = 0x1  & (status >> 30);
-  unsigned SCT  = 0x7  & (status >> 25);
+  unsigned DNR  = 0x1  & (status >> 14);
+  unsigned More = 0x1  & (status >> 13);
+  unsigned SCT  = 0x7  & (status >>  8);
   unsigned SC   = 0xff & status;
 
   PLOG("DNR = 0x%x, More = 0x%x, SCT = 0x%x, SC = 0x%x",
@@ -276,7 +276,7 @@ Submission_command_slot * NVME_queues_base::next_sub_slot(signed * cmdid) {
   status_t st;
   NVME_LOOP( ((st = increment_submission_tail(&curr_ptr)) != Exokernel::S_OK), false);
 
-  PLOG("sub_slot = %u", curr_ptr);
+  PLOG("sub_slot = %u (Q:%u)", curr_ptr, _queue_id);
   return &_sub_cmd[curr_ptr];
 }
 
