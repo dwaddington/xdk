@@ -36,10 +36,9 @@
 #define __IRQ_THREAD_H__
 
 #include <network/nic_itf.h>
-#include <network/stack_itf.h>
 #include "libexo.h"
 #include "x540_device.h"
-#include "xml_config_parser.h"
+#include "../xml_config_parser.h"
 
 using namespace Exokernel;
 

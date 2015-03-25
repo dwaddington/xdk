@@ -48,8 +48,8 @@ enum {
   PACKET_ALLOCATOR      = 1,  /**< The packet buffer allocator. */
   MBUF_ALLOCATOR        = 2,  /**< The mbuf struct allocator. */
   META_DATA_ALLOCATOR   = 3,  /**< The meta data allocator for an array of burst packets. */
-  PBUF_ALLOCATOR        = 4,  /**< The pbuf allocator for IP packet meta data. */
-  NET_HEADER_ALLOCATOR  = 5,  /**< The network header allocator (42 bytes). */
+  NET_HEADER_ALLOCATOR  = 4,  /**< The network header allocator (42 bytes). */
+  PBUF_ALLOCATOR        = 5,  /**< The pbuf allocator for IP packet meta data. */
   IP_REASS_ALLOCATOR    = 6,  /**< The IP reassembly data buffer allocator. */
   UDP_PCB_ALLOCATOR     = 7,  /**< The UDP protocol control block allocator. */
   // Always at the end  
@@ -98,8 +98,8 @@ enum {
   SMT_PACKET_ALLOCATOR     = 1,      /**< The packet buffer allocator. */
   SMT_MBUF_ALLOCATOR       = 2,      /**< The mbuf struct allocator. */
   SMT_META_DATA_ALLOCATOR  = 3,      /**< The meta data allocator for an array of burst packets. */
-  SMT_PBUF_ALLOCATOR       = 4,      /**< The pbuf allocator for IP packet meta data. */
-  SMT_NET_HEADER_ALLOCATOR = 5,      /**< The network header allocator (42 bytes). */
+  SMT_NET_HEADER_ALLOCATOR = 4,      /**< The network header allocator (42 bytes). */
+  SMT_PBUF_ALLOCATOR       = 5,      /**< The pbuf allocator for IP packet meta data. */
   SMT_IP_REASS_ALLOCATOR   = 6,      /**< The ip reassembly data buffer allocator */
   SMT_UDP_PCB_ALLOCATOR    = 7,      /**< The UDP protocol control block allocator */
 };

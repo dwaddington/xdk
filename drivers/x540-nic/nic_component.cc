@@ -42,7 +42,6 @@ using namespace Component;
  * 
  */
 INic_impl::INic_impl() {
-  _stack = NULL;
   component_t t = NIC_COMPONENT;
   set_comp_type(t);
      
@@ -76,9 +75,6 @@ INic_impl::bind(interface_t itf) {
     assert(itf);
     Interface_base * itf_base = (Interface_base *)itf;
     switch (itf_base->get_comp_type()) {
-      case STACK_COMPONENT:
-           _stack = (IStack *)itf;
-           break;
       case MEM_COMPONENT:
            _mem = (IMem *)itf;
            break;
@@ -98,7 +94,6 @@ INic_impl::driver(unsigned device) {
 status_t 
 INic_impl::init(arg_t arg) {
     assert(arg);
-    assert(_stack);
     assert(_mem);
     unsigned i;
 
@@ -110,7 +105,7 @@ INic_impl::init(arg_t arg) {
     
     /* Initialize NIC driver */
     for (i = 0; i < _nic_num; i++) {
-      _dev[i] = new Intel_x540_uddk_device(this, _stack, _mem, i, _params);
+      _dev[i] = new Intel_x540_uddk_device(this, _mem, i, _params);
     }
     
     for (i = 0; i < _nic_num; i++) {

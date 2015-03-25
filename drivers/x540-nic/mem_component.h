@@ -34,11 +34,9 @@
 
 #include <libexo.h>
 #include <network/memory_itf.h>
-#include <network/stack_itf.h>
 #include <network/nic_itf.h>
-#include "x540/x540_device.h"
 #include <exo/shm_table.h>
-#include "x540/xml_config_parser.h"
+#include "xml_config_parser.h"
 #include <component/base.h>
 
 using namespace Exokernel;
@@ -53,7 +51,6 @@ class IMem_impl : public IMem
 {
 public:
   Numa_slab_allocator *** _allocator;
-  IStack * _stack;
   INic * _nic;
   unsigned** _allocator_core;
   unsigned _nic_num;

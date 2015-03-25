@@ -34,10 +34,9 @@
 
 #include <libexo.h>
 #include <network/nic_itf.h>
-#include <network/stack_itf.h>
 #include <network/memory_itf.h>
 #include "x540/x540_device.h"
-#include "x540/xml_config_parser.h"
+#include "xml_config_parser.h"
 #include <component/base.h>
 
 using namespace Exokernel;
@@ -50,7 +49,6 @@ using namespace Component;
 class INic_impl : public INic
 {
   state_t _state;
-  IStack * _stack;
   IMem * _mem;
   Intel_x540_uddk_device **  _dev;
   Config_params * _params;

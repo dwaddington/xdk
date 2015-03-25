@@ -228,9 +228,6 @@ IMem_impl::bind(interface_t itf) {
     assert(itf);
     Interface_base * itf_base = (Interface_base *)itf;
     switch (itf_base->get_comp_type()) {
-      case STACK_COMPONENT:
-           _stack = (IStack *)itf;
-           break;
       case NIC_COMPONENT:
            _nic = (INic *)itf;
            break;

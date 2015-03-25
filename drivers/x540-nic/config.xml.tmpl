@@ -12,13 +12,9 @@
   <!-- MEMORY AND ALLOCATOR QUOTA -->
   <shm_max_size>4</shm_max_size>                                  <!-- maximum size of shared memory in GB. -->
   <frame_num_per_core>10240</frame_num_per_core>
-  <jd_num_per_core>1024</jd_num_per_core>
   <mbuf_num_per_core>10240</mbuf_num_per_core>
   <meta_data_num_per_core>10240</meta_data_num_per_core>
-  <pbuf_num_per_core>10240</pbuf_num_per_core>
   <net_header_num_per_core>10240</net_header_num_per_core>
-  <ip_reass_num_per_core>10240</ip_reass_num_per_core>
-  <udp_pcb_num_per_core>1024</udp_pcb_num_per_core>
 
   <!-- PLATFORM AND DRIVER CONFIG -->
   <channels_per_nic>4</channels_per_nic>                           <!-- same as in driver_config.h. -->
@@ -33,7 +29,7 @@
 
   <!-- APPLICATION CONFIG -->
   <stats_num>1000000</stats_num>
-  <client_rx_flow_num>1</client_rx_flow_num>
+  <client_rx_flow_num>5</client_rx_flow_num>
   <server_ip1>105.145.68.41</server_ip1>
   <server_port>11211</server_port>
   <client_ip1>105.145.68.40</client_ip1>

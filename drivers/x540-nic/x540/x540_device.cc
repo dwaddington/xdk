@@ -68,7 +68,8 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #include "x540_device.h"
 #include "x540_types.h"
-#include "x540_threads.h"
+#include "x540_rx_threads.h"
+#include "x540_tx_threads.h"
 #include "x540_filter.h"
 #include "prefetch.h"
 #include <unistd.h>
@@ -118,7 +119,58 @@ void Intel_x540_uddk_device::init_device() {
   setup_msi_interrupt();
   enable_msi();
   
+  setup_tx_threads();  
   setup_rx_threads();
+}
+
+void Intel_x540_uddk_device::setup_tx_threads() {
+  Tx_thread* tx_threads[NUM_TX_THREADS_PER_NIC];
+  unsigned tx_core[NUM_TX_THREADS_PER_NIC];
+  unsigned i;
+
+  /* obtain NUMA cpu mask */
+  struct bitmask * cpumask;
+  cpumask = numa_allocate_cpumask();
+  numa_node_to_cpus(_index, cpumask);
+
+  for (i = 0; i < NUM_RX_THREADS_PER_NIC; i++) {
+    tx_core[i] = 0;
+  }
+
+  Cpu_bitset thr_aff_per_node(tx_threads_cpu_mask);
+
+  uint16_t pos = 0;
+  unsigned n = 0;
+  for (i = 0; i < cpus_per_nic; i++) {
+    if (thr_aff_per_node.test(pos)) {
+      tx_core[n] = get_cpu_id(cpumask,i+1);
+      n++;
+    }
+    pos++;
+  }
+
+  printf("TX Thread assigned core: ");
+  for (i = 0; i < NUM_TX_THREADS_PER_NIC; i++) {
+    printf("%u ",tx_core[i]);
+  }
+  printf("\n");
+
+  for(i = 0; i < NUM_TX_THREADS_PER_NIC; i++) {
+    unsigned global_id = i + _index * NUM_TX_THREADS_PER_NIC;
+    unsigned local_id  = i;
+    unsigned core_id = tx_core[i];
+
+    tx_threads[i]= new Tx_thread(this,
+                                 _imem,
+                                 local_id,
+                                 global_id,
+                                 core_id,
+                                 _params);
+
+    PLOG("TX[%d] is running on core %u", global_id, core_id);
+    assert(tx_threads[i]);
+    tx_threads[i]->activate();
+  }
 }
 
 void Intel_x540_uddk_device::setup_rx_threads() {
@@ -552,8 +604,6 @@ void Intel_x540_uddk_device::core_configure(bool kvcache_server) {
   PLOG("[NIC %d] Configured TX. OK", _index);
 
   _inic->set_comp_state(NIC_TX_DONE_STATE, _index);
-
-  while (_istack->get_comp_state(_index) < STACK_READY_STATE) { sleep(1); }
 
   configure_rx();
   PLOG("[NIC %d] Configured RX. OK", _index);
@@ -1208,9 +1258,9 @@ void Intel_x540_uddk_device::interrupt_handler(unsigned tid) {
         pktlen = rx_desc[queue][rxdp_r]->wb.upper.length;
         pkt = (uint8_t *) (rx_ring[queue].rx_buf[rxdp_r].virt_addr);
 
-        /**  Interface to stack component **/
+        /**  Interface to stack layer (NOT INCLUDED IN XDK) **/
         bool new_pkt = false;
-        pkt_status_t t = (pkt_status_t) _istack->receive_packet((pkt_buffer_t)pkt, pktlen, _index, queue);
+        pkt_status_t t = receive_packet(pkt, pktlen, _index, queue);
 
         switch (t) {
          case KEEP_THIS_PACKET: 
@@ -1247,6 +1297,10 @@ void Intel_x540_uddk_device::interrupt_handler(unsigned tid) {
   /* mask the interrupt bit so that new interrupt will be triggered */
   uint32_t eims = (1 << tid);
   _mmio->mmio_write32(IXGBE_EIMS,eims);
+}
+
+pkt_status_t Intel_x540_uddk_device::receive_packet(uint8_t *p, size_t pktlen, unsigned device, unsigned queue) {
+  return REUSE_THIS_PACKET;
 }
 
 void Intel_x540_uddk_device::reg_info() {

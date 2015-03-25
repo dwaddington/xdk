@@ -35,9 +35,8 @@
 #include <component/base.h>
 #include <mem_component.h>
 #include <nic_component.h>
-#include <stack_component.h>
 #include "x540/x540_device.h"
-#include "x540/xml_config_parser.h"
+#include "xml_config_parser.h"
 
 using namespace Exokernel;
 
@@ -78,13 +77,9 @@ private:
   unsigned _rx_threads_per_nic;
   unsigned _tx_threads_per_nic;
   unsigned _frame_num_per_core;
-  unsigned _jd_num_per_core;
   unsigned _mbuf_num_per_core;
   unsigned _meta_data_num_per_core;
-  unsigned _pbuf_num_per_core;
   unsigned _net_header_num_per_core;
-  unsigned _ip_reass_num_per_core;
-  unsigned _udp_pcb_num_per_core;
  
 private:
 
@@ -98,7 +93,7 @@ private:
     */
 
     mem_arg_t mem_arg;
-    mem_arg.num_allocators = TOTAL_ALLOCATOR_NUM;
+    mem_arg.num_allocators = 5;
     mem_arg.config_list = (alloc_config_t **) malloc(sizeof(alloc_config_t *) * mem_arg.num_allocators);
   
     alloc_config_t alloc_config[mem_arg.num_allocators];
@@ -122,25 +117,10 @@ private:
     alloc_config[3].alignment = 64;
     alloc_config[3].allocator_id = META_DATA_ALLOCATOR;
 
-    alloc_config[4].block_size = sizeof(struct pbuf);
-    alloc_config[4].num_blocks = _pbuf_num_per_core * _rx_threads_per_nic;
+    alloc_config[4].block_size = 64;
+    alloc_config[4].num_blocks = _net_header_num_per_core * _rx_threads_per_nic;
     alloc_config[4].alignment = 64;
-    alloc_config[4].allocator_id = PBUF_ALLOCATOR;
-
-    alloc_config[5].block_size = 64;
-    alloc_config[5].num_blocks = _net_header_num_per_core * _rx_threads_per_nic;
-    alloc_config[5].alignment = 64;
-    alloc_config[5].allocator_id = NET_HEADER_ALLOCATOR;
-
-    alloc_config[6].block_size = sizeof(struct ip_reassdata);
-    alloc_config[6].num_blocks = _ip_reass_num_per_core * _rx_threads_per_nic;
-    alloc_config[6].alignment = 64;
-    alloc_config[6].allocator_id = IP_REASS_ALLOCATOR;
-
-    alloc_config[7].block_size = sizeof(struct udp_pcb);
-    alloc_config[7].num_blocks = _udp_pcb_num_per_core * _rx_threads_per_nic;
-    alloc_config[7].alignment = 64;
-    alloc_config[7].allocator_id = UDP_PCB_ALLOCATOR;
+    alloc_config[4].allocator_id = NET_HEADER_ALLOCATOR;
 
     alloc_config_t ** config_list = mem_arg.config_list;
     for (unsigned i = 0; i < mem_arg.num_allocators; i++) {
@@ -164,10 +144,7 @@ public:
     _frame_num_per_core = _params->frame_num_per_core;
     _mbuf_num_per_core = _params->mbuf_num_per_core;
     _meta_data_num_per_core = _params->meta_data_num_per_core;
-    _pbuf_num_per_core = _params->pbuf_num_per_core;
     _net_header_num_per_core = _params->net_header_num_per_core;
-    _ip_reass_num_per_core = _params->ip_reass_num_per_core;
-    _udp_pcb_num_per_core = _params->udp_pcb_num_per_core;
 
     start();
   }
@@ -196,28 +173,20 @@ int main(int argc, char* argv[]) {
 
   /* load the components */
   Component::IBase * nic_comp = load_component("./libcomp_nic.so.1", NicComponent::component_id());
-  Component::IBase * stack_comp = load_component("./libcomp_stack.so.1", StackComponent::component_id());
   Component::IBase * mem_comp = load_component("./libcomp_mem.so.1", MemComponent::component_id());
 
   assert(nic_comp);
-  assert(stack_comp);
   assert(mem_comp);
 
   INic * nic = (INic *) nic_comp->query_interface(INic::iid());
-  IStack * stack = (IStack *) stack_comp->query_interface(IStack::iid());
   IMem * memory = (IMem *) mem_comp->query_interface(IMem::iid());
 
   assert(nic);
-  assert(stack);
   assert(memory);
 
   /* perform third party binding */
-  nic->bind(stack);
   nic->bind(memory);
-  stack->bind(nic);
-  stack->bind(memory);
   memory->bind(nic);
-  memory->bind(stack);
 
   /* create nic component thread */
   Nic_comp_thread* nic_comp_thread;
@@ -228,14 +197,6 @@ int main(int argc, char* argv[]) {
   Mem_comp_thread* mem_comp_thread;
   mem_comp_thread = new Mem_comp_thread(memory,&params);
   assert(mem_comp_thread);
-
-  /* initialize stack component */
-  stack_arg_t stack_arg;
-  stack_arg.st = exo_UDP;
-  stack_arg.app = SERVER_APP;
-  stack_arg.params = (params_config_t) (&params);
-  stack->init((arg_t)&stack_arg);
-  stack->run();
 
   while (1) {
     sleep(100);
