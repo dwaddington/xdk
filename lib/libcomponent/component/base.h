@@ -130,6 +130,7 @@ namespace Component
     IBase() : _ref_count(0), _dll_handle(NULL) {
     }
 
+    virtual ~IBase() {}
 
     /** 
      * Pure virtual functions that should be implemented by all

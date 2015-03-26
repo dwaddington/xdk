@@ -72,6 +72,11 @@ namespace Component
       }
       return NULL; // we don't support this interface
     }
+
+    /* called when the component ref count == 0 */
+    void unload() {
+      delete this;
+    }
   
     int bind(IBase * component);
 
