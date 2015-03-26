@@ -32,62 +32,56 @@
   @author Jilong Kuang (jilong.kuang@samsung.com)
 */
 
+#include "x540/x540_device.h"
 #include <libexo.h>
 #include <network/nic_itf.h>
 #include <network/memory_itf.h>
-#include "x540/x540_device.h"
 #include "xml_config_parser.h"
 #include <component/base.h>
 
 using namespace Exokernel;
 using namespace Component;
 
-/** 
- * Interface INic implementation
- * 
- */
-class INic_impl : public INic
+namespace Component
 {
-  state_t _state;
-  IMem * _mem;
-  Intel_x540_uddk_device **  _dev;
-  Config_params * _params;
-  unsigned _nic_num;
 
-public:
-  INic_impl();
-
-  status_t send_packets(pkt_buffer_t * p, size_t& cnt, unsigned device, unsigned queue);
-
-  status_t send_packets_simple(pkt_buffer_t * p, size_t& cnt, unsigned device, unsigned queue);
-
-  status_t bind(interface_t itf);
-
-  device_handle_t driver(unsigned device);
-
-  status_t init(arg_t arg);
-
-  void run();
-
-  status_t cpu_allocation(cpu_mask_t mask);
-};
-
-/** 
- * Definition of the component
- * 
- */
-class NicComponent : public Component::IBase,
-                     public INic_impl
-{
-public:  
-  DECLARE_COMPONENT_UUID(0x51a5efbb,0xa76b,0x47a8,0x9fb8,0xe3,0xfe,0x75,0x7e,0x15,0x5b);
-
-  void * query_interface(Component::uuid_t& itf_uuid) {
-    if(itf_uuid == INic::iid()) {
-      add_ref(); // implicitly add reference
-      return (void *) static_cast<INic *>(this);
-    }
-    else 
+  /** 
+   * Definition of the component
+   * 
+   */
+  class NicComponent : public Component::IBase,
+                       public Component::INic
+  {
+  public:
+    state_t _state;
+    IMem * _imem;
+    Intel_x540_uddk_device **  _dev;
+    Config_params * _params;
+    unsigned _nic_num; 
+  
+  public:  
+    DECLARE_COMPONENT_UUID(0x51a5efbb,0xa76b,0x47a8,0x9fb8,0xe3,0xfe,0x75,0x7e,0x15,0x5b);
+  
+    /* interface selection */
+    void * query_interface(Component::uuid_t& itf_uuid) {
+      if(itf_uuid == INic::iid()) {
+        return (void *) static_cast<Component::INic *>(this);
+      }
       return NULL; // we don't support this interface
-  }
-};
+    }
+
+    int bind(IBase * component);
+
+    // ctor
+    NicComponent();
+    ~NicComponent();
+
+    // INic interface
+    status_t send_packets(pkt_buffer_t * p, size_t& cnt, unsigned device, unsigned queue);
+    status_t send_packets_simple(pkt_buffer_t * p, size_t& cnt, unsigned device, unsigned queue);
+    device_handle_t driver(unsigned device);
+    status_t init(arg_t arg);
+    void run();
+    status_t cpu_allocation(cpu_mask_t mask);
+  };
+}

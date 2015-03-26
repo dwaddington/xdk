@@ -39,11 +39,12 @@
 #include "xml_config_parser.h"
 
 using namespace Exokernel;
+using namespace Component;
 
 class Nic_comp_thread : public Exokernel::Base_thread {
 
 private:
-  INic * _nic;
+  NicComponent * _nic;
   Config_params * _params;
 
 private:
@@ -58,7 +59,7 @@ private:
   }
 
 public:
-  Nic_comp_thread(INic * nic, Config_params * params) : Base_thread(), _nic(nic), _params(params) {
+  Nic_comp_thread(NicComponent * nic, Config_params * params) : Base_thread(), _nic(nic), _params(params) {
     start();
   }
 
@@ -70,7 +71,7 @@ public:
 class Mem_comp_thread : public Exokernel::Base_thread {
 
 private:
-  IMem * _mem;
+  MemComponent * _mem;
   Config_params * _params;
   unsigned _tx_queues_per_nic;
   unsigned _tx_desc_per_queue;
@@ -136,7 +137,7 @@ private:
   }
 
 public:
-  Mem_comp_thread(IMem * mem, Config_params * params) : Base_thread(), _mem(mem), _params(params) {
+  Mem_comp_thread(MemComponent * mem, Config_params * params) : Base_thread(), _mem(mem), _params(params) {
     _tx_queues_per_nic = _params->channels_per_nic * 2;
     _tx_desc_per_queue = _params->tx_desc_per_queue;
     _rx_threads_per_nic = _params->channels_per_nic;
@@ -178,24 +179,20 @@ int main(int argc, char* argv[]) {
   assert(nic_comp);
   assert(mem_comp);
 
-  INic * nic = (INic *) nic_comp->query_interface(INic::iid());
-  IMem * memory = (IMem *) mem_comp->query_interface(IMem::iid());
-
-  assert(nic);
-  assert(memory);
-
-  /* perform third party binding */
-  nic->bind(memory);
-  memory->bind(nic);
+  std::vector<IBase *> components(2);
+  components[0] = nic_comp;
+  components[1] = mem_comp;
+ 
+  bind(components);
 
   /* create nic component thread */
   Nic_comp_thread* nic_comp_thread;
-  nic_comp_thread = new Nic_comp_thread(nic,&params);
+  nic_comp_thread = new Nic_comp_thread((Component::NicComponent *)nic_comp,&params);
   assert(nic_comp_thread);
 
   /* create mem component thread */
   Mem_comp_thread* mem_comp_thread;
-  mem_comp_thread = new Mem_comp_thread(memory,&params);
+  mem_comp_thread = new Mem_comp_thread((Component::MemComponent *)mem_comp,&params);
   assert(mem_comp_thread);
 
   while (1) {

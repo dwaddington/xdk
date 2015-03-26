@@ -43,68 +43,55 @@ using namespace Exokernel;
 using namespace Exokernel::Memory;
 using namespace Component;
 
-/** 
- * Interface IMem implementation
- * 
- */
-class IMem_impl : public IMem
-{
-public:
-  Numa_slab_allocator *** _allocator;
-  INic * _nic;
-  unsigned** _allocator_core;
-  unsigned _nic_num;
-  unsigned _rx_threads_per_nic;
-  unsigned _cpus_per_nic;
-  uint64_t _shm_max_size;
-  std::string _rx_threads_cpu_mask;
-  Config_params * _params;
+namespace Component
+{ 
+  /** 
+   * Definition of the component
+   * 
+   */
+  class MemComponent : public Component::IBase,
+                       public Component::IMem
+  {
+  public:
+    Numa_slab_allocator *** _allocator;
+    INic * _inic;
+    unsigned** _allocator_core;
+    unsigned _nic_num;
+    unsigned _rx_threads_per_nic;
+    unsigned _cpus_per_nic;
+    uint64_t _shm_max_size;
+    std::string _rx_threads_cpu_mask;
+    Config_params * _params;
 
-public:
-  IMem_impl();
-
-  status_t init(arg_t arg);
-
-  addr_t get_phys_addr(void *virt_addr, allocator_t id, unsigned device);
-
-  uint64_t get_num_avail_per_core(allocator_t id, unsigned device, core_id_t core);
-
-  uint64_t get_total_avail(allocator_t id, unsigned device);
-
-  allocator_handle_t get_allocator(allocator_t id, unsigned device);
-
-  status_t bind(interface_t itf);
-
-  status_t alloc(addr_t *p, allocator_t id, unsigned device, core_id_t core);
-
-  status_t free(void *p, allocator_t id, unsigned device);
-
-  void run();
-
-  void * alloc(size_t n);
-
-  status_t free(void * p);
-
-  status_t cpu_allocation(cpu_mask_t mask);
-
-};
-
-/** 
- * Definition of the component
- * 
- */
-class MemComponent : public Component::IBase,
-                     public IMem_impl
-{
-public:
-  DECLARE_COMPONENT_UUID(0xe1ad1bc2,0x63c5,0x4011,0xb877,0xa0,0x18,0x89,0xae,0x46,0x3d);
-
-  void * query_interface(Component::uuid_t& itf_uuid) {
-    if(itf_uuid == IMem::iid()) {
-      add_ref(); // implicitly add reference
-      return (void *) static_cast<IMem *>(this);
-    }
-    else
+  public:
+    DECLARE_COMPONENT_UUID(0xe1ad1bc2,0x63c5,0x4011,0xb877,0xa0,0x18,0x89,0xae,0x46,0x3d);
+  
+    void * query_interface(Component::uuid_t& itf_uuid) {
+      if(itf_uuid == IMem::iid()) {
+        return (void *) static_cast<Component::IMem *>(this);
+      }
       return NULL; // we don't support this interface
-  }
-};
+    }
+  
+    int bind(IBase * component);
+
+    // ctor
+    MemComponent();
+    ~MemComponent();
+
+    // IMem interface
+    status_t init(arg_t arg);
+    addr_t get_phys_addr(void *virt_addr, allocator_t id, unsigned device);
+    uint64_t get_num_avail_per_core(allocator_t id, unsigned device, core_id_t core);
+    uint64_t get_total_avail(allocator_t id, unsigned device);
+    allocator_handle_t get_allocator(allocator_t id, unsigned device);
+    status_t bind(interface_t itf);
+    status_t alloc(addr_t *p, allocator_t id, unsigned device, core_id_t core);
+    status_t free(void *p, allocator_t id, unsigned device);
+    void run();
+    void * alloc(size_t n);
+    status_t free(void * p);
+    status_t cpu_allocation(cpu_mask_t mask);
+  };
+}
+

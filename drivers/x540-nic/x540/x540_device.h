@@ -38,9 +38,9 @@
 #include <libexo.h>
 #include "driver_config.h"
 #include "x540_types.h"
+#include "../xml_config_parser.h"
 #include <network/nic_itf.h>
 #include <network/memory_itf.h>
-#include "../xml_config_parser.h"
 
 #define PKT_MAX_SIZE                          (2048-64)
 #define LOOK_AHEAD                            (8)
@@ -84,6 +84,7 @@ struct ip_addr {
 typedef struct ip_addr ip_addr_t;
 
 using namespace Exokernel;
+using namespace Component;
 
 class Intel_x540_uddk_device : public Exokernel::Pci_express_device {
 
@@ -93,8 +94,14 @@ public:
    * Constructor
    * 
    */
-  Intel_x540_uddk_device(INic * inic, 
-                         IMem * imem, unsigned index, Config_params * params) : Exokernel::Pci_express_device(index, 0x8086, 0x1528) {
+  Intel_x540_uddk_device(INic * inic,
+                         IMem * imem, 
+                         unsigned index, 
+                         Config_params * params) : Exokernel::Pci_express_device(index, 0x8086, 0x1528) {
+    assert(inic);
+    assert(imem);
+    assert(params);
+
     _params = params;
     rx_threads_cpu_mask = _params->rx_threads_cpu_mask;
     tx_threads_cpu_mask = _params->tx_threads_cpu_mask;
@@ -107,14 +114,13 @@ public:
 
     _irq = (unsigned *) malloc(msix_vector_num * sizeof(unsigned));
 
-    assert(inic);
-    _inic = inic;
-    _imem = imem;
+    _nic = inic;
+    _mem = imem;
     _index = index;
     _mmio = pci_memory_region(0); // IX540 flash BAR (see 3.4.4.1)
     msix_support() ? PINF("MSI-X detection OK.") : PINF("Error: MSI-X not supported."); 
 
-    _inic->set_comp_state(NIC_CREATED_STATE, index); // Memory component can start
+    _nic->set_comp_state(NIC_CREATED_STATE, index); // Memory component can start
   }
   
   unsigned* _irq;
@@ -126,8 +132,8 @@ public:
   volatile TX_ADV_DATA_DESC*                   tx_desc[NUM_TX_QUEUES][NUM_TX_DESCRIPTORS_PER_QUEUE];
   volatile RX_ADV_DATA_DESC*                   rx_desc[NUM_RX_QUEUES][NUM_RX_DESCRIPTORS_PER_QUEUE];
 
-  INic * _inic;
-  IMem * _imem;
+  INic * _nic;
+  IMem * _mem;
   Config_params * _params;
 
 private:

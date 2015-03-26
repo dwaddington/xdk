@@ -75,6 +75,9 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <unistd.h>
 #include <netinet/in.h>
 #include <emmintrin.h>
+
+using namespace Component;
+
 /** 
  * Verify device supports MSI-X (sanity check)
  * 
@@ -105,7 +108,7 @@ bool Intel_x540_uddk_device::msix_support() {
 }
 
 void Intel_x540_uddk_device::init_device() {
-  while(_imem->get_comp_state(0) < MEM_READY_STATE) { sleep(1); }
+  while(_mem->get_comp_state(0) < MEM_READY_STATE) { sleep(1); }
 
   init_nic_param();
 
@@ -161,7 +164,7 @@ void Intel_x540_uddk_device::setup_tx_threads() {
     unsigned core_id = tx_core[i];
 
     tx_threads[i]= new Tx_thread(this,
-                                 _imem,
+                                 _mem,
                                  local_id,
                                  global_id,
                                  core_id,
@@ -603,12 +606,12 @@ void Intel_x540_uddk_device::core_configure(bool kvcache_server) {
   configure_tx();
   PLOG("[NIC %d] Configured TX. OK", _index);
 
-  _inic->set_comp_state(NIC_TX_DONE_STATE, _index);
+  _nic->set_comp_state(NIC_TX_DONE_STATE, _index);
 
   configure_rx();
   PLOG("[NIC %d] Configured RX. OK", _index);
   
-  _inic->set_comp_state(NIC_RX_DONE_STATE, _index);
+  _nic->set_comp_state(NIC_RX_DONE_STATE, _index);
 }
 
 void Intel_x540_uddk_device::configure_msix() {
@@ -865,13 +868,13 @@ void Intel_x540_uddk_device::configure_rx() {
 
   /* create memory space for RX descriptor ring */
   void * temp;
-  if (_imem->alloc((addr_t *)&temp, DESC_ALLOCATOR, _index, rx_core[0]) != Exokernel::S_OK) {
+  if (_mem->alloc((addr_t *)&temp, DESC_ALLOCATOR, _index, rx_core[0]) != Exokernel::S_OK) {
     panic("DESC_ALLOCATOR failed!\n");
   }
   assert(temp);
 
   desc_v=(addr_t)temp;
-  desc_p=(addr_t)_imem->get_phys_addr(temp, DESC_ALLOCATOR, _index);
+  desc_p=(addr_t)_mem->get_phys_addr(temp, DESC_ALLOCATOR, _index);
   assert(desc_p);
 
   __builtin_memset((void*)desc_v, 0, bytes_to_alloc);
@@ -890,13 +893,13 @@ void Intel_x540_uddk_device::configure_rx() {
     rx_ring[i].desc=(void *) (desc_v+i*(NUM_RX_DESCRIPTORS_PER_QUEUE * sizeof(RX_ADV_DATA_DESC)));
 
     for(unsigned j = 0; j < NUM_RX_DESCRIPTORS_PER_QUEUE; j++ ) {
-      if (_imem->alloc((addr_t *)&temp, PACKET_ALLOCATOR, _index, rx_core[i/2]) != Exokernel::S_OK) {
+      if (_mem->alloc((addr_t *)&temp, PACKET_ALLOCATOR, _index, rx_core[i/2]) != Exokernel::S_OK) {
         panic("PACKET_ALLOCATOR failed!\n");
       }
       assert(temp);
 
       pkt_v=(addr_t)temp;
-      pkt_p=(addr_t)_imem->get_phys_addr(temp, PACKET_ALLOCATOR, _index);
+      pkt_p=(addr_t)_mem->get_phys_addr(temp, PACKET_ALLOCATOR, _index);
       __builtin_memset((void *)pkt_v, 0, PKT_MAX_SIZE);
 
       rx_ring[i].rx_buf[j].phys_addr = pkt_p;
@@ -937,13 +940,13 @@ void Intel_x540_uddk_device::configure_tx() {
 
   /* create memory space for TX descriptor ring */
   void * temp;
-  if (_imem->alloc((addr_t *)&temp, DESC_ALLOCATOR, _index, rx_core[0]) != Exokernel::S_OK) {
+  if (_mem->alloc((addr_t *)&temp, DESC_ALLOCATOR, _index, rx_core[0]) != Exokernel::S_OK) {
     panic("DESC_ALLOCATOR failed!\n");
   }
   assert(temp);
 
   desc_v=(addr_t)temp;
-  desc_p=(addr_t)_imem->get_phys_addr(temp, DESC_ALLOCATOR, _index);
+  desc_p=(addr_t)_mem->get_phys_addr(temp, DESC_ALLOCATOR, _index);
 
   __builtin_memset((void*)desc_v, 0, bytes_to_alloc);
   assert(desc_p % 16 == 0);
@@ -1175,13 +1178,13 @@ void Intel_x540_uddk_device::reset_rx_desc(unsigned queue, unsigned index, bool 
     /* create a new packet buffer */
     addr_t pkt_v, pkt_p;
     void * temp;
-    if (_imem->alloc((addr_t *)&temp, PACKET_ALLOCATOR, _index, core) != Exokernel::S_OK) {
+    if (_mem->alloc((addr_t *)&temp, PACKET_ALLOCATOR, _index, core) != Exokernel::S_OK) {
       panic("PACKET_ALLOCATOR failed!\n");
     }
     assert(temp);
-//    printf("available frame numbers: %ld\n", _imem->get_num_available_blocks(PACKET_ALLOCATOR));
+//    printf("available frame numbers: %ld\n", _mem->get_num_available_blocks(PACKET_ALLOCATOR));
     pkt_v=(addr_t)temp;
-    pkt_p=(addr_t)_imem->get_phys_addr(temp, PACKET_ALLOCATOR, _index);
+    pkt_p=(addr_t)_mem->get_phys_addr(temp, PACKET_ALLOCATOR, _index);
     assert(pkt_p);
     
     rx_ring[queue].rx_buf[index].phys_addr = pkt_p;
@@ -1300,6 +1303,7 @@ void Intel_x540_uddk_device::interrupt_handler(unsigned tid) {
 }
 
 pkt_status_t Intel_x540_uddk_device::receive_packet(uint8_t *p, size_t pktlen, unsigned device, unsigned queue) {
+  printf("[NIC %u RX QUEUE %u] Received a pkt: size(%lu)\n", device, queue, pktlen);
   return REUSE_THIS_PACKET;
 }
 
@@ -1524,7 +1528,7 @@ inline unsigned Intel_x540_uddk_device::tx_free_bufs(unsigned tx_queue) {
   for (i = txr->tx_next_dd - (txr->tx_rs_thresh-1); i < txr->tx_rs_thresh; i++) { 
     // if FREE_OK flag is set, free the packet buffer
     if ((txr->sw_ring[i].tx_buf.flag & 1) == 1)
-      _imem->free((void *)(txr->sw_ring[i].tx_buf.virt_addr), PACKET_ALLOCATOR, _index);
+      _mem->free((void *)(txr->sw_ring[i].tx_buf.virt_addr), PACKET_ALLOCATOR, _index);
 
     // free the metadata header
     __builtin_memset(&(txr->sw_ring[i]),0,sizeof(struct tx_entry));
@@ -1775,13 +1779,13 @@ inline int Intel_x540_uddk_device::xmit_cleanup(struct exo_tx_ring *txq) {
     for (unsigned i = last_desc_cleaned + 1; i < txq->nb_tx_desc; i++) {
       struct exo_mbuf * mbuf = &(txq->sw_ring[i].tx_buf);
       if (((mbuf->flag) & 1) == 1) {
-        _imem->free((void *)(mbuf->virt_addr), (mbuf->flag >> 4), _index);
+        _mem->free((void *)(mbuf->virt_addr), (mbuf->flag >> 4), _index);
       }
       if (((mbuf->seg_flag[0]) & 1) == 1) {
-        _imem->free((void *)(mbuf->virt_addr_seg[0]), (mbuf->seg_flag[0] >> 4), _index);
+        _mem->free((void *)(mbuf->virt_addr_seg[0]), (mbuf->seg_flag[0] >> 4), _index);
       }
       if (((mbuf->seg_flag[1]) & 1) == 1) {
-        _imem->free((void *)(mbuf->virt_addr_seg[1]), (mbuf->seg_flag[1] >> 4), _index);
+        _mem->free((void *)(mbuf->virt_addr_seg[1]), (mbuf->seg_flag[1] >> 4), _index);
       }
 
       __builtin_memset(&(txq->sw_ring[i]),0,sizeof(struct tx_entry));
@@ -1793,13 +1797,13 @@ inline int Intel_x540_uddk_device::xmit_cleanup(struct exo_tx_ring *txq) {
     for (unsigned i = 0; i <= desc_to_clean_to; i++) {
       struct exo_mbuf * mbuf = &(txq->sw_ring[i].tx_buf);
       if (((mbuf->flag) & 1) == 1) {
-        _imem->free((void *)(mbuf->virt_addr), (mbuf->flag >> 4), _index);
+        _mem->free((void *)(mbuf->virt_addr), (mbuf->flag >> 4), _index);
       }
       if (((mbuf->seg_flag[0]) & 1) == 1) {
-        _imem->free((void *)(mbuf->virt_addr_seg[0]), (mbuf->seg_flag[0] >> 4), _index);
+        _mem->free((void *)(mbuf->virt_addr_seg[0]), (mbuf->seg_flag[0] >> 4), _index);
       }
       if (((mbuf->seg_flag[1]) & 1) == 1) {
-        _imem->free((void *)(mbuf->virt_addr_seg[1]), (mbuf->seg_flag[1] >> 4), _index);
+        _mem->free((void *)(mbuf->virt_addr_seg[1]), (mbuf->seg_flag[1] >> 4), _index);
       }
 
       __builtin_memset(&(txq->sw_ring[i]),0,sizeof(struct tx_entry));
@@ -1811,13 +1815,13 @@ inline int Intel_x540_uddk_device::xmit_cleanup(struct exo_tx_ring *txq) {
     for (unsigned i = last_desc_cleaned + 1; i <= desc_to_clean_to; i++) {
       struct exo_mbuf * mbuf = &(txq->sw_ring[i].tx_buf); 
       if (((mbuf->flag) & 1) == 1) {
-        _imem->free((void *)(mbuf->virt_addr), (mbuf->flag >> 4), _index);
+        _mem->free((void *)(mbuf->virt_addr), (mbuf->flag >> 4), _index);
       }
       if (((mbuf->seg_flag[0]) & 1) == 1) {
-        _imem->free((void *)(mbuf->virt_addr_seg[0]), (mbuf->seg_flag[0] >> 4), _index);
+        _mem->free((void *)(mbuf->virt_addr_seg[0]), (mbuf->seg_flag[0] >> 4), _index);
       }
       if (((mbuf->seg_flag[1]) & 1) == 1) {
-        _imem->free((void *)(mbuf->virt_addr_seg[1]), (mbuf->seg_flag[1] >> 4), _index);
+        _mem->free((void *)(mbuf->virt_addr_seg[1]), (mbuf->seg_flag[1] >> 4), _index);
       }
 
       __builtin_memset(&(txq->sw_ring[i]),0,sizeof(struct tx_entry));

@@ -37,106 +37,102 @@
 using namespace Exokernel;
 using namespace Component;
 
-/** 
- * Interface INic implementation
- * 
- */
-INic_impl::INic_impl() {
-  component_t t = NIC_COMPONENT;
-  set_comp_type(t);
-     
-  for (unsigned i = 0; i < MAX_INSTANCE; i++)
+// ctor
+Component::NicComponent::NicComponent() {
+  for (unsigned i = 0; i < MAX_NIC_INSTANCE; i++)
     set_comp_state(NIC_INIT_STATE, i);
 
   signed nd = query_num_registered_devices();
   printf("Got %d registered devices\n", nd);
 }
 
-status_t 
-INic_impl::send_packets(pkt_buffer_t * p, size_t& cnt, unsigned device, unsigned queue) {
-    cnt = _dev[device]->multi_send((struct exo_mbuf **)p, cnt, queue);
-    if (cnt > 0)
-      return Exokernel::S_OK;
-    else
-      return Exokernel::E_FAIL;
+// dtor
+Component::NicComponent::~NicComponent()
+{
 }
 
 status_t 
-INic_impl::send_packets_simple(pkt_buffer_t * p, size_t& cnt, unsigned device, unsigned queue) {
-    cnt = _dev[device]->send((struct exo_mbuf **)p, cnt, queue);
-    if (cnt > 0)
-      return Exokernel::S_OK;
-    else
-      return Exokernel::E_FAIL;
-}
-
-status_t 
-INic_impl::bind(interface_t itf) {
-    assert(itf);
-    Interface_base * itf_base = (Interface_base *)itf;
-    switch (itf_base->get_comp_type()) {
-      case MEM_COMPONENT:
-           _mem = (IMem *)itf;
-           break;
-      default:
-           printf("binding wrong component types!!!");
-           assert(0);
-    }
-
+Component::NicComponent::send_packets(pkt_buffer_t * p, size_t& cnt, unsigned device, unsigned queue) {
+  cnt = _dev[device]->multi_send((struct exo_mbuf **)p, cnt, queue);
+  if (cnt > 0)
     return Exokernel::S_OK;
+  else
+    return Exokernel::E_FAIL;
+}
+
+status_t 
+Component::NicComponent::send_packets_simple(pkt_buffer_t * p, size_t& cnt, unsigned device, unsigned queue) {
+  cnt = _dev[device]->send((struct exo_mbuf **)p, cnt, queue);
+  if (cnt > 0)
+    return Exokernel::S_OK;
+  else
+    return Exokernel::E_FAIL;
+}
+
+int 
+Component::NicComponent::bind(IBase * component) {
+  assert(component);
+  IMem * mem_itf = (IMem *) component->query_interface(Component::IMem::iid());
+  if (mem_itf != NULL) {
+    _imem = mem_itf;
+    printf("binding IMem to NicComponent!");
+    return 0;
+  }
+  return -1;
 }
 
 device_handle_t 
-INic_impl::driver(unsigned device) {
-    return (device_handle_t) _dev[device];
+Component::NicComponent::driver(unsigned device) {
+  return (device_handle_t) _dev[device];
 }
 
 status_t 
-INic_impl::init(arg_t arg) {
-    assert(arg);
-    assert(_mem);
-    unsigned i;
+Component::NicComponent::init(arg_t arg) {
+  assert(arg);
+  assert(_imem);
+  unsigned i;
 
-    nic_arg_t * nic_arg = (nic_arg_t *) arg;
-    _params = (Config_params *) (nic_arg->params);
+  nic_arg_t * nic_arg = (nic_arg_t *) arg;
+  _params = (Config_params *) (nic_arg->params);
 
-    _nic_num = _params->nic_num;
-    _dev = (Intel_x540_uddk_device **) malloc(_nic_num * sizeof(Intel_x540_uddk_device *));
-    
-    /* Initialize NIC driver */
-    for (i = 0; i < _nic_num; i++) {
-      _dev[i] = new Intel_x540_uddk_device(this, _mem, i, _params);
-    }
-    
-    for (i = 0; i < _nic_num; i++) {
-      _dev[i]->init_device();
-    }
+  _nic_num = _params->nic_num;
 
-    for (i = 0; i < _nic_num; i++) {
-      _dev[i]->wait_for_activate();
-      PINF("NIC [%d] is fully activated OK!", i);
-    }
+  _dev = (Intel_x540_uddk_device **) malloc(_nic_num * sizeof(Intel_x540_uddk_device *));
+  
+  INic * inic = (INic *) this->query_interface(Component::INic::iid());
+
+  /* Initialize NIC driver */
+  for (i = 0; i < _nic_num; i++) {
+    _dev[i] = new Intel_x540_uddk_device(inic, _imem, i, _params);
+  }
+  
+  for (i = 0; i < _nic_num; i++) {
+    _dev[i]->init_device();
+  }
+
+  for (i = 0; i < _nic_num; i++) {
+    _dev[i]->wait_for_activate();
+    PINF("NIC [%d] is fully activated OK!", i);
+  }
   return Exokernel::S_OK;
 }
 
 void 
-INic_impl::run() {
-    /* Start receiving packets */
-    for (unsigned i = 0; i < _nic_num; i++) {
-      _dev[i]->rx_start_ok = true;
-    }
-    printf("Nic Component is up running...\n");
+Component::NicComponent::run() {
+  /* Start receiving packets */
+  for (unsigned i = 0; i < _nic_num; i++) {
+    _dev[i]->rx_start_ok = true;
+  }
+  printf("Nic Component is up running...\n");
 }
 
 status_t 
-INic_impl::cpu_allocation(cpu_mask_t mask) {
-    //TODO
-    printf("%s Not implemented yet!\n",__func__);
-    return Exokernel::S_OK;
+Component::NicComponent::cpu_allocation(cpu_mask_t mask) {
+  printf("%s Not implemented yet!\n",__func__);
+  return Exokernel::S_OK;
 }
 
-extern "C" void * factory_createInstance(Component::uuid_t& component_id)
-{
+extern "C" void * factory_createInstance(Component::uuid_t& component_id) {
   if(component_id == NicComponent::component_id()) {
     printf("Creating 'NicComponent' component.\n");
     return static_cast<void*>(new NicComponent());

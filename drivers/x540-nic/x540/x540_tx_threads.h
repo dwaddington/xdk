@@ -44,6 +44,7 @@
 #include <common/cycles.h>
 
 using namespace Exokernel;
+using namespace Component;
 
 class Tx_thread : public Exokernel::Base_thread {
 
@@ -58,7 +59,7 @@ private:
   unsigned           _stats_num;
   Config_params *    _params;
   Intel_x540_uddk_device * _nic;
-  IMem * _imem;
+  IMem * _mem;
 
 private:
 
@@ -83,7 +84,7 @@ private:
 
 public:
   /** 
-   * Constructor : TODO add signal based termination
+   * Constructor 
    * 
    * @param nic
    * @param mem
@@ -92,7 +93,7 @@ public:
    * @param affinity 
    */
   Tx_thread(Intel_x540_uddk_device * nic,
-            IMem * imem,
+            IMem * mem,
             unsigned local_id,
             unsigned global_id,
             unsigned affinity,
@@ -103,7 +104,7 @@ public:
                                       _params(params)
   {
     _nic = nic;
-    _imem = imem;
+    _mem = mem;
     _stats_num = _params->stats_num;
     _tx_threads_per_nic = _params->channels_per_nic;
     _server_timestamp = _params->server_timestamp;
@@ -126,15 +127,15 @@ public:
     enum { PACKET_LEN = 64 };
   
     unsigned char packet[PACKET_LEN] = {
-          0xa0, 0x36, 0x9f, 0x16, 0xde, 0x84,
-          0xa0, 0x36, 0x9f, 0x1a, 0x55, 0xea,
+          0xa0, 0x36, 0x9f, 0x1c, 0x34, 0x7a,  // dest mac
+          0xa0, 0x36, 0x9f, 0x17, 0x4d, 0xc2,  // src mac
           0x08, 0x00, // type: ip datagram
           0x45, 0x00, // version
           0x00, 50, // length
-          //0x00, 0x05, 0x40, 0x00, 0x3f, 0x11, 0x27, 0xb4,//ip header with checksum
-          0x00, 0x05, 0x40, 0x00, 0x3f, 0x11, 0x00, 0x00,//ip header without checksum
-          0x0a, 0x00, 0x00, 0x02, // src: 10.0.0.2
-          0x0a, 0x00, 0x00, 0x01, // dst: 10.0.0.1
+          0x00, 0x05, 0x40, 0x00, 0x3f, 0x11, 0x27, 0xb4,//ip header with checksum
+          //0x00, 0x05, 0x40, 0x00, 0x3f, 0x11, 0x00, 0x00,//ip header without checksum
+          0x0a, 0x00, 0x00, 0x01, // src: 10.0.0.1
+          0x0a, 0x00, 0x00, 0x0b, // dst: 10.0.0.11
           0xdd, 0xd5, 0x2b, 0xcb, 0x00, 30, 0x00, 0x00, // UDP header
           0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
           10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
@@ -146,17 +147,16 @@ public:
     unsigned i;
     addr_t pkt_v, pkt_p;
 
-    /* test of 3 segments packet sending (total len 64 = 42 + 10 + 12) */
     for (i = 0; i < 1024; i++) {
       void * temp;
-      if (_imem->alloc((addr_t *)&temp, PACKET_ALLOCATOR, _nic_index, _nic->rx_core[tid]) != Exokernel::S_OK) {
+      if (_mem->alloc((addr_t *)&temp, PACKET_ALLOCATOR, _nic_index, _nic->rx_core[tid]) != Exokernel::S_OK) {
         panic("PACKET_ALLOCATOR failed!\n");
       }
       assert(temp);
       pkt_v = (addr_t)temp;
       __builtin_memset((void *)pkt_v, 0, bytes_to_alloc);
   
-      pkt_p = _imem->get_phys_addr((void *)pkt_v, PACKET_ALLOCATOR, _nic_index);
+      pkt_p = _mem->get_phys_addr((void *)pkt_v, PACKET_ALLOCATOR, _nic_index);
   
       __builtin_memcpy((void *)pkt_v, (void *)packet, PACKET_LEN);
   
@@ -164,7 +164,7 @@ public:
       __builtin_memset(xmit_addr_pool[i], 0, sizeof(struct exo_mbuf));
       xmit_addr_pool[i]->phys_addr = pkt_p;
       xmit_addr_pool[i]->virt_addr = pkt_v;
-      xmit_addr_pool[i]->len = bytes_to_alloc;
+      xmit_addr_pool[i]->len = PACKET_LEN;
       xmit_addr_pool[i]->nb_segment = 1;
     }
   
@@ -175,6 +175,8 @@ public:
     uint64_t cpu_freq = (uint64_t)(get_tsc_frequency_in_mhz() * 1000000); 
 
     while (1) {
+      sleep(1);
+
       if (counter==0)
         start_time=rdtsc();
   
@@ -203,7 +205,7 @@ public:
         }
       }
       counter += sent_num;
-  
+
       if (counter >= _stats_num) {
         finish_time=rdtsc();
         printf("[TID %d] TX THROUGHPUT %llu PPS\n",

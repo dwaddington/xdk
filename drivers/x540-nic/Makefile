@@ -10,7 +10,7 @@ NIC_COMPONENT_SRC := nic_component.cc \
 MEM_COMPONENT_SRC := mem_component.cc \
                      xml_config_parser.cc \
 
-all: nic_component mem_component app_main
+all: mem_component nic_component app_main
 
 app_main:
 	g++ $(CXXFLAGS) -o $@ main.cc xml_config_parser.cc $(LIBS) -Wl,-rpath=$(XDK_BASE)/lib/libexo 

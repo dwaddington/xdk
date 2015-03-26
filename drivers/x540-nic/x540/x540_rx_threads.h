@@ -80,12 +80,12 @@ private:
 
     if (_local_id == (_rx_threads_per_nic - 1)) {
       unsigned nic_idx = _tid / _rx_threads_per_nic;
-      _dev->_inic->set_comp_state(NIC_READY_STATE, nic_idx);
+      _dev->_nic->set_comp_state(NIC_READY_STATE, nic_idx);
     }
 
     while(1) {
       _dev->wait_for_msix_irq(_irq);
-      //PINF("\n [Irq_thread %d on Core %d] GOT INTERRUPT !!!!",_tid,_core_id);
+      PINF("\n [Irq_thread %d on Core %d] GOT INTERRUPT !!!!",_tid,_core_id);
       _dev->interrupt_handler(_local_id);
     }
 
@@ -93,7 +93,7 @@ private:
 
 public:
   /** 
-   * Constructor : TODO add signal based termination
+   * Constructor
    * 
    * @param dev
    * @param local_id
