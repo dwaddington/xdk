@@ -75,7 +75,7 @@ Component::NicComponent::bind(IBase * component) {
   IMem * mem_itf = (IMem *) component->query_interface(Component::IMem::iid());
   if (mem_itf != NULL) {
     _imem = mem_itf;
-    printf("binding IMem to NicComponent!");
+    printf("binding IMem to NicComponent!\n");
     return 0;
   }
   return -1;

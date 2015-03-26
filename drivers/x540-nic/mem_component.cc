@@ -229,7 +229,7 @@ Component::MemComponent::bind(IBase * component) {
   INic * nic_itf = (INic *)component->query_interface(Component::INic::iid());
   if (nic_itf != NULL) {
     _inic = nic_itf;
-    printf("binding INic to MemComponent\n");
+    printf("binding INic to MemComponent!\n");
     return 0;
   }
   return -1;
