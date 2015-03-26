@@ -1,4 +1,4 @@
-XDK_HOME = `pwd`
+XDK_HOME = @abs_top_builddir@
 XDK_BASE = $(XDK_HOME)
 
 XDK_INCLUDES = -I$(XDK_BASE)/lib/libexo -I$(XDK_BASE)/lib/libcomponent -I$(XDK_BASE)/lib/libcommon
