@@ -119,7 +119,7 @@ status_t NVME_queues_base::increment_submission_tail(queue_ptr_t * tptr) {
   uint16_t new_tail = _sq_tail + 1;
   if( unlikely(new_tail >= _queue_items) ) new_tail -= _queue_items;
   if( new_tail == _sq_head ) {
-    PLOG("Queue %d is full !!", _queue_id);
+    PLOG("Queue %d is full (sq_head = %u, sq_tail = %u) !!", _queue_id, _sq_head, _sq_tail);
     return Exokernel::E_FULL;
   }
 
@@ -179,9 +179,9 @@ Completion_command_slot * NVME_queues_base::get_next_completion()
   /* check status code */
   unsigned status =  _comp_cmd[curr_head].status;
 
-  unsigned DNR  = 0x1  & (status >> 31);
-  unsigned More = 0x1  & (status >> 30);
-  unsigned SCT  = 0x7  & (status >> 25);
+  unsigned DNR  = 0x1  & (status >> 14);
+  unsigned More = 0x1  & (status >> 13);
+  unsigned SCT  = 0x7  & (status >>  8);
   unsigned SC   = 0xff & status;
 
   PLOG("DNR = 0x%x, More = 0x%x, SCT = 0x%x, SC = 0x%x",
@@ -192,7 +192,7 @@ Completion_command_slot * NVME_queues_base::get_next_completion()
       );
 
   if(SCT == 0x0) {
-    PDBG("Generic Command Status");
+    //PDBG("Generic Command Status");
     if(unlikely(SC != 0x0)) {  /* not Successful Completion */
       PERR("DNR = 0x%x, More = 0x%x, SCT = 0x%x, SC = 0x%x",
               DNR,
@@ -237,6 +237,7 @@ Completion_command_slot * NVME_queues_base::get_next_completion()
 
 
 
+#if 0
 /** 
  * Debugging
  * 
@@ -263,7 +264,7 @@ void NVME_queues_base::dump_queue_info() {
          );
   }
 }
-
+#endif
 
 Submission_command_slot * NVME_queues_base::next_sub_slot(signed * cmdid) {
 
@@ -275,7 +276,8 @@ Submission_command_slot * NVME_queues_base::next_sub_slot(signed * cmdid) {
   status_t st;
   NVME_LOOP( ((st = increment_submission_tail(&curr_ptr)) != Exokernel::S_OK), false);
 
-  PLOG("sub_slot = %u", curr_ptr);
+  memset(&_sub_cmd[curr_ptr], 0, sizeof(Submission_command_slot));
+  PLOG("sub_slot = %u (Q:%u)", curr_ptr, _queue_id);
   return &_sub_cmd[curr_ptr];
 }
 
@@ -373,6 +375,12 @@ NVME_admin_queue::~NVME_admin_queue()
  */
 void NVME_admin_queue::ring_doorbell_single_completion()
 {
+  assert(_queue_id == 0);
+  //FIXME: the completion queue entries seem empty?!
+  //dump_queue_info(Admin_queue_len);
+  //update_sq_head( curr_comp_slot() );
+  update_admin_sq_head(); /*_sq_head = _cq_head --  assuming admin queue are only synchronous */
+
   ring_completion_doorbell();   /* current slot is handled */
   increment_completion_head();  /* record next free */
 }
@@ -880,11 +888,13 @@ uint16_t NVME_IO_queue::issue_async_io_batch(io_descriptor_t* io_desc,
     if(io_desc_ptr->action == NVME_READ) {
       cmdid = issue_async_read(io_desc_ptr->buffer_phys, 
                        io_desc_ptr->offset,
-                       io_desc_ptr->num_blocks);    
+                       io_desc_ptr->num_blocks);
+      PLOG("READ: issued cmdid = %u, offset = %lu(0x%lx), page_offset = %lu(0x%lx)\n", cmdid, io_desc_ptr->offset, io_desc_ptr->offset, io_desc_ptr->offset/8, io_desc_ptr->offset/8);
     } else if (io_desc_ptr->action == NVME_WRITE) {
       cmdid = issue_async_write(io_desc_ptr->buffer_phys, 
                        io_desc_ptr->offset,
-                       io_desc_ptr->num_blocks);    
+                       io_desc_ptr->num_blocks);
+      PLOG("WRITE: issued cmdid = %u, offset = %lu(0x%lx), page_offset = %lu(0x%lx)\n", cmdid, io_desc_ptr->offset, io_desc_ptr->offset, io_desc_ptr->offset/8, io_desc_ptr->offset/8);
     } else {
       PERR("Unrecoganized Operaton !!");
       assert(false);

@@ -55,10 +55,10 @@ namespace Component
 
     void * (*factory_createInstance)(Component::uuid_t&);
     char * error;
-    void * dll = dlopen(dllname,RTLD_LAZY);
+    void * dll = dlopen(dllname,RTLD_NOW);
 
     if(!dll) {
-      PERR("Unable to load library (%s) - check dependencies with ldd tool.",dllname);
+      PERR("unable to load library (%s) - check dependencies with ldd tool.",dllname);
       return NULL;
     }
 

@@ -279,7 +279,7 @@ class Read_thread : public Exokernel::Base_thread {
 
       assert(_qid == 1);
       assert(NUM_QUEUES == 1);
-      assert(NUM_BLOCKS == 8);
+      assert(NUM_BLOCKS <= 8);
 
       NVME_IO_queue * ioq = _dev->io_queue(_qid);
 
