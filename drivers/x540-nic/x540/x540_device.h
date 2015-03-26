@@ -38,11 +38,9 @@
 #include <libexo.h>
 #include "driver_config.h"
 #include "x540_types.h"
+#include "../xml_config_parser.h"
 #include <network/nic_itf.h>
-#include <network/stack_itf.h>
 #include <network/memory_itf.h>
-#include <net/udp.h>
-#include <x540/xml_config_parser.h>
 
 #define PKT_MAX_SIZE                          (2048-64)
 #define LOOK_AHEAD                            (8)
@@ -65,7 +63,28 @@
 #define FLOW_SIGNATURE_3                      (0x0300)
 #define FLOW_SIGNATURE_4                      (0x0400)
 
+// Ethernet header
+#define ETH_MTU             (1500)
+#define ETHARP_HWADDR_LEN   (6)
+#define SIZEOF_ETH_HDR      (14)
+struct eth_addr {
+  uint8_t addr[ETHARP_HWADDR_LEN];
+};
+
+struct eth_hdr {
+  struct eth_addr dest;
+  struct eth_addr src;
+  uint16_t type;
+} __attribute__((packed, aligned(8)));
+
+struct ip_addr {
+  uint32_t addr;
+};
+
+typedef struct ip_addr ip_addr_t;
+
 using namespace Exokernel;
+using namespace Component;
 
 class Intel_x540_uddk_device : public Exokernel::Pci_express_device {
 
@@ -75,10 +94,17 @@ public:
    * Constructor
    * 
    */
-  Intel_x540_uddk_device(INic * inic, IStack * istack, 
-                         IMem * imem, unsigned index, Config_params * params) : Exokernel::Pci_express_device(index, 0x8086, 0x1528) {
+  Intel_x540_uddk_device(INic * inic,
+                         IMem * imem, 
+                         unsigned index, 
+                         Config_params * params) : Exokernel::Pci_express_device(index, 0x8086, 0x1528) {
+    assert(inic);
+    assert(imem);
+    assert(params);
+
     _params = params;
     rx_threads_cpu_mask = _params->rx_threads_cpu_mask;
+    tx_threads_cpu_mask = _params->tx_threads_cpu_mask;
     cpus_per_nic = _params->cpus_per_nic;
     flex_byte_pos = _params->flex_byte_pos;
     server_timestamp = _params->server_timestamp;
@@ -88,16 +114,13 @@ public:
 
     _irq = (unsigned *) malloc(msix_vector_num * sizeof(unsigned));
 
-    assert(inic);
-    assert(istack);
-    _inic = inic;
-    _istack = istack;
-    _imem = imem;
+    _nic = inic;
+    _mem = imem;
     _index = index;
     _mmio = pci_memory_region(0); // IX540 flash BAR (see 3.4.4.1)
     msix_support() ? PINF("MSI-X detection OK.") : PINF("Error: MSI-X not supported."); 
 
-    _inic->set_comp_state(NIC_CREATED_STATE, index); // Memory component can start
+    _nic->set_comp_state(NIC_CREATED_STATE, index); // Memory component can start
   }
   
   unsigned* _irq;
@@ -109,9 +132,8 @@ public:
   volatile TX_ADV_DATA_DESC*                   tx_desc[NUM_TX_QUEUES][NUM_TX_DESCRIPTORS_PER_QUEUE];
   volatile RX_ADV_DATA_DESC*                   rx_desc[NUM_RX_QUEUES][NUM_RX_DESCRIPTORS_PER_QUEUE];
 
-  INic * _inic;
-  IStack * _istack;
-  IMem * _imem;
+  INic * _nic;
+  IMem * _mem;
   Config_params * _params;
 
 private:
@@ -147,6 +169,7 @@ private:
 
 public:
   std::string rx_threads_cpu_mask;
+  std::string tx_threads_cpu_mask;
   unsigned cpus_per_nic;
   unsigned flex_byte_pos;
   unsigned server_timestamp;
@@ -189,7 +212,6 @@ public:
   bool all_setup_done;
   bool rx_start_ok;
 
-
   /**
     *  Send packets using simple tx descriptor. One packet per descriptor. 
     *
@@ -214,10 +236,10 @@ public:
   inline void tx1(struct exo_mbuf ** tx_pkts, unsigned queue, unsigned pos);
   inline unsigned tx_free_bufs(unsigned queue);
   inline void tx_fill_hw_ring(struct exo_mbuf ** tx_pkts, size_t nb_pkts, unsigned queue);
-  
+  pkt_status_t receive_packet(uint8_t *p, size_t pktlen, unsigned device, unsigned queue); 
   bool msix_support();
   void init_device();
-  bool nic_configure(bool kvcache_server = true);
+  bool nic_configure(bool server = true);
   void init_nic_param();
   bool reset_hw();
   bool start_hw();
@@ -227,6 +249,7 @@ public:
   void clear_tx_pending();
   void clear_hw_counters();
   void setup_rx_threads();
+  void setup_tx_threads();
   void configure_msix();
   void configure_pb();
   void set_rx_mode();
@@ -256,7 +279,7 @@ public:
   void enable_msi();
   void add_ip(char * ip);
   void parse_ip_format(char *s, uint8_t * ip);
-  void filter_setup(bool kvcache_server);
+  void filter_setup(bool server_type);
 };
 
 #endif // __X540_DEVICE_H__

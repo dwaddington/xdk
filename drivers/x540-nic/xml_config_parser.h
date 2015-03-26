@@ -49,12 +49,8 @@ struct Config_params {
   unsigned rx_desc_per_queue;
   unsigned tx_desc_per_queue;
   unsigned frame_num_per_core;
-  unsigned jd_num_per_core;
   unsigned mbuf_num_per_core;
-  unsigned pbuf_num_per_core;
   unsigned net_header_num_per_core;
-  unsigned udp_pcb_num_per_core;
-  unsigned ip_reass_num_per_core;
   unsigned meta_data_num_per_core;
   unsigned channel_size;
   unsigned eviction_period;
