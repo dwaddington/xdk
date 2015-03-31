@@ -210,9 +210,9 @@ class NVME_batch_manager {
       assert(cmdid_start <= cmdid_end);
       uint16_t val = _last_available_cmdid.load(boost::memory_order_relaxed);
       //PLOG("last_available = %u, start_cmdid = %u, end_cmdid = %u", val, cmdid_start, cmdid_end);
-      return (cmdid_start < val && cmdid_end < val
-          || cmdid_start > val && cmdid_end > val
-          );
+      return (  (cmdid_start < val && cmdid_end < val)
+             || (cmdid_start > val && cmdid_end > val)
+             );
     }
 
     //check if we can safely reset the cmd id counter to 0
@@ -264,7 +264,7 @@ class NVME_batch_manager {
       if(_is_complete(idx)) {
         assert(_array[idx].complete == false);
         if(_array[idx].notify) _array[idx].notify->action();
-        _array[idx].complete == true;
+        _array[idx].complete = true;
 
         //if idx is the head, then pop all finished batch info
         if(idx == head) {
