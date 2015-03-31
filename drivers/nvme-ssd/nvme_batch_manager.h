@@ -17,7 +17,7 @@ private:
 
 public:
 
-  RingBuffer() : _tail(0), _head(0){}   
+  RingBuffer() : _head(0), _tail(0){}
   virtual ~RingBuffer() {}
 
   bool push(const Element& item);
@@ -108,7 +108,7 @@ size_t RingBuffer<Element, Size>::increment(size_t idx) const
 {
   size_t new_idx = idx + 1;
   assert(new_idx <= Size);
-  if(unlikely(new_idx == Size))
+  if(_unlikely(new_idx == Size))
     return 0;
   else
     return new_idx;

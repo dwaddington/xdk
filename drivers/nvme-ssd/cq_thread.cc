@@ -149,7 +149,7 @@ void* CQ_thread::entry(void* qb) {
 
 #define CQ_MAX_BATCH_TO_RING (1)
       cq_batch_counter++;
-      if(unlikely(cq_batch_counter >= CQ_MAX_BATCH_TO_RING)) {
+      if(_unlikely(cq_batch_counter >= CQ_MAX_BATCH_TO_RING)) {
         _queues->ring_completion_doorbell();
         cq_batch_counter = 0;
       }

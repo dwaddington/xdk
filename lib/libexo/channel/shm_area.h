@@ -48,7 +48,7 @@
 #include <stdio.h>
 
 
-#define NAME_PREFIX "silica"
+#define NAME_PREFIX "xdk"
 #define SHM_BIND_ADDRESS_64BITS   0x0000050000000000
 #define SHM_INTERVAL              0x1000000000
 

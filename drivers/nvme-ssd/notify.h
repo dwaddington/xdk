@@ -107,6 +107,7 @@ class Notify {
     virtual void action() = 0;
     virtual void wait() = 0;
     virtual bool free_notify_obj() = 0;
+    virtual ~Notify() = 0;
 };
 
 class Notify_Async : public Notify {
