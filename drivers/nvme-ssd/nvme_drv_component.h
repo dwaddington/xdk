@@ -35,7 +35,7 @@ public:
 
   // IDeviceControl
   //
-  status_t init_device(unsigned instance);
+  status_t init_device(unsigned instance, config_t config = NULL);
   Exokernel::Device * get_device();
   status_t shutdown_device();
 

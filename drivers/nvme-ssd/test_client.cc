@@ -109,7 +109,7 @@ int main()
 
   IBlockDevice * itf = (IBlockDevice *) comp->query_interface(IBlockDevice::iid());
 
-  itf->init_device(0);
+  itf->init_device(0, const_cast<char*>("config.xml"));
 
   //basic_test(itf);
   //(new mt_tests())->runTest(itf);
