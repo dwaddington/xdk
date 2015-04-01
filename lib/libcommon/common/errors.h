@@ -69,6 +69,7 @@
     E_INVALID_ARG = -25,                                                \
     E_BAD_SEMANTICS = -26,                                              \
     S_EOF = -27,                                                        \
+    E_ALREADY = -28,                                                    \
     E_ERROR_BASE = -50,                                                 \
   };
 #endif
