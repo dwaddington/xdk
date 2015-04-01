@@ -38,250 +38,240 @@ using namespace Exokernel;
 using namespace Exokernel::Memory;
 using namespace Component;
 
-/** 
- * Interface IMem implementation
- * 
- */
-IMem_impl::IMem_impl() {
-    component_t t = MEM_COMPONENT;
-    set_comp_type(t);
-    set_comp_state(MEM_INIT_STATE, 0);
+// ctor
+Component::MemComponent::MemComponent() {
+  set_comp_state(MEM_INIT_STATE, 0);
+}
+
+// dtor 
+Component::MemComponent::~MemComponent() {
+  
 }
 
 status_t
-IMem_impl::init(arg_t arg) {
-    assert(arg);
-    unsigned i, j;
-    mem_arg_t * p = (mem_arg_t *)arg;
-    _params = (Config_params *) (p->params);
+Component::MemComponent::init(arg_t arg) {
+  assert(arg);
+  unsigned i, j;
+  mem_arg_t * p = (mem_arg_t *)arg;
+  _params = (Config_params *) (p->params);
 
-    _nic_num = _params->nic_num;
-    _rx_threads_per_nic = _params->channels_per_nic;
-    _cpus_per_nic = _params->cpus_per_nic;
-    _shm_max_size = GB(_params->shm_max_size);
-    _rx_threads_cpu_mask = _params->rx_threads_cpu_mask;
+  _nic_num = _params->nic_num;
+  _rx_threads_per_nic = _params->channels_per_nic;
+  _cpus_per_nic = _params->cpus_per_nic;
+  _shm_max_size = GB(_params->shm_max_size);
+  _rx_threads_cpu_mask = _params->rx_threads_cpu_mask;
 
-    _allocator = (Numa_slab_allocator ***) malloc(_nic_num * sizeof(Numa_slab_allocator **));
-    _allocator_core = (unsigned **) malloc(_nic_num * sizeof(unsigned *));
+  _allocator = (Numa_slab_allocator ***) malloc(_nic_num * sizeof(Numa_slab_allocator **));
+  _allocator_core = (unsigned **) malloc(_nic_num * sizeof(unsigned *));
 
-    for (i = 0; i < _nic_num; i++) {
-      _allocator[i] = NULL;
-      _allocator_core[i] = (unsigned *) malloc(_rx_threads_per_nic * sizeof(unsigned));
-    } 
+  for (i = 0; i < _nic_num; i++) {
+    _allocator[i] = NULL;
+    _allocator_core[i] = (unsigned *) malloc(_rx_threads_per_nic * sizeof(unsigned));
+  } 
 
-    //obtain NUMA cpu mask 
-    struct bitmask * cpumask[_nic_num];
+  //obtain NUMA cpu mask 
+  struct bitmask * cpumask[_nic_num];
 
-    for (i = 0; i < _nic_num; i++) {
-      cpumask[i] = numa_allocate_cpumask();
-      numa_node_to_cpus(i, cpumask[i]);
-      printf("[NODE %u] CPU MASK %lx\n",i, *(cpumask[i]->maskp));
+  for (i = 0; i < _nic_num; i++) {
+    cpumask[i] = numa_allocate_cpumask();
+    numa_node_to_cpus(i, cpumask[i]);
+    printf("[NODE %u] CPU MASK %lx\n",i, *(cpumask[i]->maskp));
+  }
+
+  for (j = 0; j < _nic_num; j++) {
+    for (i = 0; i < _rx_threads_per_nic; i++) {
+      _allocator_core[j][i] = 0;
     }
 
-    for (j = 0; j < _nic_num; j++) {
-      for (i = 0; i < _rx_threads_per_nic; i++) {
-        _allocator_core[j][i] = 0;
-      }
+    Cpu_bitset thr_aff_per_node(_rx_threads_cpu_mask);
 
-      Cpu_bitset thr_aff_per_node(_rx_threads_cpu_mask);
-
-      uint16_t pos = 0;
-      unsigned n = 0;
-      for (i = 0; i < _cpus_per_nic; i++) {
-        if (thr_aff_per_node.test(pos)) {
-          _allocator_core[j][n] = get_cpu_id(cpumask[j],i+1);
-          n++;
-        }
-        pos++;
+    uint16_t pos = 0;
+    unsigned n = 0;
+    for (i = 0; i < _cpus_per_nic; i++) {
+      if (thr_aff_per_node.test(pos)) {
+        _allocator_core[j][n] = get_cpu_id(cpumask[j],i+1);
+        n++;
       }
-
-      printf("Allocator assigned core: ");
-      for (i = 0; i < _rx_threads_per_nic; i++) {
-        printf("%d ",_allocator_core[j][i]);
-      }
-      printf("\n");
+      pos++;
     }
 
-    for (i = 0; i < _nic_num; i++) {
-      _allocator[i] = (Numa_slab_allocator **) malloc(sizeof(Numa_slab_allocator *) * (p->num_allocators));
+    printf("Allocator assigned core: ");
+    for (i = 0; i < _rx_threads_per_nic; i++) {
+      printf("%d ",_allocator_core[j][i]);
     }
+    printf("\n");
+  }
 
-    alloc_config_t ** config_list = p->config_list;
+  for (i = 0; i < _nic_num; i++) {
+    _allocator[i] = (Numa_slab_allocator **) malloc(sizeof(Numa_slab_allocator *) * (p->num_allocators));
+  }
 
-    bool master = true;
-    Shm_table * shmem_table = new Shm_table(master, 0); // The first process is shmem_table master.
-    shm_table_entry_t stt;
+  alloc_config_t ** config_list = p->config_list;
 
-    huge_shmem_set_system_max(_shm_max_size);
-    huge_shmem_set_region_max(_shm_max_size);
+  bool master = true;
+  Shm_table * shmem_table = new Shm_table(master, 0); // The first process is shmem_table master.
+  shm_table_entry_t stt;
 
-    shmem_table->lock();
+  huge_shmem_set_system_max(_shm_max_size);
+  huge_shmem_set_region_max(_shm_max_size);
 
-    for (j = 0; j < _nic_num; j++) {    
-      for (i = 0; i < p->num_allocators; i++) {
-        void * space_v = NULL;
-        size_t BLOCK_SIZE = config_list[i]->block_size;
-        size_t NUM_BLOCKS = config_list[i]->num_blocks;
-        unsigned alignment = config_list[i]->alignment; 
-        allocator_t id = config_list[i]->allocator_id;
+  shmem_table->lock();
 
-//        printf("before round up, total_size = %lu (%lu * %lu)\n",Fast_slab_allocator::actual_block_size(BLOCK_SIZE) * NUM_BLOCKS, Fast_slab_allocator::actual_block_size(BLOCK_SIZE), NUM_BLOCKS);
-        size_t total_size = Fast_slab_allocator::actual_block_size(BLOCK_SIZE) * NUM_BLOCKS;
+  for (j = 0; j < _nic_num; j++) {    
+    for (i = 0; i < p->num_allocators; i++) {
+      void * space_v = NULL;
+      size_t BLOCK_SIZE = config_list[i]->block_size;
+      size_t NUM_BLOCKS = config_list[i]->num_blocks;
+      unsigned alignment = config_list[i]->alignment; 
+      allocator_t id = config_list[i]->allocator_id;
 
-        //thread should use their local id (not gloabal id) to get the right allocator.
-        Cpu_bitset cpu;
-        if (id == DESC_ALLOCATOR) {
-          cpu.set(_allocator_core[j][0]);
-        }
-        else {
-          for (unsigned pos = 0; pos < _rx_threads_per_nic; pos ++) {
-            cpu.set(_allocator_core[j][pos]);
-          }
-        }
+      //printf("before round up, total_size = %lu (%lu * %lu)\n",Fast_slab_allocator::actual_block_size(BLOCK_SIZE) * NUM_BLOCKS, Fast_slab_allocator::actual_block_size(BLOCK_SIZE), NUM_BLOCKS);
+      size_t total_size = Fast_slab_allocator::actual_block_size(BLOCK_SIZE) * NUM_BLOCKS;
 
-        //huge page size minimal requirement
-        if (total_size < MB(2))
-          total_size = MB(2);
-        //printf("ready to allocate %lu bytes in shared memory\n",total_size); 
-
-        key_t key = j * _cpus_per_nic + id + 100;
-        int handle = -1;
-        try {
-          space_v = huge_shmem_alloc(key, total_size, j, &handle, NULL);
-        }
-        catch(Exokernel::Exception e) {
-          printf("huge_shmem_alloc error: %s\n",e.cause());
-        }
-        assert(space_v);
-        
-        size_t per_core_block_quota;
-        if (id == DESC_ALLOCATOR)
-          per_core_block_quota = NUM_BLOCKS;
-        else
-          per_core_block_quota = NUM_BLOCKS/_rx_threads_per_nic;
-
-        //create numa_allocator object
-        if ((id == DESC_ALLOCATOR) || (id == PACKET_ALLOCATOR) || (id == NET_HEADER_ALLOCATOR))
-          _allocator[j][i] = new Numa_slab_allocator(space_v,
-                                                total_size,
-                                                per_core_block_quota,
-                                                BLOCK_SIZE,
-                                                cpu,
-                                                alignment,
-                                                true,                        //need physical addr
-                                                id,                          //debug id
-                                                slab_alloc_2_str(id));       //debug desc
-        else
-          _allocator[j][i] = new Numa_slab_allocator(space_v,
-                                                total_size,
-                                                per_core_block_quota,                                       
-                                                BLOCK_SIZE,
-                                                cpu,                                       
-                                                alignment,
-                                                false,                       //no physical addr needed
-                                                id,                          //debug id
-                                                slab_alloc_2_str(id));       //debug desc
-
-        //populate shared memory table
-        stt.type_id = SMT_MEMORY_AREA;
-        stt.sub_type_id = (smt_sub_type_t)id;
-        stt.value[0] = (uint64_t)space_v;
-        stt.value[1] = (uint64_t)key;  
-        stt.value[2] = (uint64_t)total_size;
-        stt.value[3] = (uint64_t)j;
-
-        unsigned row = shmem_table->get_row_number();
-        shmem_table->write_shm_table(row, &stt);
+      //thread should use their local id (not gloabal id) to get the right allocator.
+      Cpu_bitset cpu;
+      if (id == DESC_ALLOCATOR) {
+        cpu.set(_allocator_core[j][0]);
       }
+      else {
+        for (unsigned pos = 0; pos < _rx_threads_per_nic; pos ++) {
+          cpu.set(_allocator_core[j][pos]);
+        }
+      }
+
+      //huge page size minimal requirement
+      if (total_size < MB(2))
+        total_size = MB(2);
+      //printf("ready to allocate %lu bytes in shared memory\n",total_size); 
+
+      key_t key = j * _cpus_per_nic + id + 100;
+      int handle = -1;
+      try {
+        space_v = huge_shmem_alloc(key, total_size, j, &handle, NULL);
+      }
+      catch(Exokernel::Exception e) {
+        printf("huge_shmem_alloc error: %s\n",e.cause());
+      }
+      assert(space_v);
+      
+      size_t per_core_block_quota;
+      if (id == DESC_ALLOCATOR)
+        per_core_block_quota = NUM_BLOCKS;
+      else
+        per_core_block_quota = NUM_BLOCKS/_rx_threads_per_nic;
+
+      //create numa_allocator object
+      if ((id == DESC_ALLOCATOR) || (id == PACKET_ALLOCATOR) || (id == NET_HEADER_ALLOCATOR))
+        _allocator[j][i] = new Numa_slab_allocator(space_v,
+                                              total_size,
+                                              per_core_block_quota,
+                                              BLOCK_SIZE,
+                                              cpu,
+                                              alignment,
+                                              true,                        //need physical addr
+                                              id,                          //debug id
+                                              slab_alloc_2_str(id));       //debug desc
+      else
+        _allocator[j][i] = new Numa_slab_allocator(space_v,
+                                              total_size,
+                                              per_core_block_quota,                                       
+                                              BLOCK_SIZE,
+                                              cpu,                                       
+                                              alignment,
+                                              false,                       //no physical addr needed
+                                              id,                          //debug id
+                                              slab_alloc_2_str(id));       //debug desc
+
+      //populate shared memory table
+      stt.type_id = SMT_MEMORY_AREA;
+      stt.sub_type_id = (smt_sub_type_t)id;
+      stt.value[0] = (uint64_t)space_v;
+      stt.value[1] = (uint64_t)key;  
+      stt.value[2] = (uint64_t)total_size;
+      stt.value[3] = (uint64_t)j;
+
+      unsigned row = shmem_table->get_row_number();
+      shmem_table->write_shm_table(row, &stt);
     }
+  }
 
-    shmem_table->unlock();
+  shmem_table->unlock();
 
-    set_comp_state(MEM_READY_STATE, 0);  // Other components can start memory allocations now
+  set_comp_state(MEM_READY_STATE, 0);  // Other components can start memory allocations now
 
-    return Exokernel::S_OK;
+  return Exokernel::S_OK;
 }
 
 addr_t
-IMem_impl::get_phys_addr(void *virt_addr, allocator_t id, unsigned device) {
-    assert(virt_addr);
-    return _allocator[device][id]->get_phy_addr(virt_addr);
+Component::MemComponent::get_phys_addr(void *virt_addr, allocator_t id, unsigned device) {
+  assert(virt_addr);
+  return _allocator[device][id]->get_phy_addr(virt_addr);
 }
 
 uint64_t 
-IMem_impl::get_num_avail_per_core(allocator_t id, unsigned device, core_id_t core) {
-    return (uint64_t)(_allocator[device][id]->num_avail(core));
+Component::MemComponent::get_num_avail_per_core(allocator_t id, unsigned device, core_id_t core) {
+  return (uint64_t)(_allocator[device][id]->num_avail(core));
 }
 
 uint64_t
-IMem_impl::get_total_avail(allocator_t id, unsigned device) {
-    return (uint64_t)(_allocator[device][id]->num_total_avail());
+Component::MemComponent::get_total_avail(allocator_t id, unsigned device) {
+  return (uint64_t)(_allocator[device][id]->num_total_avail());
 }
 
 allocator_handle_t
-IMem_impl::get_allocator(allocator_t id, unsigned device) {
+Component::MemComponent::get_allocator(allocator_t id, unsigned device) {
     return (allocator_handle_t) _allocator[device][id];
 }
 
-status_t 
-IMem_impl::bind(interface_t itf) {
-    assert(itf);
-    Interface_base * itf_base = (Interface_base *)itf;
-    switch (itf_base->get_comp_type()) {
-      case STACK_COMPONENT:
-           _stack = (IStack *)itf;
-           break;
-      case NIC_COMPONENT:
-           _nic = (INic *)itf;
-           break;
-      default:
-           printf("binding wrong component types!!!");
-           assert(0);
-    }
-    
-    return Exokernel::S_OK;
+int 
+Component::MemComponent::bind(IBase * component) {
+  assert(component);
+  INic * nic_itf = (INic *)component->query_interface(Component::INic::iid());
+  if (nic_itf != NULL) {
+    _inic = nic_itf;
+    printf("binding INic to MemComponent!\n");
+    return 0;
+  }
+  return -1;
 }
 
 status_t 
-IMem_impl::alloc(addr_t *p, allocator_t id, unsigned device, core_id_t core) {
-    *p = (addr_t)_allocator[device][id]->alloc(core);
-    //if (*p == (addr_t) NULL) printf("%u %u %u\n",id, device, core);
-    assert(*p);
-    return Exokernel::S_OK;
+Component::MemComponent::alloc(addr_t *p, allocator_t id, unsigned device, core_id_t core) {
+  *p = (addr_t)_allocator[device][id]->alloc(core);
+  //if (*p == (addr_t) NULL) printf("%u %u %u\n",id, device, core);
+  assert(*p);
+  return Exokernel::S_OK;
 }
  
 status_t 
-IMem_impl::free(void *p, allocator_t id, unsigned device) {
-    //if (p == NULL) printf("id: %u, device: %u \n", id, device);
-    assert(p);
-    _allocator[device][id]->free(p);
-    return Exokernel::S_OK;
+Component::MemComponent::free(void *p, allocator_t id, unsigned device) {
+  //if (p == NULL) printf("id: %u, device: %u \n", id, device);
+  assert(p);
+  _allocator[device][id]->free(p);
+  return Exokernel::S_OK;
 }
 
 void 
-IMem_impl::run() {
-    printf("Memory Component is up running...\n");
+Component::MemComponent::run() {
+  printf("Memory Component is up running...\n");
 }
 
 void * 
-IMem_impl::alloc(size_t n) {
-    //TODO
-    printf("%s Not implemented yet!\n",__func__);
-    return NULL;
+Component::MemComponent::alloc(size_t n) {
+  printf("%s Not implemented yet!\n",__func__);
+  return NULL;
 }
 
 status_t 
-IMem_impl::free(void * p) {
-    //TODO
-    printf("%s Not implemented yet!\n",__func__);
-    return Exokernel::S_OK;
+Component::MemComponent::free(void * p) {
+  printf("%s Not implemented yet!\n",__func__);
+  return Exokernel::S_OK;
 }
 
 status_t 
-IMem_impl::cpu_allocation(cpu_mask_t mask) {
-    //TODO
-    printf("%s Not implemented yet!\n",__func__);
-    return Exokernel::S_OK;
+Component::MemComponent::cpu_allocation(cpu_mask_t mask) {
+  printf("%s Not implemented yet!\n",__func__);
+  return Exokernel::S_OK;
 }
 
 extern "C" void * factory_createInstance(Component::uuid_t& component_id)

@@ -130,6 +130,7 @@ namespace Component
     IBase() : _ref_count(0), _dll_handle(NULL) {
     }
 
+    virtual ~IBase() {}
 
     /** 
      * Pure virtual functions that should be implemented by all
@@ -142,7 +143,8 @@ namespace Component
     virtual void unload() {}
 
     /** 
-     * [optional] Connect to another component.  Used for third-party binding.
+     * [optional] Connect to another component.  Used for third-party binding. If used
+     * with release_bindings, the implementation should increment reference count.
      * 
      * @param component Component to connect to 
      * 
@@ -150,6 +152,15 @@ namespace Component
      * on error and 0 when all bindings are complete.
      */
     virtual int bind(IBase * component) { return 0; /* by default, no bindings to perform */ }
+
+    /** 
+     * [optional] Release as many bindings as possible.
+     * 
+     * @param component Component to unbind from.
+     * 
+     * @return Return number of bindings remaining.
+     */
+    virtual int release_bindings() { return 0; /* default implementation */ }
 
     /** 
      * Reference counting
