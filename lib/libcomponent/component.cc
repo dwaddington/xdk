@@ -72,12 +72,11 @@ namespace Component
 
     IBase* comp = (IBase*) factory_createInstance(component_id);
 
-    if(!comp) {
+    if(comp==NULL) {
       PERR("Error: factory create instance returned null.");
       return NULL;
     }
 
-    assert(comp);
     comp->set_dll_handle(dll); /* record so we can call dlclose() */
     comp->add_ref();
 
