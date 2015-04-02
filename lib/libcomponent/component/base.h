@@ -163,13 +163,17 @@ namespace Component
     virtual int release_bindings() { return 0; /* default implementation */ }
 
     /** 
-     * Reference counting
+     * Increment to reference count
      * 
      */
     virtual void add_ref() {
       _ref_count++;
     }
 
+    /** 
+     * Decrement reference count
+     * 
+     */
     virtual void release_ref() {
       int val = _ref_count.fetch_sub(1) - 1;    
       assert(val >= 0);
@@ -179,8 +183,25 @@ namespace Component
       }
     }
 
+    /** 
+     * Get reference count
+     * 
+     * @return Reference count
+     */
     virtual unsigned ref_count() { 
       return _ref_count.load();
+    }
+
+    /** 
+     * Used as a dynamic invocation interface
+     * 
+     * @param operation_string String version of operation to invoke
+     * @param out_result Result of operation in string form
+     * 
+     * @return S_OK on success.
+     */
+    virtual status_t dynamic_invoke(std::string operation_string, std::string& out_result) {
+      return S_OK;
     }
 
     virtual void set_dll_handle(void * dll) {
