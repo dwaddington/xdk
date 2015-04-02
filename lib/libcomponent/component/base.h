@@ -200,7 +200,7 @@ namespace Component
      * 
      * @return S_OK on success.
      */
-    virtual status_t dynamic_invoke(std::string operation_string, std::string& out_result) {
+    virtual status_t invoke(std::string operation_string, std::string& out_result) {
       return S_OK;
     }
 
