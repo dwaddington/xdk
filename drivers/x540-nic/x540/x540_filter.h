@@ -142,7 +142,7 @@ namespace Exokernel {
 
       int i;
       /* Prime the keys for hashing */
-      _card->_mmio->mmio_write32(IXGBE_FDIRHKEY, 0x0);  //TODO for now we only use the first bucket
+      _card->_mmio->mmio_write32(IXGBE_FDIRHKEY, 0x0);  // we only use the first bucket
       _card->_mmio->mmio_write32(IXGBE_FDIRSKEY, 0x0);
 
       _card->_mmio->mmio_write32(IXGBE_FDIRCTRL, fdirctrl);

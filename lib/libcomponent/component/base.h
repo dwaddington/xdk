@@ -130,6 +130,7 @@ namespace Component
     IBase() : _ref_count(0), _dll_handle(NULL) {
     }
 
+    virtual ~IBase() {}
 
     /** 
      * Pure virtual functions that should be implemented by all
@@ -142,7 +143,8 @@ namespace Component
     virtual void unload() {}
 
     /** 
-     * [optional] Connect to another component.  Used for third-party binding.
+     * [optional] Connect to another component.  Used for third-party binding. If used
+     * with release_bindings, the implementation should increment reference count.
      * 
      * @param component Component to connect to 
      * 
@@ -152,13 +154,26 @@ namespace Component
     virtual int bind(IBase * component) { return 0; /* by default, no bindings to perform */ }
 
     /** 
-     * Reference counting
+     * [optional] Release as many bindings as possible.
+     * 
+     * @param component Component to unbind from.
+     * 
+     * @return Return number of bindings remaining.
+     */
+    virtual int release_bindings() { return 0; /* default implementation */ }
+
+    /** 
+     * Increment to reference count
      * 
      */
     virtual void add_ref() {
       _ref_count++;
     }
 
+    /** 
+     * Decrement reference count
+     * 
+     */
     virtual void release_ref() {
       int val = _ref_count.fetch_sub(1) - 1;    
       assert(val >= 0);
@@ -168,8 +183,25 @@ namespace Component
       }
     }
 
+    /** 
+     * Get reference count
+     * 
+     * @return Reference count
+     */
     virtual unsigned ref_count() { 
       return _ref_count.load();
+    }
+
+    /** 
+     * Used as a dynamic invocation interface
+     * 
+     * @param operation_string String version of operation to invoke
+     * @param out_result Result of operation in string form
+     * 
+     * @return S_OK on success.
+     */
+    virtual status_t invoke(std::string operation_string, std::string& out_result) {
+      return S_OK;
     }
 
     virtual void set_dll_handle(void * dll) {

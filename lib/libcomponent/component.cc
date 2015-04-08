@@ -55,10 +55,10 @@ namespace Component
 
     void * (*factory_createInstance)(Component::uuid_t&);
     char * error;
-    void * dll = dlopen(dllname,RTLD_LAZY);
+    void * dll = dlopen(dllname,RTLD_NOW);
 
     if(!dll) {
-      PERR("Unable to load library (%s) - check dependencies with ldd tool.",dllname);
+      PERR("unable to load library (%s) - check dependencies with ldd tool.",dllname);
       return NULL;
     }
 
@@ -72,12 +72,11 @@ namespace Component
 
     IBase* comp = (IBase*) factory_createInstance(component_id);
 
-    if(!comp) {
+    if(comp==NULL) {
       PERR("Error: factory create instance returned null.");
       return NULL;
     }
 
-    assert(comp);
     comp->set_dll_handle(dll); /* record so we can call dlclose() */
     comp->add_ref();
 

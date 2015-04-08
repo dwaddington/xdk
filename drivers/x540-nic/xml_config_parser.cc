@@ -190,21 +190,6 @@ XML_config_parser::parse(const std::string& filename,
     throw Exokernel::Exception("Invalid value of 'frame_num_per_core'.");
   }
 
-  // JD_NUM_PER_CORE
-  TiXmlElement* jd_num_per_core_elem = root_hdl.FirstChild("jd_num_per_core").ToElement();
-  if (jd_num_per_core_elem == NULL) {
-    throw Exokernel::Exception("Didn't specify JD_NUM_PER_CORE.");
-  }
-
-  if (verbose) {
-    std::cout << "JD_NUM_PER_CORE: " << jd_num_per_core_elem->GetText() << std::endl;
-  }
-
-  unsigned jd_num_per_core = str_to_num<unsigned>(jd_num_per_core_elem->GetText());
-  if (jd_num_per_core <= 0) {
-    throw Exokernel::Exception("Invalid value of 'jd_num_per_core'.");
-  }
-
   // MBUF_NUM_PER_CORE
   TiXmlElement* mbuf_num_per_core_elem = root_hdl.FirstChild("mbuf_num_per_core").ToElement();
   if (mbuf_num_per_core_elem == NULL) {
@@ -235,21 +220,6 @@ XML_config_parser::parse(const std::string& filename,
     throw Exokernel::Exception("Invalid value of 'meta_data_num_per_core'.");
   }
 
-  // PBUF_NUM_PER_CORE
-  TiXmlElement* pbuf_num_per_core_elem = root_hdl.FirstChild("pbuf_num_per_core").ToElement();
-  if (pbuf_num_per_core_elem == NULL) {
-    throw Exokernel::Exception("Didn't specify PBUF_NUM_PER_CORE.");
-  }
-
-  if (verbose) {
-    std::cout << "PBUF_NUM_PER_CORE: " << pbuf_num_per_core_elem->GetText() << std::endl;
-  }
-
-  unsigned pbuf_num_per_core = str_to_num<unsigned>(pbuf_num_per_core_elem->GetText());
-  if (pbuf_num_per_core <= 0) {
-    throw Exokernel::Exception("Invalid value of 'pbuf_num_per_core'.");
-  }
-
   // NET_HEADER_NUM_PER_CORE
   TiXmlElement* net_header_num_per_core_elem = root_hdl.FirstChild("net_header_num_per_core").ToElement();
   if (net_header_num_per_core_elem == NULL) {
@@ -263,36 +233,6 @@ XML_config_parser::parse(const std::string& filename,
   unsigned net_header_num_per_core = str_to_num<unsigned>(net_header_num_per_core_elem->GetText());
   if (net_header_num_per_core <= 0) {
     throw Exokernel::Exception("Invalid value of 'net_header_num_per_core'.");
-  }
-
-  // IP_REASS_NUM_PER_CORE
-  TiXmlElement* ip_reass_num_per_core_elem = root_hdl.FirstChild("ip_reass_num_per_core").ToElement();
-  if (ip_reass_num_per_core_elem == NULL) {
-    throw Exokernel::Exception("Didn't specify IP_REASS_NUM_PER_CORE.");
-  }
-
-  if (verbose) {
-    std::cout << "IP_REASS_NUM_PER_CORE: " << ip_reass_num_per_core_elem->GetText() << std::endl;
-  }
-
-  unsigned ip_reass_num_per_core = str_to_num<unsigned>(ip_reass_num_per_core_elem->GetText());
-  if (ip_reass_num_per_core <= 0) {
-    throw Exokernel::Exception("Invalid value of 'ip_reass_num_per_core'.");
-  }
-
-  // UDP_PCB_NUM_PER_CORE
-  TiXmlElement* udp_pcb_num_per_core_elem = root_hdl.FirstChild("udp_pcb_num_per_core").ToElement();
-  if (udp_pcb_num_per_core_elem == NULL) {
-    throw Exokernel::Exception("Didn't specify UDP_PCB_NUM_PER_CORE.");
-  }
-
-  if (verbose) {
-    std::cout << "UDP_PCB_NUM_PER_CORE: " << udp_pcb_num_per_core_elem->GetText() << std::endl;
-  }
-
-  unsigned udp_pcb_num_per_core = str_to_num<unsigned>(udp_pcb_num_per_core_elem->GetText());
-  if (udp_pcb_num_per_core <= 0) {
-    throw Exokernel::Exception("Invalid value of 'udp_pcb_num_per_core'.");
   }
 
   // CHANNEL_SIZE
@@ -480,13 +420,9 @@ XML_config_parser::parse(const std::string& filename,
   params.tx_desc_per_queue = tx_desc_per_queue;
   params.rx_desc_per_queue = rx_desc_per_queue;
   params.frame_num_per_core = frame_num_per_core;
-  params.jd_num_per_core = jd_num_per_core;
   params.mbuf_num_per_core = mbuf_num_per_core;
   params.meta_data_num_per_core = meta_data_num_per_core;
-  params.pbuf_num_per_core = pbuf_num_per_core;
   params.net_header_num_per_core = net_header_num_per_core;
-  params.ip_reass_num_per_core = ip_reass_num_per_core;
-  params.udp_pcb_num_per_core = udp_pcb_num_per_core;
   params.channel_size = channel_size;
   params.request_rate = request_rate;
   params.tx_threads_cpu_mask = tx_threads_cpu_mask;
