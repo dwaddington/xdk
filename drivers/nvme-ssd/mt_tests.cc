@@ -19,7 +19,7 @@
 
 #define MAX_LBA (512*1024*1024) //max 781,422,768 sectors
 
-#define COUNT (10240000)
+#define COUNT (1024000 * 4)
 #define COUNT_VERIFY (128)
 #define IO_PER_BATCH (1)
 #define NUM_QUEUES (1)
@@ -67,7 +67,7 @@ class Read_thread : public Exokernel::Base_thread {
     };
 
     /**
-     * Throuput measurement without considering batch
+     * Throughput measurement without considering batch
      */
     void read_throughput_test()
     {
@@ -511,7 +511,7 @@ class mt_tests {
       assert(SLAB_SIZE == 1024);
       for(unsigned i=0; i<NUM_QUEUES; i++) {
         addr_t phys_addr = 0;
-        void *p = dev->alloc_dma_pages(SLAB_SIZE, &phys_addr);
+        void *p = dev->alloc_dma_pages(SLAB_SIZE, &phys_addr, 0, 0);//assume numa node 0
         page_list.push_back(p);
         memset(p, 0, PAGE_SIZE*SLAB_SIZE);
 

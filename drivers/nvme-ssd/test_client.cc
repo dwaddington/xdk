@@ -112,8 +112,8 @@ int main()
   itf->init_device(0, const_cast<char*>("config.xml"));
 
   //basic_test(itf);
-  //(new mt_tests())->runTest(itf);
-  (new verify_tests())->runTest(itf);
+  (new mt_tests())->runTest(itf);
+  //(new verify_tests())->runTest(itf);
 
   itf->shutdown_device();
 

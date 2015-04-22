@@ -6,7 +6,8 @@ nvme_command.cc nvme_device.cc tests.cc nvme_drv_component.cc \
 mt_tests.cc verify_tests.cc
 
 INCLUDES = -I$(XDK_BASE)/lib/libexo -I$(XDK_BASE)/lib/libcommon -I$(XDK_BASE)/lib/libcomponent
-CXXFLAGS += -DCONFIG_BUILD_DEBUG
+#CXXFLAGS += -DCONFIG_BUILD_DEBUG
+#CXXFLAGS += -DCONFIG_IRQ_COAL
 #CXXFLAGS += -pg
 CXXFLAGS += -g -O2 -fPIC $(INCLUDES)
 
