@@ -1,0 +1,66 @@
+<?xml version="1.0" ?>
+<NVME_driver>
+    <!-- Settings for NVME -->
+    <IO_queue_config length="128" />
+    <IO_queues>
+      <Completion_queue id="1" core="2" />
+      <Submission_queue id="1" core="2" />
+      <Completion_queue id="2" core="3" />
+      <Submission_queue id="2" core="3" />
+      <Completion_queue id="3" core="4" />
+      <Submission_queue id="3" core="4" />
+      <Completion_queue id="4" core="5" />
+      <Submission_queue id="4" core="5" />
+      <Completion_queue id="5" core="6" />
+      <Submission_queue id="5" core="6" />
+      <Completion_queue id="6" core="7" />
+      <Submission_queue id="6" core="7" />
+      <Completion_queue id="7" core="8" />
+      <Submission_queue id="7" core="8" />
+      <Completion_queue id="8" core="9" />
+      <Submission_queue id="8" core="9" />
+      <Completion_queue id="9" core="10" />
+      <Submission_queue id="9" core="10" />
+      <Completion_queue id="10" core="11" />
+      <Submission_queue id="10" core="11" />
+      <Completion_queue id="11" core="12" />
+      <Submission_queue id="11" core="12" />
+      <Completion_queue id="12" core="13" />
+      <Submission_queue id="12" core="13" />
+      <Completion_queue id="13" core="14" />
+      <Submission_queue id="13" core="14" />
+      <Completion_queue id="14" core="15" />
+      <Submission_queue id="14" core="15" />
+      <Completion_queue id="15" core="16" />
+      <Submission_queue id="15" core="16" />
+      <Completion_queue id="16" core="17" />
+      <Submission_queue id="16" core="17" />
+      <Completion_queue id="17" core="18" />
+      <Submission_queue id="17" core="18" />
+      <Completion_queue id="18" core="19" />
+      <Submission_queue id="18" core="19" />
+      <Completion_queue id="19" core="20" />
+      <Submission_queue id="19" core="20" />
+      <Completion_queue id="20" core="21" />
+      <Submission_queue id="20" core="21" />
+      <Completion_queue id="21" core="22" />
+      <Submission_queue id="21" core="22" />
+      <Completion_queue id="22" core="23" />
+      <Submission_queue id="22" core="23" />
+      <Completion_queue id="23" core="24" />
+      <Submission_queue id="23" core="24" />
+      <Completion_queue id="24" core="25" />
+      <Submission_queue id="24" core="25" />
+      <Completion_queue id="25" core="26" />
+      <Submission_queue id="25" core="26" />
+      <Completion_queue id="26" core="27" />
+      <Submission_queue id="26" core="27" />
+      <Completion_queue id="27" core="28" />
+      <Submission_queue id="27" core="28" />
+      <Completion_queue id="28" core="29" />
+      <Submission_queue id="28" core="29" />
+      <Completion_queue id="29" core="30" />
+      <Submission_queue id="29" core="30" />
+
+    </IO_queues>    
+</NVME_driver>

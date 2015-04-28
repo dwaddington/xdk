@@ -138,8 +138,8 @@ void NVME_device::nvme_init_device() {
 
     /* route interrupt to appropriate core */
     Exokernel::route_interrupt(_msi_vectors[i],_config.get_core(i-1));
-    NVME_INFO("allocated MSI-X vector to IO queue: %u (routed to core %u)\n",
-              _msi_vectors[i], _config.get_core(i-1));
+    NVME_INFO("allocated MSI-X vector (%u) to IO queue: %u (routed to core %u)\n",
+              _msi_vectors[i], i, _config.get_core(i-1));
   }
 
   /* reset and bring up device */
