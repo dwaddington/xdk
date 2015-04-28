@@ -13,7 +13,8 @@ status_t NVME_driver_component::init_device(unsigned instance) {
   PLOG("init_device(instance=%u)",instance);
   
   try {
-    _dev = new NVME_device("config.xml");
+    PLOG("instantiating new NVME_device instance");
+    _dev = new NVME_device("config.xml", instance);
   }
   catch(Exokernel::Exception e) {
     NVME_INFO("EXCEPTION: error in NVME device initialization (%s) \n",e.cause());
@@ -27,6 +28,16 @@ status_t NVME_driver_component::init_device(unsigned instance) {
     NVME_INFO("EXCEPTION: error in NVME device initialization (unknown exception) \n");
     asm("int3");
   }
+
+  
+
+#ifdef TESTING_ONLY
+  /* IRQ will be masked and will need unmasking */
+  NVME_INFO("MASKING IRQ!!");
+  _dev->irq_set_masking_mode();
+#endif
+
+
 
   return S_OK;
 }
@@ -188,7 +199,7 @@ extern "C" void * factory_createInstance(Component::uuid_t& component_id)
 {
   if(component_id == NVME_driver_component::component_id()) {
     printf("Creating 'NVME_driver_component'.\n");
-    return static_cast<void*>(new NVME_driver_component());
+    return static_cast<void*>(static_cast<Component::IBase *>(new NVME_driver_component()));
   }
   else return NULL;
 }

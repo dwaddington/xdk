@@ -38,7 +38,7 @@
 #include "notify.h"
 #include "config.h"
 
-#define CONFIG_MAX_IO_QUEUES 3 /* increase this to support more queues */
+#define CONFIG_MAX_IO_QUEUES 32 /* increase this to support more queues */
 
 /** 
  * Devices that this driver works with
@@ -87,14 +87,14 @@ public:
    * Constructor
    * 
    */
-  NVME_device(const char * config_filename) 
-    : Exokernel::Pci_express_device(0, dev_tbl), 
+  NVME_device(const char * config_filename, unsigned device_instance) 
+    : Exokernel::Pci_express_device(device_instance, dev_tbl), 
       _mmio(NULL), 
       _regs(NULL),
       _admin_queues(NULL),
       _config(config_filename)
   { 
-    init_device();
+    nvme_init_device();
   }
 
   ~NVME_device();
@@ -104,7 +104,7 @@ public:
    * mappings, creates IO queues, etc.
    * 
    */
-  void init_device();
+  void nvme_init_device();
 
   Config& config() { return _config; }
 

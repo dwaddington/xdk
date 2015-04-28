@@ -112,7 +112,9 @@ void NVME_device::hw_reset() {
  * Initialize the device
  * 
  */
-void NVME_device::init_device() {
+void NVME_device::nvme_init_device() {
+
+  TRACE(); 
 
   /* map in the memory mapped device registers */
   _mmio = pci_memory_region(0);
@@ -201,7 +203,10 @@ void NVME_device::init_device() {
   }
 
   /* create IO queues */
+  assert(_num_io_queues < 64);
+
   for(unsigned i=0;i<_num_io_queues;i++) {
+
     assert(i < _msi_vectors.size());
     
     core_id_t core;
@@ -229,7 +234,6 @@ void NVME_device::init_device() {
     _admin_queues->set_irq_coal(true,_msi_vectors[i+1]);
 #endif
   }
-
 }
 
 /** 
