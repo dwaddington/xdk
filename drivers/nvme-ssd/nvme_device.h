@@ -56,10 +56,10 @@ private:
   Pci_mapped_memory_region * _mmio;
   NVME_registers *           _regs;
 
-  NVME_admin_queue *        _admin_queues;
+  NVME_admin_queue *         _admin_queues;
   std::vector<unsigned>      _msi_vectors;
 
-  NVME_IO_queue *           _io_queues[CONFIG_MAX_IO_QUEUES];
+  NVME_IO_queue *            _io_queues[CONFIG_MAX_IO_QUEUES];
   unsigned                   _num_io_queues;
 
   Config                     _config;

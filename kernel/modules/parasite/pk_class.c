@@ -1052,7 +1052,7 @@ static ssize_t irq_mode_store(struct device *dev,
                               size_t count)
 {
   struct pk_device * pkdev = (struct pk_device *) dev_get_drvdata(dev);
-  unsigned mode;
+  unsigned mode, i;
 
   if(!pkdev) goto error;
   if(!pkdev->pci_dev) goto error;  
@@ -1071,7 +1071,16 @@ static ssize_t irq_mode_store(struct device *dev,
     PLOG("set masking mode for IRQ handling");
   }
   else {
-    PLOG("attempt to set unknown IRQ mode (%u)",mode);
+    PERR("attempt to set unknown IRQ mode (%u)",mode);
+  }
+
+  /* reset masking state */
+  for(i=0;i<pkdev->msix_entry_num;i++) {
+    BUG_ON(pkdev->msix_entry[i].vector == 0);
+    if(mode == 1) 
+      enable_irq(pkdev->msix_entry[i].vector);
+    else
+      disable_irq(pkdev->msix_entry[i].vector);
   }
 
   return count;

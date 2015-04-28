@@ -529,7 +529,7 @@ free_dma_huge_pages(void * vptr)
 
 void
 Exokernel::Device_sysfs::
-irq_set_masking_mode()
+irq_set_masking_mode(bool masking)
 {
   std::string n = _fs_root_name;
   n += "/irq_mode";
@@ -538,7 +538,11 @@ irq_set_masking_mode()
   fs.open(n.c_str());
 
   std::stringstream sstr;
-  sstr << 2 << std::endl;
+  if(masking)
+    sstr << 2 << std::endl; /* interrupts will be masked */
+  else
+    sstr << 1 << std::endl; /* interrupts will be unmasked */
+
   fs << sstr.str();
   
   fs.close();

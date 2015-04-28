@@ -3,10 +3,10 @@ include ../../mk/global.mk
 TARGET = nvme_drv
 SOURCES = cq_thread.cc nvme_command_admin.cc nvme_common.cc nvme_queue.cc \
 nvme_command.cc nvme_device.cc tests.cc nvme_drv_component.cc \
-mt_tests.cc verify_tests.cc
+mt_tests.cc verify_tests.cc 
 
 INCLUDES = -I$(XDK_BASE)/lib/libexo -I$(XDK_BASE)/lib/libcommon -I$(XDK_BASE)/lib/libcomponent
-CXXFLAGS += -DCONFIG_BUILD_DEBUG
+#CXXFLAGS += -DCONFIG_BUILD_DEBUG
 #CXXFLAGS += -pg
 CXXFLAGS += -g -O2 -fPIC $(INCLUDES)
 
@@ -19,8 +19,8 @@ all: clean nvme_drv test_client
 nvme_drv: $(OBJS) $(XDK_BASE)/lib/libexo/libexo.so
 	g++ -g -shared -fPIC -Wall $(CXXFLAGS) $(RPATHS) -Wl,-soname,nvme_drv.so.1 -o nvme_drv.so.1 $(OBJS) $(LIBS)
 
-test_client: test_client.o
-	g++ $(CXXFLAGS) -o test_client $< $(LIBS) -ldl
+test_client: test_client.o blast_test.o
+	g++ $(CXXFLAGS) -o test_client test_client.o blast_test.o $(LIBS) -ldl
 
 $(XDK_BASE)/lib/libexo/libexo.so:
 	make -C $(XDK_BASE)/lib/libexo
