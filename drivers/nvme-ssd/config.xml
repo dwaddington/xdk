@@ -6,8 +6,10 @@
       <Completion_queue id="1" core="2" />
       <Completion_queue id="2" core="6" />
       <Completion_queue id="3" core="10" />
+      <Completion_queue id="4" core="14" />
       <Submission_queue id="1" core="4" />
       <Submission_queue id="2" core="8" />
       <Submission_queue id="3" core="12" />
+      <Submission_queue id="4" core="16" />
     </IO_queues>    
 </NVME_driver>
