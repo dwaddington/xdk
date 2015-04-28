@@ -103,12 +103,13 @@ void* CQ_thread::entry(void* qb) {
   /* hmm, should be some other condition instead of while(1) !! */
   while(1) {
 
+#if 1
     /* wait for interrupt */
     if(_queues->device()->wait_for_msix_irq(_irq) != Exokernel::S_OK) {
       panic("unexpected");
       break;
     }
-
+#endif
     // _queues->_wake_cq_thread.wait();
     // _queues->_wake_cq_thread.reset();
     

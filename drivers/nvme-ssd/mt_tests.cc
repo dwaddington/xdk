@@ -19,8 +19,8 @@
 
 #define MAX_LBA (64*11*1024*1024) //= 738,197,504; max 781,422,768 sectors
 
-#define COUNT (1024000 * 4)
-#define NUM_QUEUES (2)
+#define COUNT (1024000 * 1)
+#define NUM_QUEUES (1)
 #define SLAB_SIZE (512)
 #define IO_PER_BATCH (1)
 #define NUM_BLOCKS (8)//(8*32)

@@ -33,7 +33,7 @@
 #include <sys/types.h>
 #include <sys/resource.h>
 #include <unistd.h>
-
+#include <sys/wait.h>
 #include <component/base.h>
 #include <common/cycles.h>
 #include <exo/rand.h>
@@ -42,6 +42,8 @@
 #include "tests.h"
 #include "mt_tests.cc"
 #include "verify_tests.cc"
+
+void blast(IBlockDevice * itf, off_t max_lba);
 
 /* very basic test */
 void basic_test(IBlockDevice * itf)
@@ -111,8 +113,11 @@ int main()
 
   itf->init_device(0, const_cast<char*>("config.xml"));
 
-  //basic_test(itf);
-  (new mt_tests())->runTest(itf);
+  basic_test(itf);
+  basic_test(itf);
+
+  blast(itf,781422768);
+  //(new mt_tests())->runTest(itf);
   //(new verify_tests())->runTest(itf);
 
   itf->shutdown_device();

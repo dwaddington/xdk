@@ -458,6 +458,7 @@ status_t NVME_admin_queue::check_command_completion(uint16_t cid)
     unsigned long long attempts = 0;
     while(cc->command_id != cid) {
       attempts++;
+      usleep(1000);
       if(attempts > 1000000000ULL) {
         PERR("!!!! Check command completion timed out.");
         return Exokernel::E_FAIL;

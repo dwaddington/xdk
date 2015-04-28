@@ -13,10 +13,11 @@ status_t NVME_driver_component::init_device(unsigned instance, config_t config) 
   PLOG("init_device(instance=%u)",instance);
   
   try {
+    PLOG("instantiating new NVME_device instance");
     if(config == NULL)
-      _dev = new NVME_device("config.xml"); //compatibility
+      _dev = new NVME_device("config.xml", instance); //compatibility
     else
-      _dev = new NVME_device((char*)config);
+      _dev = new NVME_device((char*)config, instance);
   }
   catch(Exokernel::Exception e) {
     NVME_INFO("EXCEPTION: error in NVME device initialization (%s) \n",e.cause());
@@ -30,6 +31,16 @@ status_t NVME_driver_component::init_device(unsigned instance, config_t config) 
     NVME_INFO("EXCEPTION: error in NVME device initialization (unknown exception) \n");
     asm("int3");
   }
+
+  
+
+#ifdef TESTING_ONLY
+  /* IRQ will be masked and will need unmasking */
+  NVME_INFO("MASKING IRQ!!");
+  _dev->irq_set_masking_mode();
+#endif
+
+
 
   return S_OK;
 }
@@ -111,10 +122,8 @@ status_t
 NVME_driver_component::
 sync_io(io_request_t io_request,
         unsigned port,
-        unsigned device
-       )
+        unsigned device)
 {
-  const unsigned qid = port; /* do we want to change IBlockDevice? */
   Notify_Sync nobj;
   async_io(io_request, (notify_t)&nobj, port, device);
 
@@ -129,14 +138,11 @@ NVME_driver_component::
 async_io(io_request_t io_request,
          notify_t notify,
          unsigned port,
-         unsigned device
-        )
+         unsigned device)
 {
-  const unsigned qid = port;
-
   io_descriptor_t* io_desc = (io_descriptor_t*)io_request;
   assert (io_desc->action == NVME_READ || io_desc->action == NVME_WRITE);
-  _dev->async_io_batch(qid, io_desc, 1, (Notify*)notify);
+  _dev->async_io_batch(port /* same as queue */, io_desc, 1, (Notify*)notify);
 
   return S_OK;
 }
@@ -148,12 +154,10 @@ async_io_batch(io_request_t* io_requests,
                size_t length,
                notify_t notify,
                unsigned port,
-               unsigned device
-              )
+               unsigned device)
 {
-  const unsigned qid = port;
-
-  _dev->async_io_batch(qid, (io_descriptor_t*)io_requests, length, (Notify*)notify);
+  _dev->async_io_batch(port /* same as queue */,
+                       (io_descriptor_t*)io_requests, length, (Notify*)notify);
 
   return S_OK;
 }
@@ -162,13 +166,9 @@ async_io_batch(io_request_t* io_requests,
 status_t
 NVME_driver_component::
 wait_io_completion(unsigned port,
-                   unsigned device
-                  )
+                   unsigned device)
 {
-  const unsigned qid = port;
-
-  _dev->wait_io_completion(qid);
-
+  _dev->wait_io_completion(port /* same as queue */);
   return S_OK;
 }
 
@@ -178,10 +178,7 @@ status_t
 NVME_driver_component::
 flush(unsigned nsid, unsigned port, unsigned device)
 {
-  const unsigned qid = port;
-
-  _dev->flush(nsid, qid);
-
+  _dev->flush(nsid, port /* queue */);
   return S_OK;
 }
 
@@ -191,7 +188,7 @@ extern "C" void * factory_createInstance(Component::uuid_t& component_id)
 {
   if(component_id == NVME_driver_component::component_id()) {
     printf("Creating 'NVME_driver_component'.\n");
-    return static_cast<void*>(new NVME_driver_component());
+    return static_cast<void*>(static_cast<Component::IBase *>(new NVME_driver_component()));
   }
   else return NULL;
 }

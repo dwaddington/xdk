@@ -35,6 +35,7 @@ public:
    * @return Pointer to Device instance or NULL if init_device has not been called yet.
    */
   virtual Exokernel::Device * get_device() = 0;
+
 };
 
 #endif // __DEVICE_ITF_H__

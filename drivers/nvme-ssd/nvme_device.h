@@ -56,10 +56,10 @@ private:
   Pci_mapped_memory_region * _mmio;
   NVME_registers *           _regs;
 
-  NVME_admin_queue *        _admin_queues;
+  NVME_admin_queue *         _admin_queues;
   std::vector<unsigned>      _msi_vectors;
 
-  NVME_IO_queue *           _io_queues[CONFIG_MAX_IO_QUEUES];
+  NVME_IO_queue *            _io_queues[CONFIG_MAX_IO_QUEUES];
   unsigned                   _num_io_queues;
 
   Config                     _config;
@@ -87,14 +87,14 @@ public:
    * Constructor
    * 
    */
-  NVME_device(const char * config_filename) 
-    : Exokernel::Pci_express_device(0, dev_tbl), 
+  NVME_device(const char * config_filename, unsigned device_instance) 
+    : Exokernel::Pci_express_device(device_instance, dev_tbl), 
       _mmio(NULL), 
       _regs(NULL),
       _admin_queues(NULL),
       _config(config_filename)
   { 
-    init_device();
+    nvme_init_device();
   }
 
   ~NVME_device();
@@ -104,7 +104,7 @@ public:
    * mappings, creates IO queues, etc.
    * 
    */
-  void init_device();
+  void nvme_init_device();
 
   Config& config() { return _config; }
 

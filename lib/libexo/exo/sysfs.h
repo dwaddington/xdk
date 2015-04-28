@@ -471,10 +471,11 @@ namespace Exokernel
     /** 
      * Set IRQ handling to mask the interrupt in the kernel; this requires
      * explicit clearing of the mask through a subsequent write to the 
-     * irq handle in /proc
+     * irq handle in /proc. A call to this will mask all interrupts
+     * currently allocated to the device.
      * 
      */
-    void irq_set_masking_mode();
+    void irq_set_masking_mode(bool masking = true);
 
     /** 
      * Lookup previously allocated MSI/MSI-X vectors on a device
