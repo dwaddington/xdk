@@ -116,7 +116,7 @@ int main()
   basic_test(itf);
   basic_test(itf);
 
-  blast(itf,GB(10)/512);
+  blast(itf,781422768);
   //(new mt_tests())->runTest(itf);
   //(new verify_tests())->runTest(itf);
 
