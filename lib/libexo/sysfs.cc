@@ -260,6 +260,7 @@ Exokernel::Device_sysfs::
   }
 }
 
+
 /** 
  * Allocate contiguous pages for DMA
  * 
@@ -289,7 +290,12 @@ alloc_dma_pages(size_t num_pages, addr_t * phys_addr, int numa_node, int flags)
     sstr << num_pages << " " << numa_node << std::endl;
     fs << sstr.str();
 
-    /* reset file pointer and read allocation results */
+    /* Reset file pointer and read allocation results.  When we do
+       a read on dma_page_alloc we get a list of allocations in the 
+       form of owner, numa zone, order, physical address.  A list
+       of all allocation belonging to the calling process is given.
+       The list is truncated when the text string goes beyond 4K.
+     */
     fs.seekg(0);
     int owner, numa, order;
     addr_t paddr;
@@ -299,7 +305,7 @@ alloc_dma_pages(size_t num_pages, addr_t * phys_addr, int numa_node, int flags)
         if(errno  == 34) 
           PDBG("DMA allocation order invalid for kernel.");
         else
-        PDBG("unknown error in dma_page_alloc (%d)",errno);
+          PDBG("unknown error in dma_page_alloc (%d)",errno);
       }
     }
     catch(...) {
@@ -401,6 +407,7 @@ alloc_dma_huge_pages(size_t num_pages, addr_t * phys_addr, int numa_node, int fl
     }
     catch(...) {
       PERR("unexpected data on (%s)",n.c_str());
+      assert(0);
       throw Exokernel::Fatal(__FILE__,__LINE__,"unexpected data from dma_page_alloc - ran out of pages?");
     }
 
@@ -439,12 +446,43 @@ alloc_dma_huge_pages(size_t num_pages, addr_t * phys_addr, int numa_node, int fl
     return p;
   }
   catch(Exokernel::Fatal e) {
+    PERR("exception %s",e.cause());
     throw e;
   }
   catch(...) {
     throw Exokernel::Fatal(__FILE__,__LINE__,
                            "unexpected condition in alloc_dma_huge_pages");
   }
+}
+
+
+/** 
+ * For debugging purposes, fetch the DMA allocation
+ * list for the calling process.
+ * 
+ * 
+ * @return DMA allocation list.  Entries of the form ownerpid, numa, order, physaddr.
+ */
+std::string
+Exokernel::Device_sysfs::
+debug_fetch_dma_allocations()
+{
+  /* first allocate physical pages */
+  std::fstream fs;
+  assert(!_fs_root_name.empty());
+  std::string n = _fs_root_name;
+  
+  n += "/dma_page_alloc";
+  
+  fs.open(n.c_str());
+
+  std::string line,result;
+  while(std::getline(fs, line)) {
+    result += line;
+    result += "\n";
+  }
+
+  return result;
 }
 
 

@@ -8,6 +8,7 @@
 
 using namespace Exokernel;
 
+/* must allocate huge pages */
 /* use AHCI device for testing - remember to remove the stock AHCI module! */
 static Exokernel::device_vendor_pair_t 
 dev_tbl[] = {{0x8086,0x2922}, // Qemu
@@ -43,6 +44,8 @@ public:
     int num_pages = 24;
     p = alloc_dma_pages(num_pages, &phys_addr);
 
+    PINF("allocations:\n%s",debug_fetch_dma_allocations().c_str());
+
     PINF("Allocated %d pages: v=%p p=%p", num_pages, p, (void*) phys_addr);
 
     memset(p,0,PAGE_SIZE * num_pages);
@@ -59,7 +62,7 @@ int main()
   Pagemap pm;
   Dummy_device dev;
   dev.test_dma_allocation();
-  dev.test_huge_dma_allocation();
+  //  dev.test_huge_dma_allocation();
 
   printf("Press return to continue....\n");
   getchar();

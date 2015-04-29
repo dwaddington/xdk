@@ -450,6 +450,14 @@ namespace Exokernel
      */
     void free_dma_huge_pages(void * p);
 
+    /** 
+     * For debugging purposes, fetch the DMA allocation
+     * list for the calling process.
+     * 
+     * 
+     * @return DMA allocation list.  Entries of the form ownerpid, numa, order, physaddr.
+     */
+    std::string debug_fetch_dma_allocations();
 
     /**----------------------------------------------------------- 
      * MSI and MSI-X interrupt services

@@ -372,7 +372,8 @@ static ssize_t dma_alloc_show(struct device *dev,
       area = list_entry(p,struct pk_dma_area, list);
 
       /* only show for current process */
-      //      if (area->owner_pid != curr_task_pid) continue;
+      if(area->owner_pid != curr_task_pid)
+        continue;
       
       num_chars = sprintf((char *)tmp,"0x%x %d %u 0x%lx\n",             
                           area->owner_pid,
@@ -382,11 +383,11 @@ static ssize_t dma_alloc_show(struct device *dev,
 
       if ((total_chars + num_chars) > PAGE_SIZE) {
         PWRN("dma_alloc_show: too many DMA entries to iterate");
-        UNLOCK_DMA_AREA_LIST;
-        return -EIO;
       }
-      strcat(buf,tmp);
-      total_chars = total_chars + num_chars;
+      else {
+        strcat(buf,tmp);
+        total_chars = total_chars + num_chars;
+      }
     }
 
     UNLOCK_DMA_AREA_LIST;
