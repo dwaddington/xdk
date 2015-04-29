@@ -17,20 +17,19 @@
 #include "nvme_device.h"
 #include "nvme_types.h"
 
-#define MAX_LBA (512*1024*1024) //max 781,422,768 sectors
+#define MAX_LBA (64*11*1024*1024) //= 738,197,504; max 781,422,768 sectors
 
-#define COUNT (1024000)
-#define COUNT_VERIFY (128)
-#define IO_PER_BATCH (1)
+#define COUNT (1024000 * 1)
 #define NUM_QUEUES (1)
-#define SLAB_SIZE (1024)
+#define SLAB_SIZE (512)
+#define IO_PER_BATCH (1)
 #define NUM_BLOCKS (8)//(8*32)
+#define NUMA_NODE (0)
 
-//#define TEST_RANDOM_IO
-#define TEST_IO_READ
-//#define TEST_VERIFY
+#define TEST_RANDOM_IO  //otherwise, sequential io
+#define TEST_IO_READ    //otherwise, write
 
-class Read_thread : public Exokernel::Base_thread {
+class IO_thread : public Exokernel::Base_thread {
   private:
     IBlockDevice * _itf;
     NVME_device * _dev;
@@ -67,9 +66,9 @@ class Read_thread : public Exokernel::Base_thread {
     };
 
     /**
-     * Throuput measurement without considering batch
+     * I/O Throughput measurement without considering batch
      */
-    void read_throughput_test()
+    void io_throughput_test()
     {
       using namespace Exokernel;
       assert(IO_PER_BATCH == 1);
@@ -77,19 +76,17 @@ class Read_thread : public Exokernel::Base_thread {
       NVME_IO_queue * ioq = _dev->io_queue(_qid);
 
       //slab size should be large enough, so that there is no overlap. only for testing purpose
-      assert(SLAB_SIZE > 4*(ioq->queue_length()));
+      assert(SLAB_SIZE >= 4*(ioq->queue_length()));
       io_descriptor_t* io_desc = (io_descriptor_t *)malloc(SLAB_SIZE * sizeof(io_descriptor_t));
 
-//#define N_PAGES 102400
       const uint64_t N_PAGES = COUNT;
 #ifdef TEST_RANDOM_IO
       boost::random::random_device rng;
-      boost::random::uniform_int_distribution<> rnd_page_offset(1, 64*1024*1024-1); //PAGE offset; 781,422,768 sectors(logical block) in total
+      boost::random::uniform_int_distribution<> rnd_page_offset(1, MAX_LBA/NUM_BLOCKS-1); //PAGE offset
 #endif
 
       uint64_t counter = 0;
       Notify *notify = new Notify_Async_Cnt(&counter);
-      unsigned npages_per_io = (NVME::BLOCK_SIZE)*NUM_BLOCKS/PAGE_SIZE;
       unsigned n_lba_partitions = round_up_log2(NUM_QUEUES);
 
       for(unsigned idx = 0; idx < N_PAGES; idx++) {
@@ -104,13 +101,14 @@ class Read_thread : public Exokernel::Base_thread {
 #else /* Write */
         io_desc_ptr->action = NVME_WRITE;
 #endif
-        unsigned slab_idx_local = (idx * npages_per_io) % SLAB_SIZE;
+        unsigned slab_idx_local = idx % SLAB_SIZE;
         io_desc_ptr->buffer_virt = _virt_array_local[slab_idx_local];
         io_desc_ptr->buffer_phys = _phys_array_local[slab_idx_local];
 #ifdef TEST_RANDOM_IO
-        assert(NUM_BLOCKS == 8);
-        io_desc_ptr->offset = rnd_page_offset(rng) * (PAGE_SIZE/NVME::BLOCK_SIZE);
+        io_desc_ptr->offset = rnd_page_offset(rng) * NUM_BLOCKS;
 #else /* sequential IO */
+        //This may be slower than random io, as io operations are not distributed in different SSD channels
+        //Instead, use larger io size for sequential io to maximize the bandwidth
         io_desc_ptr->offset = ((uint64_t)(MAX_LBA/n_lba_partitions)*(_qid-1) + idx*NUM_BLOCKS) % MAX_LBA;
 #endif
         assert(io_desc_ptr->offset < MAX_LBA);
@@ -125,8 +123,9 @@ class Read_thread : public Exokernel::Base_thread {
 
       PLOG("all sends complete (Q:%u).", _qid);
 
+      unsigned block_size_in_K= (NVME::BLOCK_SIZE)*NUM_BLOCKS/1024;
       //assert(counter == COUNT);
-      printf("** Total 4K I/O = %lu (Q: %u)\n", counter*npages_per_io, _qid);
+      printf("** Total %uK I/O = %lu (Q: %u)\n", block_size_in_K, counter, _qid);
       free(io_desc);
       delete notify;
     }
@@ -135,7 +134,7 @@ class Read_thread : public Exokernel::Base_thread {
     /**
      * Throuput measurement with considering batch submission
      */
-    void read_throughput_test_batch()
+    void io_throughput_test_batch()
     {
       using namespace Exokernel;
 
@@ -233,167 +232,9 @@ class Read_thread : public Exokernel::Base_thread {
       delete notify;
     }
 
-    /********************************************************************
-     * Verify correctness. We first write blocks (with markers) to SSD
-     * then read blocks for verification. 
-     * In particular, the callback is responsible for comparing content
-     ********************************************************************/
-    class Notify_Verify : public Notify {
-      private:
-        void* _p;
-        uint8_t _content;
-        unsigned _size;
-        off_t _offset;
-
-      public:
-        Notify_Verify(off_t offset, void* p, uint8_t content, unsigned size) : _offset(offset), _p(p), _content(content),_size(size) {}
-        ~Notify_Verify() {}
-
-        void action() {
-          PTEST("page offset = 0x%lx (marker: 0x%x%x), virt_p = %p", _offset, 0xf & (_content >> 4), 0xf & _content, _p);
-          //hexdump(((uint8_t*)_p), 16);
-
-          for(unsigned i = 0; i<_size; i++) {
-            if(((uint8_t*)_p)[i]!=_content) {
-              PTEST("FAIL: page offset = 0x%lx (marker: 0x%x%x), virt_p = %p", _offset, 0xf & (_content >> 4), 0xf & _content, _p);
-              hexdump(((uint8_t*)_p), _size);
-              return;
-            }
-            assert(((uint8_t*)_p)[i]==_content);
-          }
-        }
-
-        void wait() {}
-
-        bool free_notify_obj() {
-          return true;
-        }
-    };
-
-    /**
-     * Verification test without considering batch
-     */
-    void verify()
-    {
-      using namespace Exokernel;
-
-      assert(_qid == 1);
-      assert(NUM_QUEUES == 1);
-      assert(NUM_BLOCKS <= 8);
-
-      NVME_IO_queue * ioq = _dev->io_queue(_qid);
-
-      assert(SLAB_SIZE > 4*(ioq->queue_length()));
-      io_descriptor_t* io_desc = (io_descriptor_t *)malloc(SLAB_SIZE * sizeof(io_descriptor_t));
-
-//#define N_PAGES 128
-      uint64_t N_PAGES = COUNT_VERIFY;
-      assert(N_PAGES < MAX_LBA/8);
-
-#define SCALE 1
-#define VERIFY_FILL
-#ifdef VERIFY_FILL
-      //Fill first
-      for(unsigned idx = 0; idx < N_PAGES; idx++) {
-
-        if(idx%100000 == 0) printf("count = %u (Q: %u)\n", idx, _qid);
-
-        io_descriptor_t* io_desc_ptr = io_desc + idx % SLAB_SIZE;
-        memset(io_desc_ptr, 0, sizeof(io_descriptor_t));
-
-        io_desc_ptr->action = NVME_WRITE;
-        io_desc_ptr->buffer_virt = _virt_array_local[idx%SLAB_SIZE];
-        io_desc_ptr->buffer_phys = _phys_array_local[idx%SLAB_SIZE];
-        io_desc_ptr->offset = idx * NUM_BLOCKS * SCALE;
-        io_desc_ptr->num_blocks = NUM_BLOCKS;
-
-        uint8_t marker = (uint8_t)((io_desc_ptr->offset/NUM_BLOCKS) & 0xff);
-        memset(io_desc_ptr->buffer_virt, marker, NVME::BLOCK_SIZE * NUM_BLOCKS);
-
-#define ASYNC_FILL
-#ifdef ASYNC_FILL
-        Notify *notify_fill = new Notify_Verify(io_desc_ptr->offset/NUM_BLOCKS, io_desc_ptr->buffer_virt, marker, NVME::BLOCK_SIZE * NUM_BLOCKS);
-
-        status_t st = _itf->async_io_batch((io_request_t*)io_desc_ptr, 1, notify_fill, _qid);
-        //status_t st = _itf->async_io((io_request_t)io_desc_ptr, notify_fill, _qid);
-#else
-        status_t st = _itf->sync_io((io_request_t)io_desc_ptr, _qid);
-#endif
-      }
-
-      _itf->wait_io_completion(_qid); //wait for IO completion
-      _itf->flush(1, _qid);
-
-      printf("** All writes complete. Start to read (Q:%u).\n", _qid);
-      sleep(5);
-#endif // VERIFY_FILL
-
-#ifdef TEST_RANDOM_IO
-      boost::random::random_device rng;
-      boost::random::uniform_int_distribution<> rnd_page_offset(1, N_PAGES-1); //max 781,422,768 sectors
-#endif
-
-      for(unsigned idx = 0; idx < N_PAGES; idx++) {
-
-        if(idx%100000 == 0) printf("count = %u (Q: %u)\n", idx, _qid);
-
-        io_descriptor_t* io_desc_ptr = io_desc + idx % SLAB_SIZE;
-        memset(io_desc_ptr, 0, sizeof(io_descriptor_t));
-
-        io_desc_ptr->action = NVME_READ;
-        io_desc_ptr->buffer_virt = _virt_array_local[idx%SLAB_SIZE];
-        io_desc_ptr->buffer_phys = _phys_array_local[idx%SLAB_SIZE];
-#ifdef TEST_RANDOM_IO
-        io_desc_ptr->offset = rnd_page_offset(rng) * NUM_BLOCKS;
-#else  /* Sequential IO */
-        io_desc_ptr->offset = idx * NUM_BLOCKS * SCALE;
-#endif
-        io_desc_ptr->num_blocks = NUM_BLOCKS;
-
-        memset(io_desc_ptr->buffer_virt, 0, PAGE_SIZE);
-        //hexdump(io_desc_ptr->buffer_virt, 32);
-
-        uint8_t marker = (uint8_t)((io_desc_ptr->offset/NUM_BLOCKS) & 0xff);
-        Notify *notify_verify = new Notify_Verify(io_desc_ptr->offset/NUM_BLOCKS, io_desc_ptr->buffer_virt, marker, NVME::BLOCK_SIZE * NUM_BLOCKS);
-        status_t st = _itf->async_io_batch((io_request_t*)io_desc_ptr, 1, notify_verify, _qid);
-      }
-      _itf->wait_io_completion(_qid); //wait for IO completion
-
-      free(io_desc);
-    }
-
-
-    void read_data(off_t lba) 
-    {
-      using namespace Exokernel;
-      assert(NUM_BLOCKS == 8);
-
-      NVME_IO_queue * ioq = _dev->io_queue(_qid);
-
-      io_descriptor_t* io_desc_ptr = (io_descriptor_t *)malloc(sizeof(io_descriptor_t));
-      memset(io_desc_ptr, 0, sizeof(io_descriptor_t));
-
-      io_desc_ptr->action = NVME_READ;
-      io_desc_ptr->buffer_virt = _virt_array_local[1];
-      io_desc_ptr->buffer_phys = _phys_array_local[1];
-      io_desc_ptr->offset = lba;
-      io_desc_ptr->num_blocks = NUM_BLOCKS;
-
-      memset(io_desc_ptr->buffer_virt, 0, PAGE_SIZE);
-      hexdump(io_desc_ptr->buffer_virt, 32);
-
-      Notify *notify_verify = new Notify_Verify(io_desc_ptr->offset/8, io_desc_ptr->buffer_virt, (io_desc_ptr->offset/8) & 0xff, NVME::BLOCK_SIZE * NUM_BLOCKS);
-      status_t st = _itf->async_io_batch((io_request_t*)io_desc_ptr, 1, notify_verify, _qid);
-
-      _itf->wait_io_completion(_qid); //wait for IO completion
-
-      hexdump(io_desc_ptr->buffer_virt, 32);
-      free(io_desc_ptr);
-    }
-
 
   public:
-    Read_thread(IBlockDevice * itf, unsigned qid, core_id_t core, addr_t *phys_array_local, void **virt_array_local) : 
+    IO_thread(IBlockDevice * itf, unsigned qid, core_id_t core, addr_t *phys_array_local, void **virt_array_local) : 
       _qid(qid), _itf(itf), Exokernel::Base_thread(NULL,core), _phys_array_local(phys_array_local), _virt_array_local(virt_array_local) {
         _dev = (NVME_device*)(itf->get_device());
       }
@@ -402,15 +243,11 @@ class Read_thread : public Exokernel::Base_thread {
       assert(_dev);
 
       std::stringstream str;
-      str << "rt-client-qt-" << _qid;
+      str << "io-client-qt-" << _qid;
       Exokernel::set_thread_name(str.str().c_str());
-#ifdef TEST_VERIFY
-      verify();
-      //read_data(0xac*8);
-#else
-      read_throughput_test();
-      //read_throughput_test_batch();//v2
-#endif
+
+      io_throughput_test();
+      //io_throughput_test_batch();//v2
     }
 
 };
@@ -434,6 +271,7 @@ class mt_tests {
 #if (SHMEM_HUGEPAGE_ALLOC == 1)
     void allocMem(IBlockDevice * itf) {
 
+      assert(NUM_BLOCKS == 8);
       using namespace Exokernel;
       /* allocate slab of memory */
       int NUM_PAGES = NUM_QUEUES * (SLAB_SIZE+2);
@@ -463,6 +301,7 @@ class mt_tests {
 #elif (DMA_HUGEPAGE_ALLOC == 1)
     void allocMem(IBlockDevice * itf) {
 
+      assert(NUM_BLOCKS == 8);
       using namespace Exokernel;
       Device * dev = itf->get_device();
 
@@ -508,20 +347,34 @@ class mt_tests {
       using namespace Exokernel;
       Device * dev = itf->get_device();
 
-      assert(SLAB_SIZE == 1024);
+      //assert(SLAB_SIZE == 1024);
       for(unsigned i=0; i<NUM_QUEUES; i++) {
-        addr_t phys_addr = 0;
-        void *p = dev->alloc_dma_pages(SLAB_SIZE, &phys_addr);
-        page_list.push_back(p);
-        memset(p, 0, PAGE_SIZE*SLAB_SIZE);
 
-        char *p_char = (char *)p;
+        assert((NUM_BLOCKS * NVME::BLOCK_SIZE)%PAGE_SIZE == 0);
+        unsigned n_pages_per_io = NUM_BLOCKS * NVME::BLOCK_SIZE / PAGE_SIZE;
+
+#define NUM_PAGES_PER_ALLOC 1024
+        void *p;
+        char *p_char;
+        addr_t phys_addr=0;
+        int n_pages_left = 0;
         for(unsigned j=0; j<SLAB_SIZE; j++) {
+          if(n_pages_left <= 0) {
+            //there is problem if we alloc too many pages at once
+            //so we alloc these pages in multiple times
+            p = dev->alloc_dma_pages(NUM_PAGES_PER_ALLOC, &phys_addr, NUMA_NODE, 0); 
+            page_list.push_back(p);
+            memset(p, 0, PAGE_SIZE*NUM_PAGES_PER_ALLOC);
+
+            p_char = (char*)p;
+            n_pages_left = NUM_PAGES_PER_ALLOC;
+          }
           virt_array[i][j] = p_char;
           phys_array[i][j] = phys_addr;
-          p_char += PAGE_SIZE;
-          phys_addr += PAGE_SIZE;
+          p_char += PAGE_SIZE*n_pages_per_io;
+          phys_addr += PAGE_SIZE*n_pages_per_io;
           //printf("[%d, %d]: virt = %p, phys = %lx\n", i, j, virt_array[i][j], phys_array[i][j]);
+          n_pages_left -= n_pages_per_io;
         }
       }
       PLOG("Memory allocated OK!!");
@@ -553,7 +406,7 @@ class mt_tests {
       allocMem(itf);
 
       {
-        Read_thread * thr[NUM_QUEUES];
+        IO_thread * thr[NUM_QUEUES];
 
 //#define N_QUEUE_MAP 8
 //        unsigned sq_map[N_QUEUE_MAP] = {4, 8, 12, 16, 20, 24, 28, 32};
@@ -566,7 +419,7 @@ class mt_tests {
           unsigned sq_core = config.get_sub_core_from_qid(i);
           printf("********** qid = %u, core = %u\n", i, sq_core);
 
-          thr[i-1] = new Read_thread(itf,
+          thr[i-1] = new IO_thread(itf,
               i,                         /* qid */
               sq_core,                   /* sq core */
               phys_array[i-1],
@@ -609,11 +462,11 @@ class mt_tests {
         double gtod_delta = ((tv_end.tv_sec - tv_start.tv_sec) * 1000000.0) +
           ((tv_end.tv_usec - tv_start.tv_usec));
         double gtod_secs = (gtod_delta) / 1000000.0;
-        printf("gettimeofday: \n\tRate = %.2f KIOPS, Time = %.5g sec (%.2f usec per I/O)\n", total_io*1.0 / (gtod_secs * 1000), gtod_secs, gtod_delta/total_io);
+        printf("gettimeofday: \n\tRate = %.2f KIOPS (B/W: %.2fG/s), Time = %.5g sec (%.2f usec per I/O)\n", total_io*1.0 / (gtod_secs * 1000), total_io*1.0 / (gtod_secs * 1000)*4/1024, gtod_secs, gtod_delta/total_io);
 
         /*use rdtsc*/
         double tsc_secs = (end_tsc - start_tsc)*1.0 / tsc_per_sec;
-        printf("rdtsc: \n\tRate = %.2f KIOPS, Time = %.5g sec (%.2f usec per I/O)\n", total_io*1.0 / (tsc_secs * 1000), tsc_secs, tsc_secs*1000000/total_io);
+        printf("rdtsc: \n\tRate = %.2f KIOPS (B/W: %.2fG/s), Time = %.5g sec (%.2f usec per I/O)\n", total_io*1.0 / (tsc_secs * 1000), total_io*1.0 / (tsc_secs * 1000)*4/1024, tsc_secs, tsc_secs*1000000/total_io);
 
         /*use getrusage*/
         double delta_user = ((ru_end.ru_utime.tv_sec - ru_start.ru_utime.tv_sec) * 1000000.0) +

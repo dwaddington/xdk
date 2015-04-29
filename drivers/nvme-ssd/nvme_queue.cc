@@ -63,6 +63,7 @@ NVME_queues_base::NVME_queues_base(NVME_device * dev, unsigned queue_id, unsigne
   _cq_head(0),
   _cq_phase(1),  
   _irq(irq),
+  _queue_items(queue_length),
   _cmdid_counter(0)
 {
   //   static unsigned stride = NVME_CAP_STRIDE(_registers->cap);
@@ -117,7 +118,7 @@ status_t NVME_queues_base::increment_submission_tail(queue_ptr_t * tptr) {
 
   /* check if the SQ is full */
   uint16_t new_tail = _sq_tail + 1;
-  if( unlikely(new_tail >= _queue_items) ) new_tail -= _queue_items;
+  if( _unlikely(new_tail >= _queue_items) ) new_tail -= _queue_items;
   if( new_tail == _sq_head ) {
     PLOG("Queue %d is full (sq_head = %u, sq_tail = %u) !!", _queue_id, _sq_head, _sq_tail);
     return Exokernel::E_FULL;
@@ -193,7 +194,7 @@ Completion_command_slot * NVME_queues_base::get_next_completion()
 
   if(SCT == 0x0) {
     //PDBG("Generic Command Status");
-    if(unlikely(SC != 0x0)) {  /* not Successful Completion */
+    if(_unlikely(SC != 0x0)) {  /* not Successful Completion */
       PERR("DNR = 0x%x, More = 0x%x, SCT = 0x%x, SC = 0x%x",
               DNR,
               More,
@@ -778,13 +779,17 @@ uint16_t NVME_IO_queue::issue_async_read(addr_t prp1,
                     access_lat,
                     false);  
 
+#if (SQ_MAX_BATCH_TO_RING > 1)
   cur_tsc = rdtsc();
   _sq_batch_counter++;
-  if(unlikely(_sq_batch_counter >= MAX_BATCH_TO_RING || cur_tsc - prev_tsc >= drain_tsc)) {
+  if(_unlikely(_sq_batch_counter >= SQ_MAX_BATCH_TO_RING || cur_tsc - prev_tsc >= drain_tsc)) {
+#endif
     ring_submission_doorbell();
+#if (SQ_MAX_BATCH_TO_RING > 1)
     prev_tsc = cur_tsc;
     _sq_batch_counter = 0;
   }
+#endif
 
   /* collect statistics */
   cpu_time_t delta = rdtsc() - start;
@@ -829,14 +834,17 @@ uint16_t NVME_IO_queue::issue_async_write(addr_t prp1,
                     access_freq, 
                     access_lat,
                     true);
-
+#if (SQ_MAX_BATCH_TO_RING > 1)
   cur_tsc = rdtsc();
   _sq_batch_counter++;
-  if(unlikely(_sq_batch_counter >= MAX_BATCH_TO_RING || cur_tsc - prev_tsc >= drain_tsc)) {
+  if(_unlikely(_sq_batch_counter >= SQ_MAX_BATCH_TO_RING || cur_tsc - prev_tsc >= drain_tsc)) {
+#endif
     ring_submission_doorbell();
+#if (SQ_MAX_BATCH_TO_RING > 1)
     prev_tsc = cur_tsc;
     _sq_batch_counter = 0;
   }
+#endif
 
   return slot_id;
 }

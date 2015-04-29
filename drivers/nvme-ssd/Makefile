@@ -7,6 +7,7 @@ mt_tests.cc verify_tests.cc
 
 INCLUDES = -I$(XDK_BASE)/lib/libexo -I$(XDK_BASE)/lib/libcommon -I$(XDK_BASE)/lib/libcomponent
 #CXXFLAGS += -DCONFIG_BUILD_DEBUG
+#CXXFLAGS += -DCONFIG_IRQ_COAL
 #CXXFLAGS += -pg
 CXXFLAGS += -g -O2 -fPIC $(INCLUDES)
 
@@ -14,7 +15,7 @@ LIBS = -L$(XDK_BASE)/lib/libexo -L$(XDK_BASE)/lib/libcommon -L$(XDK_BASE)/lib/li
 
 RPATHS=-Wl,-rpath=$(XDK_BASE)/lib/libexo -Wl,-rpath=/usr/lib/x86_64-linux-gnu/ -Wl,-rpath=.
 
-all: clean nvme_drv test_client
+all: nvme_drv test_client
 
 nvme_drv: $(OBJS) $(XDK_BASE)/lib/libexo/libexo.so
 	g++ -g -shared -fPIC -Wall $(CXXFLAGS) $(RPATHS) -Wl,-soname,nvme_drv.so.1 -o nvme_drv.so.1 $(OBJS) $(LIBS)

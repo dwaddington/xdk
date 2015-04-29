@@ -18,7 +18,7 @@ public:
    * 
    * @return S_OK on successfully device intialization. E_NOT_FOUND if device instance cannot be found.
    */
-  virtual status_t init_device(unsigned instance) = 0;
+  virtual status_t init_device(unsigned instance, config_t config = NULL) = 0;
 
   /** 
    * Shutdown the device and free resources.  After this is called no other methods can be called subsequently.

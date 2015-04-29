@@ -9,12 +9,15 @@
 //////////////////////////////////////////////////////////////////////
 // IDeviceControl interface
 //
-status_t NVME_driver_component::init_device(unsigned instance) {
+status_t NVME_driver_component::init_device(unsigned instance, config_t config) {
   PLOG("init_device(instance=%u)",instance);
   
   try {
     PLOG("instantiating new NVME_device instance");
-    _dev = new NVME_device("config.xml", instance);
+    if(config == NULL)
+      _dev = new NVME_device("config.xml", instance); //compatibility
+    else
+      _dev = new NVME_device((char*)config, instance);
   }
   catch(Exokernel::Exception e) {
     NVME_INFO("EXCEPTION: error in NVME device initialization (%s) \n",e.cause());

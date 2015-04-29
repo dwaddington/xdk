@@ -98,7 +98,7 @@ namespace Exokernel {
           _buffers[i] = new(ptr) BUFFER<T, SIZE>();
 
 #if (DEBUG_CHANNEL != 0)
-          std::cout << "When creat: buf[" << i << "] : attached @ " 
+          std::cout << "Created: buf[" << i << "] : attached @ " 
                     << _buffers[i] << std::endl;
 #endif
         }
@@ -107,7 +107,7 @@ namespace Exokernel {
           _buffers[(i+1)%2] = (BUFFER<T, SIZE> *)ptr;
 
 #if (DEBUG_CHANNEL != 0)
-          std::cout << "When match: buf[" << (i+1)%2 << "] : attached @ " 
+          std::cout << "Matched: buf[" << (i+1)%2 << "] : attached @ " 
                     << _buffers[(i+1)%2] << std::endl;
 #endif
         }
