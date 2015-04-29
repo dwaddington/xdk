@@ -784,7 +784,9 @@ uint16_t NVME_IO_queue::issue_async_read(addr_t prp1,
   _sq_batch_counter++;
   if(_unlikely(_sq_batch_counter >= SQ_MAX_BATCH_TO_RING || cur_tsc - prev_tsc >= drain_tsc)) {
 #endif
+
     ring_submission_doorbell();
+
 #if (SQ_MAX_BATCH_TO_RING > 1)
     prev_tsc = cur_tsc;
     _sq_batch_counter = 0;
@@ -892,6 +894,7 @@ uint16_t NVME_IO_queue::issue_async_io_batch(io_descriptor_t* io_desc,
   //issue all IOs
   uint16_t cmdid = 0;
   assert(io_desc);
+
   for(int idx = 0; idx < length; idx++) {
     io_descriptor_t* io_desc_ptr = io_desc + idx;
     if(io_desc_ptr->action == NVME_READ) {

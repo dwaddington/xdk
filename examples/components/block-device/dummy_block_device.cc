@@ -37,7 +37,7 @@
 //////////////////////////////////////////////////////////////////////
 // IDeviceControl interface
 //
-status_t IBlockDevice_impl::init_device(unsigned instance) {
+status_t IBlockDevice_impl::init_device(unsigned instance, config_t config = NULL) {
   PLOG("init_device(instance=%u)",instance);
   return S_OK;
 }
@@ -53,31 +53,6 @@ status_t IBlockDevice_impl::shutdown_device() {
 }
 
 
-status_t 
-IBlockDevice_impl::
-sync_read_block(void * buffer_virt, /* must be 512 byte aligned */
-                addr_t buffer_phys, 
-                off_t offset,       /* store offset */
-                size_t num_blocks,  /* each block is 512 bytes */
-                unsigned port       /* device port */
-                )
-{
-  TRACE();
-  return S_OK;
-}
-
-status_t 
-IBlockDevice_impl::
-sync_write_block(void * buffer_virt, /* must be 512 byte aligned */
-                 addr_t buffer_phys, 
-                 off_t offset,       /* store offset */
-                 size_t num_blocks,  /* each block is 512 bytes */
-                 unsigned port       /* device port */
-                 )
-{
-  TRACE();
-  return S_OK;
-}
 
 
 

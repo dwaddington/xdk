@@ -10,26 +10,12 @@ public:
 
   // IDeviceControl
   //
-  status_t init_device(unsigned instance);
+  status_t init_device(unsigned instance,  config_t config);
   Exokernel::Device * get_device();
   status_t shutdown_device();
 
   // IBlockData
   //
-  status_t sync_read_block(void * buffer_virt, /* must be 512 byte aligned */
-                           addr_t buffer_phys, 
-                           off_t offset,       /* store offset */
-                           size_t num_blocks,  /* each block is 512 bytes */
-                           unsigned port       /* device port */
-                           );
-  
-  status_t sync_write_block(void * buffer_virt, /* must be 512 byte aligned */
-                            addr_t buffer_phys, 
-                            off_t offset,       /* store offset */
-                            size_t num_blocks,  /* each block is 512 bytes */
-                            unsigned port       /* device port */
-                            );
-
   //new sync read
   status_t sync_io(io_request_t io_request,
                            unsigned port,
@@ -59,6 +45,7 @@ public:
                  unsigned port,
                  unsigned device=0
                  ) { return S_OK; }
+
 
 };
 
