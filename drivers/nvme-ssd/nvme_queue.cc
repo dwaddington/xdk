@@ -63,6 +63,7 @@ NVME_queues_base::NVME_queues_base(NVME_device * dev, unsigned queue_id, unsigne
   _cq_head(0),
   _cq_phase(1),  
   _irq(irq),
+  _queue_items(queue_length),
   _cmdid_counter(0)
 {
   //   static unsigned stride = NVME_CAP_STRIDE(_registers->cap);
