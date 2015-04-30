@@ -5,7 +5,9 @@
     <IO_queues>
       <Completion_queue id="1" core="2" />
       <Submission_queue id="1" core="22" />
-      <Completion_queue id="1" core="3" />
-      <Submission_queue id="1" core="23" />
+      <Completion_queue id="2" core="4" />
+      <Submission_queue id="2" core="23" />
+      <Completion_queue id="3" core="6" />
+      <Submission_queue id="3" core="24" />
     </IO_queues>    
 </NVME_driver>

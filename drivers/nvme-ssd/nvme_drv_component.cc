@@ -31,7 +31,6 @@ status_t NVME_driver_component::init_device(unsigned instance, config_t config) 
     NVME_INFO("EXCEPTION: error in NVME device initialization (unknown exception) \n");
     asm("int3");
   }
-
   
 
 #ifdef TESTING_ONLY

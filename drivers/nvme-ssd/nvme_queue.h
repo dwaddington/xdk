@@ -339,7 +339,7 @@ class NVME_admin_queue : public NVME_queues_base
 
 private:
   enum { 
-    Admin_queue_len  = 8,
+    Admin_queue_len  = 64,
   };
 
   void ring_doorbell_single_completion();

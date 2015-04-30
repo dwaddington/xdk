@@ -118,9 +118,13 @@ status_t NVME_queues_base::increment_submission_tail(queue_ptr_t * tptr) {
 
   /* check if the SQ is full */
   uint16_t new_tail = _sq_tail + 1;
-  if( _unlikely(new_tail >= _queue_items) ) new_tail -= _queue_items;
+
+  if(_unlikely(new_tail >= _queue_items)) 
+    new_tail -= _queue_items;
+
   if( new_tail == _sq_head ) {
     PLOG("Queue %d is full (sq_head = %u, sq_tail = %u) !!", _queue_id, _sq_head, _sq_tail);
+    printf("Queue %d is full (sq_head = %u, sq_tail = %u) !!\n", _queue_id, _sq_head, _sq_tail);
     return Exokernel::E_FULL;
   }
 
@@ -180,53 +184,46 @@ Completion_command_slot * NVME_queues_base::get_next_completion()
   /* check status code */
   unsigned status =  _comp_cmd[curr_head].status;
 
-  unsigned DNR  = 0x1  & (status >> 14);
-  unsigned More = 0x1  & (status >> 13);
-  unsigned SCT  = 0x7  & (status >>  8);
-  unsigned SC   = 0xff & status;
+  if(status > 0) {
+    unsigned DNR  = 0x1  & (status >> 14);
+    unsigned More = 0x1  & (status >> 13);
+    unsigned SCT  = 0x7  & (status >>  8);
+    unsigned SC   = 0xff & status;
 
-  PLOG("DNR = 0x%x, More = 0x%x, SCT = 0x%x, SC = 0x%x",
-        DNR,
-        More,
-        SCT,
-        SC
-      );
+    PLOG("DNR = 0x%x, More = 0x%x, SCT = 0x%x, SC = 0x%x",
+         DNR,
+         More,
+         SCT,
+         SC
+         );
 
-  if(SCT == 0x0) {
-    //PDBG("Generic Command Status");
-    if(_unlikely(SC != 0x0)) {  /* not Successful Completion */
-      PERR("DNR = 0x%x, More = 0x%x, SCT = 0x%x, SC = 0x%x",
-              DNR,
-              More,
-              SCT,
-              SC
+    if(SCT == 0x0) {
+      //PDBG("Generic Command Status");
+      if(_unlikely(SC != 0x0)) {  /* not Successful Completion */
+        PERR("DNR = 0x%x, More = 0x%x, SCT = 0x%x, SC = 0x%x",
+             DNR,
+             More,
+             SCT,
+             SC
              );
+        assert(false);
+      }
+    } else if (SCT == 0x1) {
+      PDBG("Command Specific Status");
+      assert(false);
+    } else if (SCT == 0x2) {
+      PDBG("Media Error");
+      assert(false);
+    } else if (SCT == 0x7) {
+      PDBG("Vendor Specific");
+      assert(false);
+    } else {
+      PDBG("Reserved");
       assert(false);
     }
-  } else if (SCT == 0x1) {
-    PDBG("Command Specific Status");
-    assert(false);
-  } else if (SCT == 0x2) {
-    PDBG("Media Error");
-    assert(false);
-  } else if (SCT == 0x7) {
-    PDBG("Vendor Specific");
-    assert(false);
-  } else {
-    PDBG("Reserved");
-    assert(false);
   }
 
-  //////////////////////////////////////////
- 
-  // if((_comp_cmd[curr_head].phase_tag != _cq_phase) ||
-  //    (_comp_cmd[curr_head].status == 0xB)) {
-  
-  // if(_comp_cmd[curr_head].phase_tag != _cq_phase) {
-  //   PLOG("get_next_completion returning NULL");
-  //   return NULL;
-  // }
-
+  /* indicate that completion has been dealt with */
   increment_completion_head();
 
   if(verbose)
@@ -275,9 +272,11 @@ Submission_command_slot * NVME_queues_base::next_sub_slot(signed * cmdid) {
   assert(*cmdid > 0);
 
   status_t st;
+
   NVME_LOOP( ((st = increment_submission_tail(&curr_ptr)) != Exokernel::S_OK), false);
 
-  memset(&_sub_cmd[curr_ptr], 0, sizeof(Submission_command_slot));
+  _sub_cmd[curr_ptr].clear();
+
   PLOG("sub_slot = %u (Q:%u)", curr_ptr, _queue_id);
   return &_sub_cmd[curr_ptr];
 }
@@ -658,7 +657,8 @@ NVME_IO_queue::NVME_IO_queue(NVME_device * dev,
   drain_tsc = (unsigned long long)get_tsc_frequency_in_mhz() * US_PER_RING;
 
   /* allocate memory for the completion queue */
-  num_pages = round_up_page(CQ_entry_size_bytes * _queue_items)/PAGE_SIZE;
+  num_pages = (round_up_page(CQ_entry_size_bytes * _queue_items)/PAGE_SIZE)*2;
+
   PLOG("allocating %ld pages for IO completion queue",num_pages);
   _cq_dma_mem = dev->alloc_dma_pages(num_pages, &_cq_dma_mem_phys);  
   assert(_cq_dma_mem);
@@ -677,9 +677,11 @@ NVME_IO_queue::NVME_IO_queue(NVME_device * dev,
   assert(rc==Exokernel::S_OK);
 
   /* allocate memory for the submission queue */
-  num_pages = round_up_page(SQ_entry_size_bytes * _queue_items)/PAGE_SIZE;
+  num_pages = (round_up_page(SQ_entry_size_bytes * _queue_items)/PAGE_SIZE)*2;
+
   PLOG("allocating %ld pages for IO submission queue",num_pages);
   _sq_dma_mem = dev->alloc_dma_pages(num_pages, &_sq_dma_mem_phys);
+
   assert(_sq_dma_mem);
   assert(_sq_dma_mem_phys);
   memset(_sq_dma_mem,0,num_pages * PAGE_SIZE);
@@ -793,6 +795,7 @@ uint16_t NVME_IO_queue::issue_async_read(addr_t prp1,
   }
 #endif
 
+#if COLLECT_STATS
   /* collect statistics */
   cpu_time_t delta = rdtsc() - start;
   if(_stat_mean_send_time_samples > 0) {
@@ -807,6 +810,7 @@ uint16_t NVME_IO_queue::issue_async_read(addr_t prp1,
   if(delta > 2000) 
     _bad_count++;
   issued++;
+#endif 
 
   return slot_id & 0xffff;
 }

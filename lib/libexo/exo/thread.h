@@ -86,7 +86,7 @@ namespace Exokernel
     /** 
      * Thread's entry function. 
      * It must be implemented by the derived concrete class.
-     * It must be called directly, but via start().
+     * It must not be called directly, but via start().
      */
     virtual void* entry(void* param) = 0;
 
