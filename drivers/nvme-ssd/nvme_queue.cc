@@ -883,6 +883,7 @@ uint16_t NVME_IO_queue::issue_async_io_batch(io_descriptor_t* io_desc,
   }
   assert(end_cmdid >= start_cmdid);
   
+#ifndef DISABLE_BATCH_MANAGER_FOR_TESTING
   //check availability
   NVME_LOOP( (!_batch_manager->is_available(start_cmdid, end_cmdid)), false);
 
@@ -896,6 +897,7 @@ uint16_t NVME_IO_queue::issue_async_io_batch(io_descriptor_t* io_desc,
 
   //push to the buffer
   NVME_LOOP( (!(_batch_manager->push(bi))), false);
+#endif
 
   //issue all IOs
   uint16_t cmdid = 0;
@@ -924,14 +926,20 @@ uint16_t NVME_IO_queue::issue_async_io_batch(io_descriptor_t* io_desc,
     }
     //printf("issue cmdid = %u, offset = %lu(%lx, %lx)\n", cmdid, io_desc_ptr->offset, io_desc_ptr->offset, io_desc_ptr->offset/8);
   }
+
+#ifndef DISABLE_BATCH_MANAGER_FOR_TESTING
   assert(cmdid == bi.end_cmdid);
+#endif
+
 }
 
 status_t NVME_IO_queue::wait_io_completion()
 {
   ring_submission_doorbell(); /* make sure the doorbell is rang */
 
+#ifndef DISABLE_BATCH_MANAGER_FOR_TESTING
   NVME_LOOP( ( !(_batch_manager->wasEmpty()) ), false);
+#endif
 
   return Exokernel::S_OK;
 }
