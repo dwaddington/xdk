@@ -66,6 +66,13 @@
 #define ESC_ERR  BRIGHT_RED
 #define ESC_END  "\033[0m"
 
+#undef PDBG
+#undef PLOG
+#undef PTEST
+#undef PERR
+#undef PWRN
+#undef PASSERT
+#undef TRACE
 
 #ifdef CONFIG_BUILD_DEBUG
 #define PDBG(f, a...)   fprintf( stderr, "[DBG]: %s:" f "\n",  __func__ , ## a)
