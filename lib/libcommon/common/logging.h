@@ -46,7 +46,7 @@
 #define NORMAL_RED "\033[31m"
 
 #define BRIGHT "\033[1m"
-#define NORMAL "\033[0m"
+#define NORMAL_XDK "\033[0m"
 #define RESET "\033[0m"
 
 #define BRIGHT_CYAN "\033[1m\033[36m"
