@@ -90,6 +90,7 @@ class Verify_thread : public Exokernel::Base_thread {
         bool free_notify_obj() {
           return true;
         }
+
     };
 
     /**

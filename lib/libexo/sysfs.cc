@@ -68,8 +68,10 @@ Exokernel::Device_sysfs::Pci_config_space::Pci_config_space(std::string& root_fs
 
   _fd = open(config_node.c_str(), O_RDWR|O_SYNC);
 
-  if(!_fd)       
+  if(!_fd) {
+    PWRN("unable to open procfs file (%s)", config_node.c_str());
     throw Exokernel::Fatal(__FILE__,__LINE__,"unable to open PCI config space");
+  }
 
   interrogate_bar_regions();
 }
@@ -130,8 +132,10 @@ Pci_mapped_memory_region(std::string& root_fs,
     PLOG("Opening PCI memory space (%s)",s.str().c_str());
     _fd = open(s.str().c_str(), O_RDWR);
 
-    if(!_fd)       
+    if(!_fd) {   
+      PWRN("Unable to open PCI config space (%s)",s.str().c_str());
       throw Exokernel::Fatal(__FILE__,__LINE__,"unable to open PCI mapped memory space");
+    }
 
     _fdm = open(s.str().c_str(), O_RDWR|O_SYNC);
   }
@@ -260,6 +264,7 @@ Exokernel::Device_sysfs::
   }
 }
 
+
 /** 
  * Allocate contiguous pages for DMA
  * 
@@ -289,7 +294,12 @@ alloc_dma_pages(size_t num_pages, addr_t * phys_addr, int numa_node, int flags)
     sstr << num_pages << " " << numa_node << std::endl;
     fs << sstr.str();
 
-    /* reset file pointer and read allocation results */
+    /* Reset file pointer and read allocation results.  When we do
+       a read on dma_page_alloc we get a list of allocations in the 
+       form of owner, numa zone, order, physical address.  A list
+       of all allocation belonging to the calling process is given.
+       The list is truncated when the text string goes beyond 4K.
+     */
     fs.seekg(0);
     int owner, numa, order;
     addr_t paddr;
@@ -299,7 +309,7 @@ alloc_dma_pages(size_t num_pages, addr_t * phys_addr, int numa_node, int flags)
         if(errno  == 34) 
           PDBG("DMA allocation order invalid for kernel.");
         else
-        PDBG("unknown error in dma_page_alloc (%d)",errno);
+          PDBG("unknown error in dma_page_alloc (%d)",errno);
       }
     }
     catch(...) {
@@ -401,6 +411,7 @@ alloc_dma_huge_pages(size_t num_pages, addr_t * phys_addr, int numa_node, int fl
     }
     catch(...) {
       PERR("unexpected data on (%s)",n.c_str());
+      assert(0);
       throw Exokernel::Fatal(__FILE__,__LINE__,"unexpected data from dma_page_alloc - ran out of pages?");
     }
 
@@ -439,12 +450,43 @@ alloc_dma_huge_pages(size_t num_pages, addr_t * phys_addr, int numa_node, int fl
     return p;
   }
   catch(Exokernel::Fatal e) {
+    PERR("exception %s",e.cause());
     throw e;
   }
   catch(...) {
     throw Exokernel::Fatal(__FILE__,__LINE__,
                            "unexpected condition in alloc_dma_huge_pages");
   }
+}
+
+
+/** 
+ * For debugging purposes, fetch the DMA allocation
+ * list for the calling process.
+ * 
+ * 
+ * @return DMA allocation list.  Entries of the form ownerpid, numa, order, physaddr.
+ */
+std::string
+Exokernel::Device_sysfs::
+debug_fetch_dma_allocations()
+{
+  /* first allocate physical pages */
+  std::fstream fs;
+  assert(!_fs_root_name.empty());
+  std::string n = _fs_root_name;
+  
+  n += "/dma_page_alloc";
+  
+  fs.open(n.c_str());
+
+  std::string line,result;
+  while(std::getline(fs, line)) {
+    result += line;
+    result += "\n";
+  }
+
+  return result;
 }
 
 
@@ -529,7 +571,7 @@ free_dma_huge_pages(void * vptr)
 
 void
 Exokernel::Device_sysfs::
-irq_set_masking_mode()
+irq_set_masking_mode(bool masking)
 {
   std::string n = _fs_root_name;
   n += "/irq_mode";
@@ -538,7 +580,11 @@ irq_set_masking_mode()
   fs.open(n.c_str());
 
   std::stringstream sstr;
-  sstr << 2 << std::endl;
+  if(masking)
+    sstr << 2 << std::endl; /* interrupts will be masked */
+  else
+    sstr << 1 << std::endl; /* interrupts will be unmasked */
+
   fs << sstr.str();
   
   fs.close();

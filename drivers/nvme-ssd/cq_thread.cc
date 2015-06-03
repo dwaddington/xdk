@@ -103,12 +103,13 @@ void* CQ_thread::entry(void* qb) {
   /* hmm, should be some other condition instead of while(1) !! */
   while(1) {
 
+#if 1
     /* wait for interrupt */
     if(_queues->device()->wait_for_msix_irq(_irq) != Exokernel::S_OK) {
       panic("unexpected");
       break;
     }
-
+#endif
     // _queues->_wake_cq_thread.wait();
     // _queues->_wake_cq_thread.reset();
     
@@ -147,12 +148,15 @@ void* CQ_thread::entry(void* qb) {
       g_entries_cleared++;
       PLOG("cleared = %lu (Q:%u)", g_entries_cleared, _qid);
 
-#define CQ_MAX_BATCH_TO_RING (1)
+#if (CQ_MAX_BATCH_TO_RING > 1)
       cq_batch_counter++;
-      if(unlikely(cq_batch_counter >= CQ_MAX_BATCH_TO_RING)) {
+      if(_unlikely(cq_batch_counter >= CQ_MAX_BATCH_TO_RING)) {
+#endif
         _queues->ring_completion_doorbell();
+#if (CQ_MAX_BATCH_TO_RING > 1)
         cq_batch_counter = 0;
       }
+#endif
 
       // if(g_entries_cleared % 1024 == 0) 
       //   PLOG("CQ thread cleared %lu entries",g_entries_cleared);

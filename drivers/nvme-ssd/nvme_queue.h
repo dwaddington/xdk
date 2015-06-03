@@ -139,21 +139,21 @@ public:
 
   uint16_t alloc_cmdid() {
     _cmdid_counter++;
-    if( unlikely(_cmdid_counter == 0) ) _cmdid_counter++;
+    if( _unlikely(_cmdid_counter == 0) ) _cmdid_counter++;
     return _cmdid_counter;
   }
 
   //used to check next available cmdid, but not really alloc the id
   uint16_t next_cmdid() {
     uint16_t next_id = _cmdid_counter + 1;
-    if( unlikely(next_id == 0) ) next_id = 1;
+    if( _unlikely(next_id == 0) ) next_id = 1;
     return next_id;
   }
 
   uint16_t next_cmdid(uint16_t length) {
     assert(length < 0xffff);
     uint16_t next_id = _cmdid_counter + length;
-    if( unlikely(next_id == 0 || next_id < _cmdid_counter) ) next_id++;
+    if( _unlikely(next_id == 0 || next_id < _cmdid_counter) ) next_id++;
     return next_id;
   }
 
@@ -339,7 +339,7 @@ class NVME_admin_queue : public NVME_queues_base
 
 private:
   enum { 
-    Admin_queue_len  = 8,
+    Admin_queue_len  = 64,
   };
 
   void ring_doorbell_single_completion();

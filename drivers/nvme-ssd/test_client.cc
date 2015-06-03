@@ -33,7 +33,7 @@
 #include <sys/types.h>
 #include <sys/resource.h>
 #include <unistd.h>
-
+#include <sys/wait.h>
 #include <component/base.h>
 #include <common/cycles.h>
 #include <exo/rand.h>
@@ -42,6 +42,8 @@
 #include "tests.h"
 #include "mt_tests.cc"
 #include "verify_tests.cc"
+
+void blast(IBlockDevice * itf, off_t max_lba);
 
 /* very basic test */
 void basic_test(IBlockDevice * itf)
@@ -54,14 +56,6 @@ void basic_test(IBlockDevice * itf)
     
   memset(p,0xA,PAGE_SIZE);
 
-//#define ORIG_SYNC_IO 
-#ifdef ORIG_SYNC_IO 
-  itf->sync_write_block(p, /* must be 512 byte aligned */
-                        phys, 
-                        10, // lba
-                        1,  /* each block is 512 bytes */
-                        1); // queue
-#else
   io_descriptor_t* io_desc = (io_descriptor_t *)malloc(sizeof(io_descriptor_t));
   memset(io_desc, 0, sizeof(io_descriptor_t));
   io_desc->action = NVME_WRITE;
@@ -71,20 +65,12 @@ void basic_test(IBlockDevice * itf)
   io_desc->num_blocks = 1;
    
   itf->sync_io((io_request_t)io_desc, 1, 0);
-#endif
 
   PLOG("======= DONE WRITE ========");
 
   memset(p,0,PAGE_SIZE);
 
 
-#ifdef ORIG_SYNC_IO 
-  itf->sync_read_block(p, /* must be 512 byte aligned */
-                       phys, 
-                       10, // lba
-                       1,  /* each block is 512 bytes */
-                       1); // queue
-#else
   memset(io_desc, 0, sizeof(io_descriptor_t));
   io_desc->action = NVME_READ;
   io_desc->buffer_virt = p;
@@ -93,7 +79,6 @@ void basic_test(IBlockDevice * itf)
   io_desc->num_blocks = 1;
 
   itf->sync_io((io_request_t)io_desc, 1, 0);
-#endif
 
   hexdump(p,512);
 
@@ -109,11 +94,14 @@ int main()
 
   IBlockDevice * itf = (IBlockDevice *) comp->query_interface(IBlockDevice::iid());
 
-  itf->init_device(0);
+  itf->init_device(0, const_cast<char*>("config.xml"));
 
   //basic_test(itf);
+
+  // 512 byte LBA format blast(itf,781422768);
+  blast(itf,97677846);
   //(new mt_tests())->runTest(itf);
-  (new verify_tests())->runTest(itf);
+  //(new verify_tests())->runTest(itf);
 
   itf->shutdown_device();
 

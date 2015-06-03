@@ -18,7 +18,7 @@ public:
    * 
    * @return S_OK on successfully device intialization. E_NOT_FOUND if device instance cannot be found.
    */
-  virtual status_t init_device(unsigned instance) = 0;
+  virtual status_t init_device(unsigned instance, config_t config = NULL) = 0;
 
   /** 
    * Shutdown the device and free resources.  After this is called no other methods can be called subsequently.
@@ -35,6 +35,7 @@ public:
    * @return Pointer to Device instance or NULL if init_device has not been called yet.
    */
   virtual Exokernel::Device * get_device() = 0;
+
 };
 
 #endif // __DEVICE_ITF_H__

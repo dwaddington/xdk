@@ -17,7 +17,7 @@ private:
 
 public:
 
-  RingBuffer() : _tail(0), _head(0){}   
+  RingBuffer() : _head(0), _tail(0){}
   virtual ~RingBuffer() {}
 
   bool push(const Element& item);
@@ -108,7 +108,7 @@ size_t RingBuffer<Element, Size>::increment(size_t idx) const
 {
   size_t new_idx = idx + 1;
   assert(new_idx <= Size);
-  if(unlikely(new_idx == Size))
+  if(_unlikely(new_idx == Size))
     return 0;
   else
     return new_idx;
@@ -210,9 +210,9 @@ class NVME_batch_manager {
       assert(cmdid_start <= cmdid_end);
       uint16_t val = _last_available_cmdid.load(boost::memory_order_relaxed);
       //PLOG("last_available = %u, start_cmdid = %u, end_cmdid = %u", val, cmdid_start, cmdid_end);
-      return (cmdid_start < val && cmdid_end < val
-          || cmdid_start > val && cmdid_end > val
-          );
+      return (  (cmdid_start < val && cmdid_end < val)
+             || (cmdid_start > val && cmdid_end > val)
+             );
     }
 
     //check if we can safely reset the cmd id counter to 0
@@ -264,7 +264,7 @@ class NVME_batch_manager {
       if(_is_complete(idx)) {
         assert(_array[idx].complete == false);
         if(_array[idx].notify) _array[idx].notify->action();
-        _array[idx].complete == true;
+        _array[idx].complete = true;
 
         //if idx is the head, then pop all finished batch info
         if(idx == head) {

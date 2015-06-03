@@ -44,8 +44,6 @@ int main()
   itf->init_device(0);
   Exokernel::Device * dev = itf->get_device();
 
-  itf->sync_read_block(0,0,0,0,0);
-  itf->sync_write_block(0,0,0,0,0);
 
   itf->shutdown_device();
 

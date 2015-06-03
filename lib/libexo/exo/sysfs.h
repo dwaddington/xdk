@@ -450,6 +450,14 @@ namespace Exokernel
      */
     void free_dma_huge_pages(void * p);
 
+    /** 
+     * For debugging purposes, fetch the DMA allocation
+     * list for the calling process.
+     * 
+     * 
+     * @return DMA allocation list.  Entries of the form ownerpid, numa, order, physaddr.
+     */
+    std::string debug_fetch_dma_allocations();
 
     /**----------------------------------------------------------- 
      * MSI and MSI-X interrupt services
@@ -471,10 +479,11 @@ namespace Exokernel
     /** 
      * Set IRQ handling to mask the interrupt in the kernel; this requires
      * explicit clearing of the mask through a subsequent write to the 
-     * irq handle in /proc
+     * irq handle in /proc. A call to this will mask all interrupts
+     * currently allocated to the device.
      * 
      */
-    void irq_set_masking_mode();
+    void irq_set_masking_mode(bool masking = true);
 
     /** 
      * Lookup previously allocated MSI/MSI-X vectors on a device

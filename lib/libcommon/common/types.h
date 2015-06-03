@@ -73,4 +73,5 @@ namespace Component
 }
   typedef void * io_request_t;
   typedef void * notify_t;
+  typedef void * config_t;
 #endif
