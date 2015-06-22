@@ -46,6 +46,7 @@
  */
 static Exokernel::device_vendor_pair_t dev_tbl[] = {{0x8086,0x5845}, // Intel SSD (QEMU)
                                                     {0x144d,0xa820}, // Samsung XS1715
+                                                    {0x8086,0x0953}, // Intel P750
                                                     {0,0}};
 
 class NVME_device : public Exokernel::Pci_express_device
