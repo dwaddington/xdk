@@ -204,6 +204,24 @@ namespace Component
       return S_OK;
     }
 
+    /* Control plane methods */
+
+    virtual status_t start() {
+      return E_NOT_IMPL;
+    }
+
+    virtual status_t stop() {
+      return E_NOT_IMPL;
+    }
+
+    virtual status_t shutdown() {
+      return E_NOT_IMPL;
+    }
+
+    virtual status_t reset() {
+      return E_NOT_IMPL;
+    }
+
     virtual void set_dll_handle(void * dll) {
       assert(dll);
       _dll_handle = dll;
