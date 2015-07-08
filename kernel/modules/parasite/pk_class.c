@@ -305,6 +305,9 @@ static ssize_t dma_alloc_store(struct device * dev,
                                       0,/* offset */
                                       (PAGE_SIZE << order),
                                       DMA_BIDIRECTIONAL);
+    
+    BUG_ON(pci_dma_mapping_error(pkdev->pci_dev, pk_area->phys_addr)!=0);
+
     pk_area->owner_pid = task_pid_nr(current); /* later for use with capability model */
     //    PDBG("alloc_pages_node return p->area=%p p->order=%d page_count(%d)",pk_area->p, pk_area->order, page_count(pk_area->p));
 
@@ -321,7 +324,7 @@ static ssize_t dma_alloc_store(struct device * dev,
     }
 
     /* 
-    /* store new allocation */
+       /* store new allocation */
     LOCK_DMA_AREA_LIST;
     list_add(&pk_area->list, &pkdev->dma_area_list_head);
     UNLOCK_DMA_AREA_LIST;
