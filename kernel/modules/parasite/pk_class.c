@@ -284,7 +284,8 @@ static ssize_t dma_alloc_store(struct device * dev,
         gfp |= GFP_DMA32;
     }
 
-    //    PDBG("calling alloc_pages_node (node_id=%u) (order=%u)",node_id, order);
+    PDBG("calling alloc_pages_node (node_id=%u) (order=%u)",node_id, order);
+    /* allocate NUMA-aware memory */
     new_pages = alloc_pages_node(node_id, gfp, order);
 
     if(new_pages == NULL) {
@@ -296,7 +297,17 @@ static ssize_t dma_alloc_store(struct device * dev,
     pk_area->p = new_pages;
     pk_area->node_id = node_id;
     pk_area->order = order;
-    pk_area->phys_addr = virt_to_phys(page_address(new_pages));
+    //    pk_area->phys_addr = virt_to_phys(page_address(new_pages));
+    /* set up DMA permissions in IO-MMU */
+
+    pk_area->phys_addr = pci_map_page(pkdev->pci_dev,
+                                      new_pages,
+                                      0,/* offset */
+                                      (PAGE_SIZE << order),
+                                      DMA_BIDIRECTIONAL);
+    
+    BUG_ON(pci_dma_mapping_error(pkdev->pci_dev, pk_area->phys_addr)!=0);
+
     pk_area->owner_pid = task_pid_nr(current); /* later for use with capability model */
     //    PDBG("alloc_pages_node return p->area=%p p->order=%d page_count(%d)",pk_area->p, pk_area->order, page_count(pk_area->p));
 
@@ -312,17 +323,19 @@ static ssize_t dma_alloc_store(struct device * dev,
       }
     }
 
-    /* store new allocation */
+    /* 
+       /* store new allocation */
     LOCK_DMA_AREA_LIST;
     list_add(&pk_area->list, &pkdev->dma_area_list_head);
     UNLOCK_DMA_AREA_LIST;
 
     /* testing purposes */
-    PDBG("allocated %lu pages at 0x%p (phys=%llx) (owner=%x)",
+    PDBG("allocated %lu pages at 0x%p (phys=%llx) (owner=%x) (order=%d)",
          num_pages,
          page_address(new_pages),
          virt_to_phys(page_address(new_pages)),
-         pk_area->owner_pid
+         pk_area->owner_pid,
+         pk_area->order
          );
     //    __free_pages(new_pages, num_pages);
 
@@ -375,7 +388,7 @@ static ssize_t dma_alloc_show(struct device *dev,
       if(area->owner_pid != curr_task_pid)
         continue;
       
-      num_chars = sprintf((char *)tmp,"0x%x %d %u 0x%lx\n",             
+      num_chars = sprintf((char *)tmp,"0x%x %d %u 0x%llx\n",             
                           area->owner_pid,
                           area->node_id,
                           area->order,
@@ -491,6 +504,14 @@ static ssize_t dma_free_store(struct device * dev,
 #endif
         /* decrement ref count and free page */
         atomic_dec(&area->p->_count);
+
+        /* unmap from DMA subsystem */
+        pci_unmap_page(pkdev->pci_dev,
+                       area->phys_addr,
+                       (PAGE_SIZE << area->order),
+                       DMA_BIDIRECTIONAL);
+
+        /* free memory */
         __free_pages(area->p,get_order(area->order));
 
         /* remove from list */
@@ -1105,7 +1126,7 @@ void free_dma_memory(struct pk_device * pkdev)
     /* if (area->owner_pid != curr_task_pid)  */
     /*   continue; */
 
-    PLOG("freeing %d pages at (%lx)",
+    PLOG("freeing %d pages at (%llx)",
          1 << area->order,
          area->phys_addr);
 

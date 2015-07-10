@@ -159,7 +159,7 @@ static int __verify_phys_owner(addr_t addr)
       struct pk_dma_area * dma_area;
       dma_area = list_entry(p, struct pk_dma_area, list);
       if(dma_area) {
-        PLOG("DMA entry: %x 0x%lx",dma_area->owner_pid, dma_area->phys_addr);
+        PLOG("DMA entry: %x 0x%llx",dma_area->owner_pid, dma_area->phys_addr);
         if ((dma_area->owner_pid == curr_task_pid) &&
             (dma_area->phys_addr == addr)) 
           return 1; /* bingo */
