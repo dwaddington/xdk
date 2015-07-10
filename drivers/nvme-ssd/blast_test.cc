@@ -101,7 +101,7 @@ public:
  */
 void blast(IBlockDevice * itf, off_t max_lba)
 {
-#define NUM_QUEUES 3
+#define NUM_QUEUES 1
 #define TIME_DURATION_SEC 10
 
   //  pthread_t threads[NUM_QUEUES];
@@ -109,7 +109,7 @@ void blast(IBlockDevice * itf, off_t max_lba)
 
   for(unsigned i=0;i<NUM_QUEUES;i++) {
 
-    threads[i] = new BlasterThread(10+(i*2) /* core */,
+    threads[i] = new BlasterThread((i*2) /* core */,
                                    itf,
                                    i+1, /* queue */
                                    max_lba);

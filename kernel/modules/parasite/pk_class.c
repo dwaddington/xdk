@@ -51,6 +51,7 @@
 
 #include "pk.h"
 #include "pk_fops.h"
+#include "config.h"
 
 extern struct proc_dir_entry * pk_proc_dir_root;
 extern void pk_device_cleanup(struct pk_device * pkdev);
@@ -300,6 +301,7 @@ static ssize_t dma_alloc_store(struct device * dev,
     //    pk_area->phys_addr = virt_to_phys(page_address(new_pages));
     /* set up DMA permissions in IO-MMU */
 
+#ifdef USE_IOMMU
     pk_area->phys_addr = pci_map_page(pkdev->pci_dev,
                                       new_pages,
                                       0,/* offset */
@@ -307,6 +309,9 @@ static ssize_t dma_alloc_store(struct device * dev,
                                       DMA_BIDIRECTIONAL);
     
     BUG_ON(pci_dma_mapping_error(pkdev->pci_dev, pk_area->phys_addr)!=0);
+#else
+    pk_area->phys_addr = virt_to_phys(page_address(new_pages));
+#endif
 
     pk_area->owner_pid = task_pid_nr(current); /* later for use with capability model */
     //    PDBG("alloc_pages_node return p->area=%p p->order=%d page_count(%d)",pk_area->p, pk_area->order, page_count(pk_area->p));
@@ -505,11 +510,13 @@ static ssize_t dma_free_store(struct device * dev,
         /* decrement ref count and free page */
         atomic_dec(&area->p->_count);
 
+#ifdef USE_IOMMU
         /* unmap from DMA subsystem */
         pci_unmap_page(pkdev->pci_dev,
                        area->phys_addr,
                        (PAGE_SIZE << area->order),
                        DMA_BIDIRECTIONAL);
+#endif
 
         /* free memory */
         __free_pages(area->p,get_order(area->order));
