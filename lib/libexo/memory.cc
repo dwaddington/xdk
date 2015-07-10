@@ -277,7 +277,7 @@ void * Exokernel::Memory::huge_shmem_alloc(key_t key,
   assert(handle);
 
   int shmid;
-  int flags = SHM_HUGETLB | SHM_R | SHM_W | IPC_CREAT;
+  int flags = SHM_HUGETLB | SHM_R | SHM_W | IPC_CREAT | 6;  /**< 6 is added to give write/read permission for all */
 
   if(key == 0) {
     PERR("key must be greater than zero.");

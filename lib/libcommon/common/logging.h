@@ -57,7 +57,10 @@
 #define BRIGHT_RED "\033[1m\033[31m"
 
 #define WHITE_ON_RED "\033[41m"
-#define WHITE_ON_GREEN "\033[41m"
+#define WHITE_ON_GREEN "\033[42m"
+#define WHITE_ON_YELLOW "\033[43m"
+#define WHITE_ON_BLUE "\033[44m"
+#define WHITE_ON_MAGENTA "\033[44m"
 
 #define ESC_LOG  NORMAL_GREEN
 #define ESC_DBG  BRIGHT_CYAN
@@ -68,10 +71,9 @@
 
 #undef PDBG
 #undef PLOG
-#undef PINF
+#undef PTEST
 #undef PERR
 #undef PWRN
-#undef PTEST
 #undef PASSERT
 #undef TRACE
 

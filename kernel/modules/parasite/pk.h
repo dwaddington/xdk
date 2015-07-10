@@ -76,7 +76,7 @@ struct pk_dma_area {
   struct page *    p;
   int              node_id;
   unsigned         order;
-  addr_t           phys_addr;
+  dma_addr_t       phys_addr;
   int              owner_pid;
 };
 

@@ -189,32 +189,46 @@ private:
   /** 
    * Initializes the shared memory table. 
    */
-  void* __init(bool need_alloc, unsigned id) {
+  void __init(bool need_alloc, unsigned id) {
     memset(_shm_table_name, 0, 64);
     sprintf(_shm_table_name, "/%s_%d", SHM_TABLE_PREFIX, id);
 
     // Create shared memory object and set its size.
-    int fd = shm_open(_shm_table_name, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
+    int fd;
+    if (need_alloc) {
+      fd = shm_open(_shm_table_name, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IROTH | S_IWOTH);
+    } else {
+      fd = shm_open(_shm_table_name, O_RDONLY, S_IRUSR | S_IROTH);
+    }
+
     if (fd == -1) {
       std::cerr << "Error: shm_open!" << std::endl;
+      fprintf(stderr, "[XDK Shm_table] Open failed:%s\n", strerror(errno));
       exit(1);
     }
 
     if (need_alloc) {
       if (ftruncate(fd, SHM_TABLE_SIZE) == -1) {
         std::cerr << "Error: ftruncate!" << std::endl;
+        fprintf(stderr, "[XDK Shm_table] Truncate failed:%s\n", strerror(errno));
         exit(2);
       }
-    }
-
-    _ptr = mmap(NULL, SHM_TABLE_SIZE,
+    
+      _ptr = mmap(NULL, SHM_TABLE_SIZE,
                 PROT_READ | PROT_WRITE,
                 MAP_SHARED,
                 fd, 0);
+    } else {
+      _ptr = mmap(NULL, SHM_TABLE_SIZE,
+                  PROT_READ,
+                  MAP_SHARED,
+                  fd, 0);
+    }
     assert(_ptr != NULL);
 
     if (_ptr == MAP_FAILED) {
       std::cerr << "Error: mmap!" << std::endl;
+      fprintf(stderr, "[XDK Shm_table] Mmap failed:%s\n", strerror(errno));
       exit(3);
     }
 
@@ -233,7 +247,6 @@ private:
     else {
       _lock = (Spin_lock *)(_ptr);
     }
-    return _ptr;
   }
 
 };

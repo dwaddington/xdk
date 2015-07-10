@@ -204,6 +204,42 @@ namespace Component
       return S_OK;
     }
 
+    /***************************/
+    /** Control plane methods **/
+    /***************************/
+
+    /**
+       Start component operation.  May be stopped through subsequent
+       call to stop();
+    */
+    virtual status_t start() {
+      return E_NOT_IMPL;
+    }
+
+    /**
+       Stop the component operation.  May be restarted through a
+       subsequent call to start();
+    */
+    virtual status_t stop() {
+      return E_NOT_IMPL;
+    }
+
+    /**
+       Shutdown component. Stop and exit threads.  Component
+       cannot be restarted after shutdown.  Once shutdown, the
+       component should be ready for destruction (delete).
+    */
+    virtual status_t shutdown() {
+      return E_NOT_IMPL;
+    }
+
+    /** 
+       Flush buffers and state.
+     */
+    virtual status_t reset() {
+      return E_NOT_IMPL;
+    }
+
     virtual void set_dll_handle(void * dll) {
       assert(dll);
       _dll_handle = dll;

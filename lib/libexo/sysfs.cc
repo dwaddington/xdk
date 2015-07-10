@@ -68,8 +68,10 @@ Exokernel::Device_sysfs::Pci_config_space::Pci_config_space(std::string& root_fs
 
   _fd = open(config_node.c_str(), O_RDWR|O_SYNC);
 
-  if(!_fd)       
+  if(!_fd) {
+    PWRN("unable to open procfs file (%s)", config_node.c_str());
     throw Exokernel::Fatal(__FILE__,__LINE__,"unable to open PCI config space");
+  }
 
   interrogate_bar_regions();
 }
@@ -130,8 +132,10 @@ Pci_mapped_memory_region(std::string& root_fs,
     PLOG("Opening PCI memory space (%s)",s.str().c_str());
     _fd = open(s.str().c_str(), O_RDWR);
 
-    if(!_fd)       
+    if(!_fd) {   
+      PWRN("Unable to open PCI config space (%s)",s.str().c_str());
       throw Exokernel::Fatal(__FILE__,__LINE__,"unable to open PCI mapped memory space");
+    }
 
     _fdm = open(s.str().c_str(), O_RDWR|O_SYNC);
   }

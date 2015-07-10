@@ -42,6 +42,7 @@
 
 #include "pk_fops.h"
 #include "pk.h"
+#include "version.h"
 
 #define DEVICE_NAME "parasite"
 #define PARASITIC_KERNEL_VER "0.1"
@@ -634,7 +635,7 @@ static int __init pk_init(void)
 {
   int rc;
 
-  PLOG("PARASITIC KERNEL loaded.\n");
+  PLOG("PARASITIC KERNEL (build %s) loaded.\n", BUILD);
 
   /* register base /sys/class/parasite - there is only one class instance.
    */  

@@ -1,6 +1,7 @@
 SRC = pk_main.c pk_fops.c pk_pci.c pk_class.c
 
 KERNEL_VER = `uname -r`
+BUILD = `date +%Y%m%d.%k%m`
 
 ccflags-y := -g -Wall
 
@@ -11,10 +12,15 @@ pk-objs := pk_main.o pk_fops.o pk_pci.o pk_class.o pk_grant.o
 #obj-$(CONFIG_UIO_PDRV_GENIRQ)   += uio_pdrv_genirq.o
 
 
-all: pk.ko
+all: version.h pk.ko
 
 pk.ko: 
 	make -C /lib/modules/$(KERNEL_VER)/build M=$(PWD) modules
+
+version.h:
+	@echo "#ifndef __VERSION_H__" > version.h
+	@echo "#define BUILD \"$(BUILD)\"" >> version.h
+	@echo "#endif" >> version.h
 
 clean:
 	make -C /lib/modules/$(KERNEL_VER)/build M=$(PWD) clean
@@ -47,4 +53,4 @@ full-tags:
 	etags `find . -name '*.c'` --append
 
 
-.PHONY: depend TAGS
+.PHONY: depend TAGS version.h
