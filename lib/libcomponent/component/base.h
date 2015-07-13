@@ -55,7 +55,7 @@
   }
 
 #define DECLARE_COMPONENT_UUID(f1,f2,f3,f4,f5,f6,f7,f8,f9,f10)             \
-  static Component::uuid_t component_id() {                                \
+  static Component::uuid_t& component_id() {                                \
     static Component::uuid_t comp_uuid = {f1,f2,f3,f4,{f5,f6,f7,f8,f9,f10}}; \
     return comp_uuid;                                               \
   }
