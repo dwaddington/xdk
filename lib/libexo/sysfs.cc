@@ -461,6 +461,48 @@ alloc_dma_huge_pages(size_t num_pages, addr_t * phys_addr, int numa_node, int fl
 
 
 /** 
+ * Grant access to allocated memory to all other processes
+ * 
+ * @param phys_addr Physical address of allocated region
+ * 
+ * @return 
+ */
+status_t
+Exokernel::Device_sysfs::
+grant_dma_access(addr_t phys_addr) 
+{
+  assert(!_fs_root_name.empty());
+
+  PINF("granting access ...");
+  try {
+
+    /* first allocate physical pages */
+    std::fstream fs;
+    std::string n = _fs_root_name;
+    n += "/grant_access";
+ 
+    fs.open(n.c_str());
+
+    std::stringstream sstr;
+    sstr << "0x" << std::hex << phys_addr << std::endl;
+    fs << sstr.str();
+  }
+  catch(Exokernel::Fatal e) {
+    PERR("exception %s",e.cause());
+    throw e;
+  }
+  catch(...) {
+    throw Exokernel::Fatal(__FILE__,__LINE__,
+                           "unexpected condition in grant_dma_access");
+  }
+
+  PINF("grant_dma_access OK.");
+  return S_OK;
+}
+
+
+
+/** 
  * For debugging purposes, fetch the DMA allocation
  * list for the calling process.
  * 

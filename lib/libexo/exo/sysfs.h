@@ -450,6 +450,16 @@ namespace Exokernel
      */
     void free_dma_huge_pages(void * p);
 
+
+    /** 
+     * Grant all processes access to allocated memory
+     * 
+     * @param phys_addr Physical address of memory to grant access to
+     * 
+     * @return 
+     */
+    status_t grant_dma_access(addr_t phys_addr);
+
     /** 
      * For debugging purposes, fetch the DMA allocation
      * list for the calling process.

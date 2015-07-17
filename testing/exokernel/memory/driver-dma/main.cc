@@ -34,6 +34,9 @@ public:
 
     memset(p,0,HUGE_PAGE_SIZE * num_pages);
 
+    // test making shared
+    grant_dma_access(phys_addr);
+
     free_dma_huge_pages(p);
   }
 
@@ -46,9 +49,12 @@ public:
 
     PINF("allocations:\n%s",debug_fetch_dma_allocations().c_str());
 
-    PINF("Allocated %d pages: v=%p p=%p", num_pages, p, (void*) phys_addr);
+    PINF("* Allocated %d pages: v=%p p=%p", num_pages, p, (void*) phys_addr);
 
     memset(p,0,PAGE_SIZE * num_pages);
+
+    // test making shared
+    grant_dma_access(phys_addr);
 
     free_dma_pages(p);
   }

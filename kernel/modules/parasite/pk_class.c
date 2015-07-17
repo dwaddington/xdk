@@ -204,8 +204,6 @@ static ssize_t dma_mask_store(struct device * dev,
     return -EIO;
   }
 
-  
-
   PLOG("DMA mask set to: 0x%llx \n",new_mask);
   return count;
 
@@ -1168,7 +1166,10 @@ static ssize_t grant_access_store(struct device * dev,
                                   size_t count)
 {
   struct pk_device * pkdev = (struct pk_device *) dev_get_drvdata(dev);
+  struct pk_dma_area * area;
   addr_t phys_addr = 0;
+
+  PDBG("grant_access_store called.");
 
   if(!pkdev) goto error;
   if(!pkdev->pci_dev) goto error;
@@ -1180,12 +1181,15 @@ static ssize_t grant_access_store(struct device * dev,
   }
 
   /* check that the calling process owns this allocation */
-  struct pk_dma_area * area = get_owned_dma_area(0x1);
-  if(area==NULL)
+  area = get_owned_dma_area(phys_addr);
+
+  if(area==NULL) {
+    PWRN("area not owned by calling process.");
     return -EINVAL;
+  }
 
   area->flags |= DMA_AREA_FLAG_SHARED_ALL;
-  PLOG("granted shared-all access to 0x%lx", phys_addr);
+  PDBG("granted shared-all access to 0x%lx", phys_addr);
 
   return count;
 
