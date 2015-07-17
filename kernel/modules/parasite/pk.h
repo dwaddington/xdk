@@ -67,6 +67,10 @@ enum {
   E_FAIL = -1,
 };
 
+enum {
+  DMA_AREA_FLAG_SHARED_ALL = 0x0,
+};
+
 /** 
  * Types
  * 
@@ -78,6 +82,7 @@ struct pk_dma_area {
   unsigned         order;
   dma_addr_t       phys_addr;
   int              owner_pid;
+  unsigned         flags;
 };
 
 #define PK_MAGIC 0xfeeb1e00
