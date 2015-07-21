@@ -68,7 +68,7 @@ int main()
   Pagemap pm;
   Dummy_device dev;
   dev.test_dma_allocation();
-  //  dev.test_huge_dma_allocation();
+  dev.test_huge_dma_allocation();
 
   printf("Press return to continue....\n");
   getchar();
