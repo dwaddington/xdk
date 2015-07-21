@@ -182,7 +182,7 @@ uint16_t Exokernel::Device_sysfs::Sysfs_file_accessor::read16(unsigned offset)
   assert(_fd > 0);
   uint16_t val;
 
-  if(pread(_fd,&val,2,offset) != 2)
+  if(pread(_fd,&val,2,offset) != 2) 
     throw Exokernel::Fatal(__FILE__,__LINE__,"unable to read16 PCI config space");
 
   return val;

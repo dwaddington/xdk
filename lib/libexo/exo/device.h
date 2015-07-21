@@ -377,7 +377,13 @@ namespace Exokernel
      */
     void check_pci_link() {
       /* Get the negotiated link width and speed from PCI config space */
-      _pci_link.status = pci_config()->read16(pci_link_status_reg); // is this STANDARD?
+      try {
+        _pci_link.status = pci_config()->read16(pci_link_status_reg); // is this STANDARD?
+      }
+      catch(...) {
+        PINF("unable to check pci link - non-standard register?");
+        return;
+      }
 
       switch (_pci_link.status & pci_link_width_reg) {
       case pci_link_width_1:
