@@ -48,6 +48,7 @@
 
 #include <common/types.h>
 #include <common/logging.h>
+#include <common/utils.h>
 
 namespace Exokernel
 {
@@ -142,7 +143,7 @@ namespace Exokernel
     addr_t virt_to_phys(void * vaddr) {
       
       uint64_t pfn = __get_page_frame_number(vaddr);
-      return (pfn * _page_size) + (((addr_t) vaddr) % _page_size);
+      return (pfn << PAGE_SHIFT) + (((addr_t) vaddr) % _page_size);
     }
 
     /** 
@@ -213,29 +214,29 @@ namespace Exokernel
      * @param f 64-bit flag
      */
     void dump_page_flags(page_flag_t f) {
-      if(f & PAGE_FLAG_LOCKED) PLOG("pf:locked");
-      if(f & PAGE_FLAG_ERROR) PLOG("pf:error");
-      if(f & PAGE_FLAG_REFERENCED) PLOG("pf:referenced");
-      if(f & PAGE_FLAG_UPTODATE) PLOG("pf:uptodate");
-      if(f & PAGE_FLAG_DIRTY) PLOG("pf:dirty");
-      if(f & PAGE_FLAG_LRU) PLOG("pf:lru");
-      if(f & PAGE_FLAG_ACTIVE) PLOG("pf:active");
-      if(f & PAGE_FLAG_SLAB) PLOG("pf:slab");
-      if(f & PAGE_FLAG_WRITEBACK) PLOG("pf:writeback");
-      if(f & PAGE_FLAG_RECLAIM) PLOG("pf:reclaim");
-      if(f & PAGE_FLAG_BUDDY) PLOG("pf:buddy");
-      if(f & PAGE_FLAG_MMAP) PLOG("pf:mmap");
-      if(f & PAGE_FLAG_ANON) PLOG("pf:anon");
-      if(f & PAGE_FLAG_SWAPCACHE) PLOG("pf:swapcache");
-      if(f & PAGE_FLAG_SWAPBACKED) PLOG("pf:swapbacked");
-      if(f & PAGE_FLAG_COMPOUND_HEAD) PLOG("pf:compound head");
-      if(f & PAGE_FLAG_COMPOUND_TAIL) PLOG("pf:compound tail");
-      if(f & PAGE_FLAG_HUGE) PLOG("pf:huge");
-      if(f & PAGE_FLAG_UNEVICTABLE) PLOG("pf:unevictable");
-      if(f & PAGE_FLAG_HWPOISON) PLOG("pf:hwpoison");
-      if(f & PAGE_FLAG_NOPAGE) PLOG("pf:nopage");
-      if(f & PAGE_FLAG_KSM) PLOG("pf:ksm");
-      if(f & PAGE_FLAG_THP) PLOG("pf:thp");
+      if(f & PAGE_FLAG_LOCKED) PLOG("pageflag:locked");
+      if(f & PAGE_FLAG_ERROR) PLOG("pageflag:error");
+      if(f & PAGE_FLAG_REFERENCED) PLOG("pageflag:referenced");
+      if(f & PAGE_FLAG_UPTODATE) PLOG("pageflag:uptodate");
+      if(f & PAGE_FLAG_DIRTY) PLOG("pageflag:dirty");
+      if(f & PAGE_FLAG_LRU) PLOG("pageflag:lru");
+      if(f & PAGE_FLAG_ACTIVE) PLOG("pageflag:active");
+      if(f & PAGE_FLAG_SLAB) PLOG("pageflag:slab");
+      if(f & PAGE_FLAG_WRITEBACK) PLOG("pageflag:writeback");
+      if(f & PAGE_FLAG_RECLAIM) PLOG("pageflag:reclaim");
+      if(f & PAGE_FLAG_BUDDY) PLOG("pageflag:buddy");
+      if(f & PAGE_FLAG_MMAP) PLOG("pageflag:mmap");
+      if(f & PAGE_FLAG_ANON) PLOG("pageflag:anon");
+      if(f & PAGE_FLAG_SWAPCACHE) PLOG("pageflag:swapcache");
+      if(f & PAGE_FLAG_SWAPBACKED) PLOG("pageflag:swapbacked");
+      if(f & PAGE_FLAG_COMPOUND_HEAD) PLOG("pageflag:compound head");
+      if(f & PAGE_FLAG_COMPOUND_TAIL) PLOG("pageflag:compound tail");
+      if(f & PAGE_FLAG_HUGE) PLOG("pageflag:huge");
+      if(f & PAGE_FLAG_UNEVICTABLE) PLOG("pageflag:unevictable");
+      if(f & PAGE_FLAG_HWPOISON) PLOG("pageflag:hwpoison");
+      if(f & PAGE_FLAG_NOPAGE) PLOG("pageflag:nopage");
+      if(f & PAGE_FLAG_KSM) PLOG("pageflag:ksm");
+      if(f & PAGE_FLAG_THP) PLOG("pageflag:thp");
     }
   };
 }

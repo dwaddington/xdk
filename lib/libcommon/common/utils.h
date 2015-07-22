@@ -51,6 +51,7 @@
 #endif
 
 #define PAGE_SIZE (4096UL)
+#define PAGE_SHIFT 12
 #define HUGE_PAGE_SIZE (2 * 1024 * 1024UL)
 #define HUGE_MAGIC 0x0fabf00dUL
 

@@ -5,6 +5,7 @@
 #include <libexo.h>
 #include <common/dump_utils.h>
 #include <common/cycles.h>
+#include <exo/pagemap.h>
 
 using namespace Exokernel;
 
@@ -16,11 +17,15 @@ dev_tbl[] = {{0x8086,0x2922}, // Qemu
              {0x8086,0x2829}, // VirtualBox
              {0,0}};
 
+static Exokernel::Pagemap pm;
+
 class Dummy_device : public Exokernel::Pci_device {
+
 public:
   Dummy_device() : 
     Exokernel::Pci_device(0, dev_tbl) 
   {
+    pci_config()->dump_pci_device_info();
   }
 
   void test_huge_dma_allocation()
@@ -32,10 +37,21 @@ public:
 
     PINF("Allocated %d pages: v=%p p=%p", num_pages, p, (void*) phys_addr);
 
+    PINF("BEFORE TOUCH: Page map thinks p=%p is mapped to p=%p",
+         (void*) phys_addr,
+         (void*) pm.virt_to_phys(p));
+
     memset(p,0,HUGE_PAGE_SIZE * num_pages);
 
     // test making shared
     grant_dma_access(phys_addr);
+
+    // dump page map
+    PINF("AFTER TOUCH: alloc_dma_huge_pages returned p=%p; pagemap gives p=%p (delta=%ld bytes)",
+         (void*) phys_addr,
+         (void*) pm.virt_to_phys(p),
+         ((unsigned long) pm.virt_to_phys(p) - (unsigned long) phys_addr)
+         );
 
     free_dma_huge_pages(p);
   }
@@ -44,17 +60,33 @@ public:
   {
     addr_t phys_addr;
     void * p;
-    int num_pages = 24;
+    int num_pages = 1;
     p = alloc_dma_pages(num_pages, &phys_addr);
+    //    p = alloc_dma_pages(num_pages, &phys_addr, (void*) 0x7fff00000000);
 
     PINF("allocations:\n%s",debug_fetch_dma_allocations().c_str());
 
     PINF("* Allocated %d pages: v=%p p=%p", num_pages, p, (void*) phys_addr);
 
+    printf("!!!! %lx\n",*((unsigned long*)p));
     memset(p,0,PAGE_SIZE * num_pages);
+
+    // pm.dump_self_region_info();
+
+    // PINF("page flags =>");
+    // pm.dump_page_flags(pm.page_flags(p));
+    // PINF("end of page flags.");
 
     // test making shared
     grant_dma_access(phys_addr);
+
+    // dump page map
+    PINF("AFTER TOUCH: alloc_dma_pages returned v=%p p=%p; pagemap gives p=%p (delta=%ld bytes)",
+         p,
+         (void*) phys_addr,
+         (void*) pm.virt_to_phys(p),
+         ((unsigned long) pm.virt_to_phys(p) - (unsigned long) phys_addr)
+         );
 
     free_dma_pages(p);
   }
@@ -68,7 +100,7 @@ int main()
   Pagemap pm;
   Dummy_device dev;
   dev.test_dma_allocation();
-  dev.test_huge_dma_allocation();
+  //  dev.test_huge_dma_allocation();
 
   printf("Press return to continue....\n");
   getchar();

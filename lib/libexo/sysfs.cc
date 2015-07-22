@@ -44,6 +44,7 @@
 #include <errno.h>
 
 #include <common/logging.h>
+#include <common/utils.h>
 
 #include "exo/sysfs.h"
 #include "exo/memory.h"
@@ -264,6 +265,18 @@ Exokernel::Device_sysfs::
   }
 }
 
+static void touch(void * addr, size_t size) {
+
+  SUPPRESS_NOT_USED_WARN volatile byte b;
+
+  // Touch memory to trigger page mapping.
+  for(volatile byte * p = (byte*) addr; 
+      ((unsigned long)p) < (((unsigned long)addr)+size); 
+      p+=PAGE_SIZE) {
+    b = *p; // R touch.
+  }
+}
+
 
 /** 
  * Allocate contiguous pages for DMA
@@ -277,7 +290,11 @@ Exokernel::Device_sysfs::
  */
 void * 
 Exokernel::Device_sysfs::
-alloc_dma_pages(size_t num_pages, addr_t * phys_addr, int numa_node, int flags) 
+alloc_dma_pages(size_t num_pages, 
+                addr_t * phys_addr, 
+                void * virt_hint,
+                int numa_node, 
+                int flags) 
 {
   try {
 
@@ -329,7 +346,7 @@ alloc_dma_pages(size_t num_pages, addr_t * phys_addr, int numa_node, int flags)
       if(fd == -1)
         throw Exokernel::Fatal(__FILE__,__LINE__,"unable to open /dev/parasite");
       
-      p = mmap(NULL,
+      p = mmap(virt_hint,
                num_pages * PAGE_SIZE, 
                PROT_READ | PROT_WRITE, // prot
                MAP_SHARED | flags,
@@ -343,8 +360,11 @@ alloc_dma_pages(size_t num_pages, addr_t * phys_addr, int numa_node, int flags)
       }
       /* zero memory */
       //      memset(p,0,num_pages * PAGE_SIZE);
-      assert(check_aligned(p,PAGE_SIZE));
-          
+
+      /* touch pages */
+      touch((void*)p,(size_t)(num_pages * PAGE_SIZE));
+
+      assert(check_aligned(p,PAGE_SIZE));          
       close(fd);
     }
 

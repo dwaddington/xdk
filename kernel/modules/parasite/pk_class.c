@@ -47,6 +47,7 @@
 #include <linux/mmzone.h>
 #include <linux/delay.h>
 #include <linux/msi.h>
+#include <linux/highmem.h>
 #include <linux/cred.h> /* see https://www.kernel.org/doc/Documentation/security/credentials.txt */
 
 #include "pk.h"
@@ -285,6 +286,7 @@ static ssize_t dma_alloc_store(struct device * dev,
     }
 
     PDBG("calling alloc_pages_node (node_id=%u) (order=%u)",node_id, order);
+    
     /* allocate NUMA-aware memory */
     new_pages = alloc_pages_node(node_id, gfp, order);
 
@@ -311,7 +313,13 @@ static ssize_t dma_alloc_store(struct device * dev,
     
     BUG_ON(pci_dma_mapping_error(pkdev->pci_dev, pk_area->phys_addr)!=0);
 #else
-    pk_area->phys_addr = virt_to_phys(page_address(new_pages));
+    {
+      void * tmp = kmap(new_pages);
+      
+      pk_area->phys_addr = virt_to_phys(tmp);
+      memset(tmp,0xb,PAGE_SIZE);
+      kunmap(tmp);
+    }
 #endif
 
     pk_area->owner_pid = task_pid_nr(current); /* later for use with capability model */
@@ -339,15 +347,13 @@ static ssize_t dma_alloc_store(struct device * dev,
     //    strcpy(p,"hello");
 
     /* testing purposes */
-    PDBG("allocated %lu pages at 0x%p (phys=%llx) (owner=%x) (order=%d)",
+    PDBG("module allocated %lu pages at (phys=%llx) (owner=%x) (order=%d)",
          num_pages,
-         page_address(new_pages),
          virt_to_phys(page_address(new_pages)),
          pk_area->owner_pid,
          pk_area->order
          );
     //    __free_pages(new_pages, num_pages);
-
     
   }
   
