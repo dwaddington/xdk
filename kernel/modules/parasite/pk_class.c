@@ -300,8 +300,7 @@ static ssize_t dma_alloc_store(struct device * dev,
     pk_area->node_id = node_id;
     pk_area->order = order;
     pk_area->flags = 0;
-
-    
+    pk_area->owner_pid = task_pid_nr(current); /* later for use with capability model */
 
 #ifdef USE_IOMMU
     /* set up DMA permissions in IO-MMU */
@@ -314,17 +313,15 @@ static ssize_t dma_alloc_store(struct device * dev,
     BUG_ON(pci_dma_mapping_error(pkdev->pci_dev, pk_area->phys_addr)!=0);
 #else
     {
-      void * tmp = kmap(new_pages);
+      void * p = page_address(new_pages);
       
-      pk_area->phys_addr = virt_to_phys(tmp);
-      memset(tmp,0xb,PAGE_SIZE);
-      kunmap(tmp);
+      pk_area->phys_addr = virt_to_phys(p);
+      memset(p,0xb,PAGE_SIZE);
     }
 #endif
-
-    pk_area->owner_pid = task_pid_nr(current); /* later for use with capability model */
     
-
+    BUG_ON(!page_mapped(new_pages));
+    
     /* prevent pages being swapped out */
     {
       struct page * page = new_pages;
@@ -341,10 +338,6 @@ static ssize_t dma_alloc_store(struct device * dev,
     LOCK_DMA_AREA_LIST;
     list_add(&pk_area->list, &pkdev->dma_area_list_head);
     UNLOCK_DMA_AREA_LIST;
-
-    // DEBUG - you can look at this content later
-    //    void * p = page_address(new_pages);
-    //    strcpy(p,"hello");
 
     /* testing purposes */
     PDBG("module allocated %lu pages at (phys=%llx) (owner=%x) (order=%d)",
