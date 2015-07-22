@@ -381,7 +381,7 @@ namespace Exokernel
         _pci_link.status = pci_config()->read16(pci_link_status_reg); // is this STANDARD?
       }
       catch(...) {
-        PINF("unable to check pci link - non-standard register?");
+        PINF("unable to check PCI-link via PCI configuration space - non-standard register? permissions?");
         return;
       }
 
