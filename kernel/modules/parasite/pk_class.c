@@ -298,10 +298,11 @@ static ssize_t dma_alloc_store(struct device * dev,
     pk_area->node_id = node_id;
     pk_area->order = order;
     pk_area->flags = 0;
-    //    pk_area->phys_addr = virt_to_phys(page_address(new_pages));
-    /* set up DMA permissions in IO-MMU */
+
+    
 
 #ifdef USE_IOMMU
+    /* set up DMA permissions in IO-MMU */
     pk_area->phys_addr = pci_map_page(pkdev->pci_dev,
                                       new_pages,
                                       0,/* offset */
@@ -314,7 +315,7 @@ static ssize_t dma_alloc_store(struct device * dev,
 #endif
 
     pk_area->owner_pid = task_pid_nr(current); /* later for use with capability model */
-    //    PDBG("alloc_pages_node return p->area=%p p->order=%d page_count(%d)",pk_area->p, pk_area->order, page_count(pk_area->p));
+    
 
     /* prevent pages being swapped out */
     {
@@ -332,6 +333,10 @@ static ssize_t dma_alloc_store(struct device * dev,
     LOCK_DMA_AREA_LIST;
     list_add(&pk_area->list, &pkdev->dma_area_list_head);
     UNLOCK_DMA_AREA_LIST;
+
+    // DEBUG - you can look at this content later
+    //    void * p = page_address(new_pages);
+    //    strcpy(p,"hello");
 
     /* testing purposes */
     PDBG("allocated %lu pages at 0x%p (phys=%llx) (owner=%x) (order=%d)",

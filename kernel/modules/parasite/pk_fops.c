@@ -135,13 +135,12 @@ static int fops_release(struct inode *inode, struct file *filep)
 
 static int fops_mmap(struct file *file, struct vm_area_struct *vma)
 {
-  unsigned long start  = vma->vm_start;
-  unsigned long size   = vma->vm_end - vma->vm_start;
+  if(vma->vm_end < vma->vm_start)
+    return -EINVAL;
 
   //  unsigned long offset = vma->vm_pgoff * PAGE_SIZE;
 
   /* PDBG("file->private_data = %p",file->private_data); */
-  PLOG("fops_mmap: start = %lx ; size = %lx", start, size);
 
   //vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot); /* disable cache */
   //vma->vm_page_prot = pgprot_writecombine(vma->vm_page_prot); /* cache write combine */
@@ -169,22 +168,18 @@ static int fops_mmap(struct file *file, struct vm_area_struct *vma)
 #endif
 
   {
-    unsigned long pfn = vma->vm_pgoff; //(offset >> PAGE_SHIFT);
-    struct mm_struct *mm = current->mm;
-
-    /* hold mm semaphore for the process */
-    //    down_write(&mm->mmap_sem);
+    // unsigned long pfn = vma->vm_pgoff;
+    // PLOG("pfn=%lx",pfn << PAGE_SHIFT);
 
     if (remap_pfn_range(vma, 
-                        start, 
-                        pfn, 
-                        size,
+                        vma->vm_start,
+                        vma->vm_pgoff, // passed through physical address 
+                        vma->vm_end - vma->vm_start,
                         vma->vm_page_prot)) {
       PLOG("remap_pfn_range failed.");
-      //      up_write(&mm->mmap_sem);
-      return -EIO;
+      return -EAGAIN;
     }
-    // up_write(&mm->mmap_sem);
+
   }
 
   vma->vm_ops = &pk_dma_mmap_fops;
