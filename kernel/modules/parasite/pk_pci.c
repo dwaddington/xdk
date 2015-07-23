@@ -237,7 +237,6 @@ static int probe(struct pci_dev *dev,
   {
     struct pk_device * pkd = sysfs_class_register_device(dev);
     pkd->msi_support = msi;
-    pkd->dev = dev;
 
     switch(msi) {
     case 1: 

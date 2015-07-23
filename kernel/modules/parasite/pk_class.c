@@ -240,6 +240,8 @@ static ssize_t dma_alloc_store(struct device * dev,
                                size_t count)
 {
   struct pk_device * pkdev = (struct pk_device *) dev_get_drvdata(dev);
+
+  PLOG("pkdev=%p", pkdev);
   unsigned long num_pages = 0;
   int node_id = 0, order = 0;
 
@@ -289,12 +291,11 @@ static ssize_t dma_alloc_store(struct device * dev,
     
     /* allocate NUMA-aware memory */
     //    new_pages = alloc_pages_node(node_id, gfp, order);
-    PLOG("dev now is %p",pkdev->dev);
     PLOG("about to call dma_alloc_coherent..");
 
     dma_addr_t handle;
-    new_pages = dma_alloc_coherent(NULL, //pkdev->dev ????,
-                                   1024,
+    new_pages = dma_alloc_coherent(&pkdev->pci_dev->dev,
+                                   (1ULL << order) * PAGE_SIZE,
                                    &handle,
                                    GFP_KERNEL);
 
