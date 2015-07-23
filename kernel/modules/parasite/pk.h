@@ -79,7 +79,7 @@ struct pk_dma_area {
   struct list_head list;
   void *    p;
   int              node_id;
-  unsigned         order;
+  size_t           order;
   dma_addr_t       phys_addr;
   int              owner_pid;
   unsigned         flags;
