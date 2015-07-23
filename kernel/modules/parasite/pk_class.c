@@ -285,6 +285,16 @@ static ssize_t dma_alloc_store(struct device * dev,
         gfp |= GFP_DMA32;
     }
 
+    /* This piece of code contains several assumptions.
+     * 1.  This is for device Rx, therefor a cold page is preferred.
+     * 2.  The expectation is the user wants a compound page.
+     * 3.  If requesting a order 0 page it will not be compound
+     *     due to the check to see if order has a value in prep_new_page
+     * 4.  __GFP_MEMALLOC is ignored if __GFP_NOMEMALLOC is set due to
+     *     code in gfp_to_alloc_flags that should be enforcing this.
+     */
+    gfp |= __GFP_COLD | __GFP_COMP | __GFP_MEMALLOC;
+       
     PDBG("calling alloc_pages_node (node_id=%u) (order=%u)",node_id, order);
     
     /* allocate NUMA-aware memory */
@@ -320,7 +330,12 @@ static ssize_t dma_alloc_store(struct device * dev,
     }
 #endif
     
-    BUG_ON(!page_mapped(new_pages));
+    {
+      void * p = kmap(new_pages);
+      memset(p,0xe,PAGE_SIZE);
+      kunmap(p);
+    }
+    //    BUG_ON(!page_mapped(new_pages));
     
     /* prevent pages being swapped out */
     {
