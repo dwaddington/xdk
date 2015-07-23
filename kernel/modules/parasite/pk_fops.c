@@ -35,6 +35,7 @@
 #include <linux/cdev.h>
 #include <linux/miscdevice.h>
 
+#include "common.h"
 #include "pk.h"
 
 extern struct list_head g_pkdevice_list;
@@ -131,54 +132,15 @@ static int fops_release(struct inode *inode, struct file *filep)
   return 0;
 }
 
-/** 
- * Basic sanity checking to ensure that mmap calls applied through
- * /dev/parasite are a.) allocated by the PK and b.) belong to the
- * calling process.
- *
- * TODO: add some size checking and list safety
- * 
- * @param addr Physical address being requested
- * 
- * @return 1 if valid, 0 otherwise
- */
-static int __verify_phys_owner(addr_t addr)
-{
-  struct pk_device * d;
-  int curr_task_pid = task_pid_nr(current);
-
-  // TODO: list locking
-
-  /* iterate over pk_devices */
-  list_for_each_entry(d,&g_pkdevice_list,list) {
-
-    /* iterate over DMA area list */
-    struct list_head * p;
-
-    list_for_each(p, &d->dma_area_list_head) {
-      struct pk_dma_area * dma_area;
-      dma_area = list_entry(p, struct pk_dma_area, list);
-      if(dma_area) {
-        PLOG("DMA entry: %x 0x%llx",dma_area->owner_pid, dma_area->phys_addr);
-        if ((dma_area->owner_pid == curr_task_pid) &&
-            (dma_area->phys_addr == addr)) 
-          return 1; /* bingo */
-      }
-    }
-
-  }
-  return 0;
-}
 
 static int fops_mmap(struct file *file, struct vm_area_struct *vma)
 {
-  unsigned long start  = vma->vm_start;
-  unsigned long size   = vma->vm_end - vma->vm_start;
+  if(vma->vm_end < vma->vm_start)
+    return -EINVAL;
 
   //  unsigned long offset = vma->vm_pgoff * PAGE_SIZE;
 
   /* PDBG("file->private_data = %p",file->private_data); */
-  PLOG("fops_mmap: start = %lx ; size = %lx", start, size);
 
   //vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot); /* disable cache */
   //vma->vm_page_prot = pgprot_writecombine(vma->vm_page_prot); /* cache write combine */
@@ -190,26 +152,34 @@ static int fops_mmap(struct file *file, struct vm_area_struct *vma)
   // TOFIX:
   // !!! For the moment switch off. Since I want to use this for device mapping 
   // we need to add checks to see if the memory belongs to this device.
-  //  if(!__verify_phys_owner(offset))
-  //    return -EINVAL;
+#if 0
+  // perform ownership check
+  {
+    struct pk_dma_area * area = get_owned_dma_area(start);
+    if(!area)
+      return -EINVAL;
+
+    if(!(area->flags & DMA_AREA_FLAG_SHARED_ALL)) {
+      PWRN("attemp to mmap to memory that has not been flagged as shared.");
+      return -EINVAL;
+    }
+  }
+
+#endif
 
   {
-    unsigned long pfn = vma->vm_pgoff; //(offset >> PAGE_SHIFT);
-    struct mm_struct *mm = current->mm;
-
-    /* hold mm semaphore for the process */
-    //    down_write(&mm->mmap_sem);
+    // unsigned long pfn = vma->vm_pgoff;
+    // PLOG("pfn=%lx",pfn << PAGE_SHIFT);
 
     if (remap_pfn_range(vma, 
-                        start, 
-                        pfn, 
-                        size,
+                        vma->vm_start,
+                        vma->vm_pgoff, // passed through physical address 
+                        vma->vm_end - vma->vm_start,
                         vma->vm_page_prot)) {
       PLOG("remap_pfn_range failed.");
-      //      up_write(&mm->mmap_sem);
-      return -EIO;
+      return -EAGAIN;
     }
-    // up_write(&mm->mmap_sem);
+
   }
 
   vma->vm_ops = &pk_dma_mmap_fops;

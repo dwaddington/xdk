@@ -47,11 +47,13 @@
 #include <linux/mmzone.h>
 #include <linux/delay.h>
 #include <linux/msi.h>
+#include <linux/highmem.h>
 #include <linux/cred.h> /* see https://www.kernel.org/doc/Documentation/security/credentials.txt */
 
 #include "pk.h"
 #include "pk_fops.h"
 #include "config.h"
+#include "common.h"
 
 extern struct proc_dir_entry * pk_proc_dir_root;
 extern void pk_device_cleanup(struct pk_device * pkdev);
@@ -203,8 +205,6 @@ static ssize_t dma_mask_store(struct device * dev,
     return -EIO;
   }
 
-  
-
   PLOG("DMA mask set to: 0x%llx \n",new_mask);
   return count;
 
@@ -285,7 +285,18 @@ static ssize_t dma_alloc_store(struct device * dev,
         gfp |= GFP_DMA32;
     }
 
+    /* This piece of code contains several assumptions.
+     * 1.  This is for device Rx, therefor a cold page is preferred.
+     * 2.  The expectation is the user wants a compound page.
+     * 3.  If requesting a order 0 page it will not be compound
+     *     due to the check to see if order has a value in prep_new_page
+     * 4.  __GFP_MEMALLOC is ignored if __GFP_NOMEMALLOC is set due to
+     *     code in gfp_to_alloc_flags that should be enforcing this.
+     */
+    gfp |= __GFP_COLD | __GFP_COMP | __GFP_MEMALLOC;
+       
     PDBG("calling alloc_pages_node (node_id=%u) (order=%u)",node_id, order);
+    
     /* allocate NUMA-aware memory */
     new_pages = alloc_pages_node(node_id, gfp, order);
 
@@ -298,10 +309,11 @@ static ssize_t dma_alloc_store(struct device * dev,
     pk_area->p = new_pages;
     pk_area->node_id = node_id;
     pk_area->order = order;
-    //    pk_area->phys_addr = virt_to_phys(page_address(new_pages));
-    /* set up DMA permissions in IO-MMU */
+    pk_area->flags = 0;
+    pk_area->owner_pid = task_pid_nr(current); /* later for use with capability model */
 
 #ifdef USE_IOMMU
+    /* set up DMA permissions in IO-MMU */
     pk_area->phys_addr = pci_map_page(pkdev->pci_dev,
                                       new_pages,
                                       0,/* offset */
@@ -310,12 +322,21 @@ static ssize_t dma_alloc_store(struct device * dev,
     
     BUG_ON(pci_dma_mapping_error(pkdev->pci_dev, pk_area->phys_addr)!=0);
 #else
-    pk_area->phys_addr = virt_to_phys(page_address(new_pages));
+    {
+      void * p = page_address(new_pages);
+      
+      pk_area->phys_addr = virt_to_phys(p);
+      memset(p,0xb,PAGE_SIZE);
+    }
 #endif
-
-    pk_area->owner_pid = task_pid_nr(current); /* later for use with capability model */
-    //    PDBG("alloc_pages_node return p->area=%p p->order=%d page_count(%d)",pk_area->p, pk_area->order, page_count(pk_area->p));
-
+    
+    {
+      void * p = kmap(new_pages);
+      memset(p,0xe,PAGE_SIZE);
+      kunmap(p);
+    }
+    //    BUG_ON(!page_mapped(new_pages));
+    
     /* prevent pages being swapped out */
     {
       struct page * page = new_pages;
@@ -328,22 +349,19 @@ static ssize_t dma_alloc_store(struct device * dev,
       }
     }
 
-    /* 
-       /* store new allocation */
+    /* store new allocation */
     LOCK_DMA_AREA_LIST;
     list_add(&pk_area->list, &pkdev->dma_area_list_head);
     UNLOCK_DMA_AREA_LIST;
 
     /* testing purposes */
-    PDBG("allocated %lu pages at 0x%p (phys=%llx) (owner=%x) (order=%d)",
+    PDBG("module allocated %lu pages at (phys=%llx) (owner=%x) (order=%d)",
          num_pages,
-         page_address(new_pages),
          virt_to_phys(page_address(new_pages)),
          pk_area->owner_pid,
          pk_area->order
          );
     //    __free_pages(new_pages, num_pages);
-
     
   }
   
@@ -541,7 +559,6 @@ static ssize_t dma_free_store(struct device * dev,
  error:
   PERR("dev_get_drvdata returned a NULL pointer.");
   return -EIO;
-
 }
 
 
@@ -1152,6 +1169,56 @@ void free_dma_memory(struct pk_device * pkdev)
 }
 
 
+/** 
+ * Write to /grant_access_store used to grant access to allocated memory.
+ * 
+ * @param dev 
+ * @param attr 
+ * @param buf 
+ * @param count 
+ * 
+ * @return 
+ */
+static ssize_t grant_access_store(struct device * dev,
+                                  struct device_attribute *attr, 
+                                  const char * buf,
+                                  size_t count)
+{
+  struct pk_device * pkdev = (struct pk_device *) dev_get_drvdata(dev);
+  struct pk_dma_area * area;
+  addr_t phys_addr = 0;
+
+  PDBG("grant_access_store called.");
+
+  if(!pkdev) goto error;
+  if(!pkdev->pci_dev) goto error;
+
+  /* string is of the form "<address>" */
+  if (sscanf(buf,"0x%lx",&phys_addr) != 1) {
+    PWRN("PK's grant_access_store could not parse input params.");
+    return -EINVAL;
+  }
+
+  /* check that the calling process owns this allocation */
+  area = get_owned_dma_area(phys_addr);
+
+  if(area==NULL) {
+    PWRN("area not owned by calling process.");
+    return -EINVAL;
+  }
+
+  area->flags |= DMA_AREA_FLAG_SHARED_ALL;
+  PDBG("granted shared-all access to 0x%lx", phys_addr);
+
+  return count;
+
+ error:
+  PERR("dev_get_drvdata returned a NULL pointer.");
+  return -EIO;
+
+}
+
+
 
 /** 
  * Device attribute declaration
@@ -1167,5 +1234,7 @@ DEVICE_ATTR(dma_page_alloc, S_IRUGO | S_IWUGO, dma_alloc_show, dma_alloc_store);
 DEVICE_ATTR(dma_page_free, S_IWUGO, NULL, dma_free_store);
 DEVICE_ATTR(msi_alloc, S_IRUGO | S_IWUGO, msi_alloc_show, msi_alloc_store);
 DEVICE_ATTR(msi_cap, S_IRUGO, msi_cap_show, NULL);
+DEVICE_ATTR(grant_access, S_IWUGO, NULL, grant_access_store);
+
 
 

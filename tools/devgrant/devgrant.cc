@@ -117,11 +117,8 @@ void grant_files(std::string& path, uid_t owner)
         std::cout << "Unable to chown (" << path_config << "). Running as root?\n";
         return;
       }
-
     }
   } 
   
-
-
 
 }
