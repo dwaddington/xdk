@@ -272,7 +272,7 @@ static ssize_t dma_alloc_store(struct device * dev,
     // NUMA support.
     //    dma_alloc_coherent(struct device *dev, size_t size,
     //
-    void * new_pages;
+    void * new_mem;
     int gfp;
     struct pk_dma_area * pk_area = kmalloc(sizeof(struct pk_dma_area),GFP_KERNEL);
 
@@ -290,22 +290,27 @@ static ssize_t dma_alloc_store(struct device * dev,
     //    PDBG("calling dma_alloc_coherente (node_id=%u) (order=%u)",node_id, order);
     
     /* allocate NUMA-aware memory */
-    //    new_pages = alloc_pages_node(node_id, gfp, order);
+    //    new_mem = alloc_pages_node(node_id, gfp, order);
     PLOG("about to call dma_alloc_coherent..");
 
     dma_addr_t handle;
-    new_pages = dma_alloc_coherent(&pkdev->pci_dev->dev,
-                                   (1ULL << order) * PAGE_SIZE,
-                                   &handle,
-                                   GFP_KERNEL);
+    struct device * devptr = &pkdev->pci_dev->dev;
+    new_mem = dma_alloc_coherent(devptr,
+                                 (1ULL << order) * PAGE_SIZE,
+                                 &handle,
+                                 gfp);
 
-    if(new_pages == NULL) {
+    if(new_mem == NULL) {
       PLOG("unable to alloc requested pages.");
       kfree(pk_area);
       return -ENOMEM;
     }
+    else {
+      memset(new_mem, 0xC, (1ULL << order) * PAGE_SIZE);
+      PLOG("DMA memory set for testing");
+    }
 
-    pk_area->p = new_pages;
+    pk_area->p = new_mem;
     pk_area->node_id = node_id;
     pk_area->order = order;
     pk_area->flags = 0;
@@ -314,28 +319,24 @@ static ssize_t dma_alloc_store(struct device * dev,
 #ifdef USE_IOMMU
     /* set up DMA permissions in IO-MMU */
     pk_area->phys_addr = pci_map_page(pkdev->pci_dev,
-                                      new_pages,
+                                      new_mem,
                                       0,/* offset */
                                       (PAGE_SIZE << order),
                                       DMA_BIDIRECTIONAL);
     
     BUG_ON(pci_dma_mapping_error(pkdev->pci_dev, pk_area->phys_addr)!=0);
 #else
-    //    pk_area->phys_addr = virt_to_phys(page_address(new_pages));
+    pk_area->phys_addr = dma_to_phys(devptr, handle);
+    PLOG("dmahandle=%llx phys=%llx",handle, pk_area->phys_addr);
 #endif
     
-    pk_area->phys_addr = handle;
-    {
-      void * p = new_pages;
-      memset(p,0xe,PAGE_SIZE);
-    }
 
-    //    BUG_ON(!page_mapped(new_pages));
+    //    BUG_ON(!page_mapped(new_mem));
     
 #if 0
     /* prevent pages being swapped out */
     {
-      struct page * page = new_pages;
+      struct page * page = new_mem;
       void * p = page_address(page);
       struct page * last;
       last = __last_page(p, num_pages * PAGE_SIZE);
@@ -354,11 +355,11 @@ static ssize_t dma_alloc_store(struct device * dev,
     /* testing purposes */
     PDBG("module allocated %lu pages at (phys=%llx) (owner=%x) (order=%d)",
          num_pages,
-         virt_to_phys(new_pages),
+         virt_to_phys(new_mem),
          pk_area->owner_pid,
          pk_area->order
          );
-    //    __free_pages(new_pages, num_pages);
+    //    __free_pages(new_mem, num_pages);
     
   }
   
