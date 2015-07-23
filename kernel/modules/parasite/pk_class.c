@@ -241,7 +241,6 @@ static ssize_t dma_alloc_store(struct device * dev,
 {
   struct pk_device * pkdev = (struct pk_device *) dev_get_drvdata(dev);
 
-  PLOG("pkdev=%p", pkdev);
   unsigned long num_pages = 0;
   int node_id = 0, order = 0;
 
@@ -268,9 +267,7 @@ static ssize_t dma_alloc_store(struct device * dev,
   }
 
   {
-    // Note: we don't use the DMA-MAPPINGS API due to lack of
-    // NUMA support.
-    //    dma_alloc_coherent(struct device *dev, size_t size,
+    // Currently using dma_alloc_coherent. This is not NUMA aware though.
     //
     void * new_mem;
     int gfp;
@@ -350,16 +347,13 @@ static ssize_t dma_alloc_store(struct device * dev,
     UNLOCK_DMA_AREA_LIST;
 
     /* testing purposes */
-    PDBG("module allocated %lu pages at (phys=%llx) (owner=%x) (order=%d)",
+    PDBG("module allocated %lu DMA pages at (phys=%llx) (owner=%x) (order=%d)",
          num_pages,
          virt_to_phys(new_mem),
          pk_area->owner_pid,
          pk_area->order
          );
-    //    __free_pages(new_mem, num_pages);
-    
   }
-  
 
   return count; // OK
 
