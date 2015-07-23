@@ -77,9 +77,9 @@ enum {
  */
 struct pk_dma_area {
   struct list_head list;
-  struct page *    p;
+  void *    p;
   int              node_id;
-  unsigned         order;
+  size_t           order;
   dma_addr_t       phys_addr;
   int              owner_pid;
   unsigned         flags;
@@ -108,7 +108,7 @@ typedef enum {
 struct pk_device {
   u32                            magic;
   char                           name[16];
-  struct device	*                dev;
+  struct device	*                dev; 
   struct kobject *               ioctl_obj;
   struct pci_dev *               pci_dev;
 	int			                       minor;
