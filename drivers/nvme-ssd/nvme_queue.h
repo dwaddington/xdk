@@ -95,9 +95,11 @@ protected:
 private:
 
   uint16_t  _sq_tail  __attribute__((aligned(8)));
+  uint16_t  _sq_head  __attribute__((aligned(8))); /*get updated from completion command, which indicates the most recent SQ entry fetched*/
+
   uint16_t  _cq_head  __attribute__((aligned(8)));
   uint16_t  _cq_phase __attribute__((aligned(8)));
-  volatile uint16_t  _sq_head  __attribute__((aligned(8))); /*get updated from completion command, which indicates the most recent SQ entry fetched*/
+
   uint16_t _cmdid_counter;
 
   unsigned _irq;  
@@ -137,13 +139,18 @@ public:
 
   void setup_doorbells();
 
+  /**
+   * alloc a command id
+   */
   uint16_t alloc_cmdid() {
     _cmdid_counter++;
     if( _unlikely(_cmdid_counter == 0) ) _cmdid_counter++;
     return _cmdid_counter;
   }
 
-  //used to check next available cmdid, but not really alloc the id
+  /**
+   * check next available cmdid, but not really alloc the id
+   */
   uint16_t next_cmdid() {
     uint16_t next_id = _cmdid_counter + 1;
     if( _unlikely(next_id == 0) ) next_id = 1;
@@ -158,7 +165,9 @@ public:
   }
 
   void reset_cmdid() {
+#ifndef DISABLE_BATCH_MANAGER_FOR_TESTIN
     NVME_LOOP( (!(_batch_manager->can_reset_cmdid(_cmdid_counter)) ), false);
+#endif
     _cmdid_counter = 0;
   }
 
@@ -167,15 +176,25 @@ public:
     //assert(s==Exokernel::S_OK);
   }
 
+  /**
+   * update the head of IO sub queue
+   */
   void update_sq_head(Completion_command_slot *ccs) {
     //PLOG("(%p)sq_head = %u, ccs->get_sq_head = %u, cq_head = %u, cmdid = %u (qid=%u)\n", ccs, _sq_head, ccs->get_sq_head(), _cq_head, ccs->command_id, _queue_id);
     _sq_head = ccs->get_sq_head();
   }
 
+  /**
+   * upate the head of admin sub queue
+   * NOTE: currently, assuming admin conmmands are all synchronous
+   */
   void update_admin_sq_head() {
     _sq_head = _cq_head;
   }
 
+  /**
+   * called by completion thread to update batch info
+   */
   status_t update_batch_manager(uint16_t cmdid) {
     return _batch_manager->update(cmdid);
   }
