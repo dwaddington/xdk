@@ -412,12 +412,14 @@ namespace Exokernel
      * 
      * @param num_pages Number of 4K pages to allocate
      * @param phys_addr Return physical address
+     * @param virt_hint Request mapping to this virtual address if possible
      * @param numa_node NUMA node from which to allocate memory
      * 
      * @return Virtual address of allocated memory
      */
     void * alloc_dma_pages(size_t num_pages, 
                            addr_t * phys_addr, 
+                           void * virt_hint = NULL,
                            int numa_node = -1,
                            int flags = 0);
 
@@ -449,6 +451,16 @@ namespace Exokernel
      * @param p Pointer to previously allocated memory
      */
     void free_dma_huge_pages(void * p);
+
+
+    /** 
+     * Grant all processes access to allocated memory
+     * 
+     * @param phys_addr Physical address of memory to grant access to
+     * 
+     * @return 
+     */
+    status_t grant_dma_access(addr_t phys_addr);
 
     /** 
      * For debugging purposes, fetch the DMA allocation

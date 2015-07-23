@@ -67,17 +67,22 @@ enum {
   E_FAIL = -1,
 };
 
+enum {
+  DMA_AREA_FLAG_SHARED_ALL = 0x0,
+};
+
 /** 
  * Types
  * 
  */
 struct pk_dma_area {
   struct list_head list;
-  struct page *    p;
+  void *    p;
   int              node_id;
   unsigned         order;
   dma_addr_t       phys_addr;
   int              owner_pid;
+  unsigned         flags;
 };
 
 #define PK_MAGIC 0xfeeb1e00
@@ -103,7 +108,7 @@ typedef enum {
 struct pk_device {
   u32                            magic;
   char                           name[16];
-  struct device	*                dev;
+  struct device	*                dev; 
   struct kobject *               ioctl_obj;
   struct pci_dev *               pci_dev;
 	int			                       minor;
