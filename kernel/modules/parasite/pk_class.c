@@ -284,16 +284,19 @@ static ssize_t dma_alloc_store(struct device * dev,
       else
         gfp |= GFP_DMA32;
     }
-       
+           
     //    PDBG("calling dma_alloc_coherente (node_id=%u) (order=%u)",node_id, order);
     
     /* allocate NUMA-aware memory */
     //    new_pages = alloc_pages_node(node_id, gfp, order);
     PLOG("dev now is %p",pkdev->dev);
-    new_pages = dma_alloc_coherent(pkdev->dev,
-				   (1ULL << order)*PAGE_SIZE, 
-				   &pk_area->phys_addr,
-				   GFP_KERNEL | GFP_DMA);
+    PLOG("about to call dma_alloc_coherent..");
+
+    dma_addr_t handle;
+    new_pages = dma_alloc_coherent(NULL, //pkdev->dev ????,
+                                   1024,
+                                   &handle,
+                                   GFP_KERNEL);
 
     if(new_pages == NULL) {
       PLOG("unable to alloc requested pages.");
@@ -320,6 +323,7 @@ static ssize_t dma_alloc_store(struct device * dev,
     //    pk_area->phys_addr = virt_to_phys(page_address(new_pages));
 #endif
     
+    pk_area->phys_addr = handle;
     {
       void * p = new_pages;
       memset(p,0xe,PAGE_SIZE);
