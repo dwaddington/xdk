@@ -9,10 +9,6 @@
 #include <component/base.h>
 #include <exo/rand.h>
 
-//random generator
-#include <boost/random/random_device.hpp>
-#include <boost/random/uniform_int_distribution.hpp>
-
 #include "nvme_drv_component.h"
 #include "nvme_device.h"
 #include "nvme_types.h"
@@ -27,8 +23,8 @@
 #define NUM_BLOCKS (8)//(8*32)
 #endif
 
-#define COUNT (1024000 * 4)
-#define NUM_QUEUES (2)
+#define COUNT (1024000 * 2)
+#define NUM_QUEUES (1)
 #define SLAB_SIZE (512)
 #define IO_PER_BATCH (1)
 #define NUMA_NODE (0)
@@ -88,10 +84,6 @@ class IO_thread : public Exokernel::Base_thread {
       io_descriptor_t* io_desc = (io_descriptor_t *)malloc(SLAB_SIZE * sizeof(io_descriptor_t));
 
       const uint64_t N_PAGES = COUNT;
-#ifdef TEST_RANDOM_IO
-      boost::random::random_device rng;
-      boost::random::uniform_int_distribution<> rnd_page_offset(1, MAX_LBA/NUM_BLOCKS-1); //PAGE offset
-#endif
 
       uint64_t counter = 0;
       Notify *notify = new Notify_Async_Cnt(&counter);
@@ -113,7 +105,8 @@ class IO_thread : public Exokernel::Base_thread {
         io_desc_ptr->buffer_virt = _virt_array_local[slab_idx_local];
         io_desc_ptr->buffer_phys = _phys_array_local[slab_idx_local];
 #ifdef TEST_RANDOM_IO
-        io_desc_ptr->offset = rnd_page_offset(rng) * NUM_BLOCKS;
+        assert(NUM_BLOCKS == 1);
+        io_desc_ptr->offset = rdtsc() % (MAX_LBA - 8);
 #else /* sequential IO */
         //This may be slower than random io, as io operations are not distributed in different SSD channels
         //Instead, use larger io size for sequential io to maximize the bandwidth
@@ -157,11 +150,6 @@ class IO_thread : public Exokernel::Base_thread {
       assert(SLAB_SIZE > 4*(ioq->queue_length()));
       io_descriptor_t* io_desc = (io_descriptor_t *)malloc(SLAB_SIZE * sizeof(io_descriptor_t));
 
-#ifdef TEST_RANDOM_IO
-      boost::random::random_device rng;
-      boost::random::uniform_int_distribution<> rnd_page_offset(1, 64*1024*1024-1); //offset based on page; 781,422,768 sectors(logical block) in total
-#endif
-
       uint64_t counter = 0;
       Notify *notify = new Notify_Async_Cnt(&counter);
       //Notify *notify = new Notify_Async(false);
@@ -193,8 +181,8 @@ class IO_thread : public Exokernel::Base_thread {
           io_desc_ptr->buffer_virt = _virt_array_local[slab_idx_local];
           io_desc_ptr->buffer_phys = _phys_array_local[slab_idx_local];
 #ifdef TEST_RANDOM_IO
-          assert(NUM_BLOCKS == 8);
-          io_desc_ptr->offset = rnd_page_offset(rng) * (PAGE_SIZE/NVME::BLOCK_SIZE);
+          assert(NUM_BLOCKS == 1);
+          io_desc_ptr->offset = rdtsc() % (MAX_LBA - 8);
 #else
           io_desc_ptr->offset = PAGE_SIZE * npages_per_io * io_req_idx;
           unsigned n_partitions = round_up_log2(NUM_QUEUES);
