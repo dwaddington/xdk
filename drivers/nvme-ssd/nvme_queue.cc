@@ -323,14 +323,14 @@ NVME_admin_queue::NVME_admin_queue(NVME_device * dev, unsigned irq) :
   num_pages = round_up_page(CQ_entry_size_bytes * Admin_queue_len) / PAGE_SIZE;
 
   PLOG("allocating %ld pages for admin completion queue",num_pages);
-  _cq_dma_mem = dev->alloc_dma_pages(num_pages, &_cq_dma_mem_phys);  
+  _cq_dma_mem = dev->alloc_dma_pages(num_pages, &_cq_dma_mem_phys, DMA_FROM_DEVICE);  
   memset(_cq_dma_mem, 0, num_pages * PAGE_SIZE);
   NVME_INFO("NVME_completion_queue virt=%p phys=0x%lx pages=%lu\n",_cq_dma_mem,_cq_dma_mem_phys,num_pages);
   assert((_cq_dma_mem_phys & 0xfffUL) == 0UL);
 
   /* allocate memory for the submission queue */
   num_pages = round_up_page(SQ_entry_size_bytes * Admin_queue_len) / PAGE_SIZE;
-  _sq_dma_mem = dev->alloc_dma_pages(num_pages, &_sq_dma_mem_phys);
+  _sq_dma_mem = dev->alloc_dma_pages(num_pages, &_sq_dma_mem_phys, DMA_TO_DEVICE);
   PLOG("allocating %ld pages for admin submission queue",num_pages);
   memset(_sq_dma_mem,0,num_pages * PAGE_SIZE);
   NVME_INFO("NVME_submission_queue virt=%p phys=0x%lx pages=%lu\n",_sq_dma_mem,_sq_dma_mem_phys,num_pages);
@@ -660,7 +660,7 @@ NVME_IO_queue::NVME_IO_queue(NVME_device * dev,
   num_pages = (round_up_page(CQ_entry_size_bytes * _queue_items)/PAGE_SIZE)*2;
 
   PLOG("allocating %ld pages for IO completion queue",num_pages);
-  _cq_dma_mem = dev->alloc_dma_pages(num_pages, &_cq_dma_mem_phys);  
+  _cq_dma_mem = dev->alloc_dma_pages(num_pages, &_cq_dma_mem_phys, DMA_FROM_DEVICE);  
   assert(_cq_dma_mem);
   assert(_cq_dma_mem_phys);
   memset(_cq_dma_mem,0,num_pages * PAGE_SIZE); /* important to zero phase bits */
@@ -680,7 +680,7 @@ NVME_IO_queue::NVME_IO_queue(NVME_device * dev,
   num_pages = (round_up_page(SQ_entry_size_bytes * _queue_items)/PAGE_SIZE)*2;
 
   PLOG("allocating %ld pages for IO submission queue",num_pages);
-  _sq_dma_mem = dev->alloc_dma_pages(num_pages, &_sq_dma_mem_phys);
+  _sq_dma_mem = dev->alloc_dma_pages(num_pages, &_sq_dma_mem_phys, DMA_TO_DEVICE);
 
   assert(_sq_dma_mem);
   assert(_sq_dma_mem_phys);
