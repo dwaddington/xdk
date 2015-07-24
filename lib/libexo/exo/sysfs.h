@@ -407,6 +407,12 @@ namespace Exokernel
      *-------------------------------------------------------------- 
      */
 
+    enum dma_direction_t {
+      DMA_TO_DEVICE = 1,
+      DMA_FROM_DEVICE = 2,
+      DMA_BIDIRECTIONAL = 3,
+    };
+
     /** 
      * Allocate physically contiguous memory and map with 4K TLB entries
      * 
@@ -419,6 +425,7 @@ namespace Exokernel
      */
     void * alloc_dma_pages(size_t num_pages, 
                            addr_t * phys_addr, 
+                           dma_direction_t direction = DMA_BIDIRECTIONAL,
                            void * virt_hint = NULL,
                            int numa_node = -1,
                            int flags = 0);

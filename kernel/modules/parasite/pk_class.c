@@ -243,12 +243,30 @@ static ssize_t dma_alloc_store(struct device * dev,
 
   unsigned long num_pages = 0;
   int node_id = 0, order = 0;
+  int direction = 0;
+  enum dma_data_direction dir;
+  
+  
 
   if(!pkdev) goto error;
   if(!pkdev->pci_dev) goto error;
-  
-  if (sscanf(buf,"%lu %d",&num_pages, &node_id)!=2)
-    return -EINVAL; 
+
+  PLOG("dma_alloc_store wr=(%s)", buf);
+
+  if (sscanf(buf,"%lu %d %d",&num_pages, &node_id, &direction) != 3) {
+    if (sscanf(buf,"%lu %d",&num_pages, &node_id) != 2) {
+      return -EINVAL; 
+    }
+    dir = DMA_BIDIRECTIONAL;
+  }
+  else {
+    switch(direction) {
+    case 1: dir = DMA_TO_DEVICE; break;
+    case 2: dir = DMA_FROM_DEVICE; break;
+    case 3: dir = DMA_BIDIRECTIONAL; break;
+    }
+  }
+ 
 
   if(node_id < 0)
     node_id = numa_node_id(); // current node id
@@ -269,7 +287,6 @@ static ssize_t dma_alloc_store(struct device * dev,
   {
     // Currently using dma_alloc_coherent. This is not NUMA aware though.
     //
-    void * new_mem;
     int gfp;
     struct pk_dma_area * pk_area = kmalloc(sizeof(struct pk_dma_area),GFP_KERNEL);
 
@@ -289,12 +306,27 @@ static ssize_t dma_alloc_store(struct device * dev,
 
     dma_addr_t handle;
     struct device * devptr = &pkdev->pci_dev->dev;
-    new_mem = dma_alloc_coherent(devptr,
-                                 (1ULL << order) * PAGE_SIZE,
-                                 &handle,
-                                 gfp);
 
-    if(new_mem == NULL) {
+    pk_area->page = alloc_pages(gfp, order);
+    if (pk_area->page == NULL) {
+      PLOG("alloc_pages failed.");
+      return -ENOMEM;
+    }
+
+    
+    handle = dma_map_page(devptr,
+                           pk_area->page,
+                           0,
+                           (1ULL << order) * PAGE_SIZE,
+                           dir);
+
+    /* new_mem = dma_alloc_coherent(devptr, */
+    /*                              (1ULL << order) * PAGE_SIZE, */
+    /*                              &handle, */
+    /*                              gfp); */
+    PLOG("dma_map_page ok. (%lld)", handle);
+
+    if(handle == NULL) {
       PLOG("unable to alloc requested pages.");
       kfree(pk_area);
       return -ENOMEM;
@@ -304,7 +336,6 @@ static ssize_t dma_alloc_store(struct device * dev,
     /*   PLOG("DMA memory set for testing"); */
     /* } */
 
-    pk_area->p = new_mem;
     pk_area->node_id = node_id;
     pk_area->order = order;
     pk_area->flags = 0;
@@ -349,7 +380,7 @@ static ssize_t dma_alloc_store(struct device * dev,
     /* testing purposes */
     PDBG("module allocated %lu DMA pages at (phys=%llx) (owner=%x) (order=%d)",
          num_pages,
-         virt_to_phys(new_mem),
+         handle,
          pk_area->owner_pid,
          pk_area->order
          );
@@ -528,10 +559,10 @@ static ssize_t dma_free_store(struct device * dev,
 
         /* free memory */
         //        __free_pages(area->p,get_order(area->order));
-        dma_free_coherent(&pkdev->pci_dev->dev, 
-                          (1ULL << area->order)*PAGE_SIZE,
-                          area->p,
-                          area->phys_addr);
+        /* dma_free_coherent(&pkdev->pci_dev->dev,  */
+        /*                   (1ULL << area->order)*PAGE_SIZE, */
+        /*                   area->p, */
+        /*                   area->phys_addr); */
 
         /* remove from list */
         list_del(p);
@@ -1150,7 +1181,7 @@ void free_dma_memory(struct pk_device * pkdev)
 
     /* decrement ref count and free page */
     //TOFIX    atomic_dec(&area->p->_count);
-    __free_pages(area->p,get_order(area->order));
+    //    __free_pages(area->p,get_order(area->order));
     
     /* remove from list */
     list_del(p);
