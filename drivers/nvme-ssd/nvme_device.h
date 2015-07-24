@@ -234,6 +234,7 @@ public:
   {
     if((queue_id > _num_io_queues)||(queue_id == 0)) {
       assert(0);
+      PERR("queue id > num IO queues!");
       return Exokernel::E_INVAL;
     }
     assert(_io_queues[queue_id - 1]);
