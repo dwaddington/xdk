@@ -408,9 +408,10 @@ namespace Exokernel
      */
 
     enum dma_direction_t {
+      DMA_BIDIRECTIONAL = 0,
       DMA_TO_DEVICE = 1,
       DMA_FROM_DEVICE = 2,
-      DMA_BIDIRECTIONAL = 3,
+      DMA_NONE = 3,
     };
 
     /** 
