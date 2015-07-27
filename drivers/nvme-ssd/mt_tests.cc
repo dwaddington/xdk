@@ -8,6 +8,7 @@
 #include <common/dump_utils.h>
 #include <component/base.h>
 #include <exo/rand.h>
+#include <exo/sysfs.h>
 
 #include "nvme_drv_component.h"
 #include "nvme_device.h"
@@ -358,7 +359,11 @@ class mt_tests {
           if(n_pages_left <= 0) {
             //there is problem if we alloc too many pages at once
             //so we alloc these pages in multiple times
-            p = dev->alloc_dma_pages(NUM_PAGES_PER_ALLOC, &phys_addr, NUMA_NODE, 0); 
+#ifdef TEST_IO_READ
+            p = dev->alloc_dma_pages(NUM_PAGES_PER_ALLOC, &phys_addr, Exokernel::Device_sysfs::DMA_FROM_DEVICE, NULL, NUMA_NODE, 0); 
+#else
+            p = dev->alloc_dma_pages(NUM_PAGES_PER_ALLOC, &phys_addr, Exokernel::Device_sysfs::DMA_TO_DEVICE, NULL, NUMA_NODE, 0); 
+#endif
             page_list.push_back(p);
             memset(p, 0, PAGE_SIZE*NUM_PAGES_PER_ALLOC);
 

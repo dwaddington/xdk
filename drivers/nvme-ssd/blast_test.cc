@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <common/utils.h>
 #include <common/dump_utils.h>
+#include <exo/sysfs.h>
 
 #include "nvme_drv_component.h"
 #include "nvme_device.h"
@@ -43,7 +44,7 @@ public:
     Exokernel::Device * dev = itf->get_device();
     addr_t phys = 0;
 
-    void * p = dev->alloc_dma_pages(BATCH_SIZE,&phys);
+    void * p = dev->alloc_dma_pages(BATCH_SIZE,&phys,Exokernel::Device_sysfs::DMA_FROM_DEVICE);
     assert(p);
 
 
