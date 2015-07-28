@@ -82,7 +82,7 @@ INLINE uint32_t rdtsc_low() {
  */
 INLINE 
 cpu_time_t rdtscp(uint32_t& aux) {
-  unsigned a, d, c;
+  unsigned a, d;
   asm volatile("lfence"); // should be mfence for AMD
   asm volatile("rdtscp" : "=a" (a), "=d" (d), "=c" (aux));
   return ((unsigned long long)a) | (((unsigned long long)d) << 32);;
