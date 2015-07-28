@@ -17,13 +17,20 @@
 #include "nvme_device.h"
 #include "nvme_types.h"
 
-#define MAX_LBA (64*11*1024*1024) //= 738,197,504; max 781,422,768 sectors
+#define BLOCK_4K
 
-#define COUNT (1024000 * 1)
-#define NUM_QUEUES (1)
+#ifdef BLOCK_4K
+#define MAX_LBA (8*11*1024*1024)//= 92,197,504 4K-block; max 781,422,768 512-byte sectors
+#define NUM_BLOCKS (1)//(32)
+#else
+#define MAX_LBA (64*11*1024*1024) //= 738,197,504 512-byte-block; max 781,422,768 512-byte sectors
+#define NUM_BLOCKS (8)//(8*32)
+#endif
+
+#define COUNT (1024000 * 4)
+#define NUM_QUEUES (2)
 #define SLAB_SIZE (512)
 #define IO_PER_BATCH (1)
-#define NUM_BLOCKS (8)//(8*32)
 #define NUMA_NODE (0)
 
 #define TEST_RANDOM_IO  //otherwise, sequential io
@@ -72,6 +79,7 @@ class IO_thread : public Exokernel::Base_thread {
     {
       using namespace Exokernel;
       assert(IO_PER_BATCH == 1);
+      assert(NVME::BLOCK_SIZE == 4096);//currently, focus on 4K block
 
       NVME_IO_queue * ioq = _dev->io_queue(_qid);
 
