@@ -83,10 +83,12 @@ public:
         printf("Op count: %ld\n",total_ops);
 
       //
-      itf->wait_io_completion(queue); //wait for IO completion
 
       usleep(10);
     }
+
+    itf->wait_io_completion(queue); //wait for IO completion
+
     dev->free_dma_pages(p);
   }
 

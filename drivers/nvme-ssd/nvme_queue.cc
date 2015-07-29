@@ -124,7 +124,7 @@ status_t NVME_queues_base::increment_submission_tail(queue_ptr_t * tptr) {
 
   if( new_tail == _sq_head ) {
     PLOG("Queue %d is full (sq_head = %u, sq_tail = %u) !!", _queue_id, _sq_head, _sq_tail);
-    printf("Queue %d is full (sq_head = %u, sq_tail = %u) !!\n", _queue_id, _sq_head, _sq_tail);
+    //printf("Queue %d is full (sq_head = %u, sq_tail = %u) !!\n", _queue_id, _sq_head, _sq_tail);
     return Exokernel::E_FULL;
   }
 
@@ -845,7 +845,9 @@ uint16_t NVME_IO_queue::issue_async_write(addr_t prp1,
   _sq_batch_counter++;
   if(_unlikely(_sq_batch_counter >= SQ_MAX_BATCH_TO_RING || cur_tsc - prev_tsc >= drain_tsc)) {
 #endif
+
     ring_submission_doorbell();
+
 #if (SQ_MAX_BATCH_TO_RING > 1)
     prev_tsc = cur_tsc;
     _sq_batch_counter = 0;
@@ -881,6 +883,7 @@ uint16_t NVME_IO_queue::issue_async_io_batch(io_descriptor_t* io_desc,
   }
   assert(end_cmdid >= start_cmdid);
   
+#ifndef DISABLE_BATCH_MANAGER_FOR_TESTING
   //check availability
   NVME_LOOP( (!_batch_manager->is_available(start_cmdid, end_cmdid)), false);
 
@@ -894,6 +897,7 @@ uint16_t NVME_IO_queue::issue_async_io_batch(io_descriptor_t* io_desc,
 
   //push to the buffer
   NVME_LOOP( (!(_batch_manager->push(bi))), false);
+#endif
 
   //issue all IOs
   uint16_t cmdid = 0;
@@ -903,28 +907,39 @@ uint16_t NVME_IO_queue::issue_async_io_batch(io_descriptor_t* io_desc,
     io_descriptor_t* io_desc_ptr = io_desc + idx;
     if(io_desc_ptr->action == NVME_READ) {
       cmdid = issue_async_read(io_desc_ptr->buffer_phys, 
-                       io_desc_ptr->offset,
-                       io_desc_ptr->num_blocks);
+                               io_desc_ptr->offset,
+                               io_desc_ptr->num_blocks);
+
       PLOG("READ: issued cmdid = %u, offset = %lu(0x%lx), page_offset = %lu(0x%lx)\n", cmdid, io_desc_ptr->offset, io_desc_ptr->offset, io_desc_ptr->offset/8, io_desc_ptr->offset/8);
+
     } else if (io_desc_ptr->action == NVME_WRITE) {
+
       cmdid = issue_async_write(io_desc_ptr->buffer_phys, 
-                       io_desc_ptr->offset,
-                       io_desc_ptr->num_blocks);
+                                io_desc_ptr->offset,
+                                io_desc_ptr->num_blocks);
+
       PLOG("WRITE: issued cmdid = %u, offset = %lu(0x%lx), page_offset = %lu(0x%lx)\n", cmdid, io_desc_ptr->offset, io_desc_ptr->offset, io_desc_ptr->offset/8, io_desc_ptr->offset/8);
+
     } else {
       PERR("Unrecoganized Operaton !!");
       assert(false);
     }
     //printf("issue cmdid = %u, offset = %lu(%lx, %lx)\n", cmdid, io_desc_ptr->offset, io_desc_ptr->offset, io_desc_ptr->offset/8);
   }
+
+#ifndef DISABLE_BATCH_MANAGER_FOR_TESTING
   assert(cmdid == bi.end_cmdid);
+#endif
+
 }
 
 status_t NVME_IO_queue::wait_io_completion()
 {
   ring_submission_doorbell(); /* make sure the doorbell is rang */
 
+#ifndef DISABLE_BATCH_MANAGER_FOR_TESTING
   NVME_LOOP( ( !(_batch_manager->wasEmpty()) ), false);
+#endif
 
   return Exokernel::S_OK;
 }

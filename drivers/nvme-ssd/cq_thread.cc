@@ -133,9 +133,12 @@ void* CQ_thread::entry(void* qb) {
 
       /* update SQ head*/
       _queues->update_sq_head(ccs);
+
+#ifndef DISABLE_BATCH_MANAGER_FOR_TESTING
       /* update batch info */
       s = _queues->update_batch_manager(ccs->command_id);
       assert(s == Exokernel::S_OK);
+#endif
 
       /* free slot */
       _queues->release_slot(ccs->command_id-1);

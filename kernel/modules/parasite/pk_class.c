@@ -241,7 +241,6 @@ static ssize_t dma_alloc_store(struct device * dev,
 {
   struct pk_device * pkdev = (struct pk_device *) dev_get_drvdata(dev);
 
-  PLOG("pkdev=%p", pkdev);
   unsigned long num_pages = 0;
   int node_id = 0, order = 0;
 
@@ -268,9 +267,7 @@ static ssize_t dma_alloc_store(struct device * dev,
   }
 
   {
-    // Note: we don't use the DMA-MAPPINGS API due to lack of
-    // NUMA support.
-    //    dma_alloc_coherent(struct device *dev, size_t size,
+    // Currently using dma_alloc_coherent. This is not NUMA aware though.
     //
     void * new_mem;
     int gfp;
@@ -287,11 +284,8 @@ static ssize_t dma_alloc_store(struct device * dev,
         gfp |= GFP_DMA32;
     }
            
-    //    PDBG("calling dma_alloc_coherente (node_id=%u) (order=%u)",node_id, order);
-    
     /* allocate NUMA-aware memory */
     //    new_mem = alloc_pages_node(node_id, gfp, order);
-    PLOG("about to call dma_alloc_coherent..");
 
     dma_addr_t handle;
     struct device * devptr = &pkdev->pci_dev->dev;
@@ -305,10 +299,10 @@ static ssize_t dma_alloc_store(struct device * dev,
       kfree(pk_area);
       return -ENOMEM;
     }
-    else {
-      memset(new_mem, 0xC, (1ULL << order) * PAGE_SIZE);
-      PLOG("DMA memory set for testing");
-    }
+    /* else { */
+    /*   memset(new_mem, 0xC, (1ULL << order) * PAGE_SIZE); */
+    /*   PLOG("DMA memory set for testing"); */
+    /* } */
 
     pk_area->p = new_mem;
     pk_area->node_id = node_id;
@@ -317,6 +311,7 @@ static ssize_t dma_alloc_store(struct device * dev,
     pk_area->owner_pid = task_pid_nr(current); /* later for use with capability model */
 
 #ifdef USE_IOMMU
+#error "Don't use this!"
     /* set up DMA permissions in IO-MMU */
     pk_area->phys_addr = pci_map_page(pkdev->pci_dev,
                                       new_mem,
@@ -327,7 +322,6 @@ static ssize_t dma_alloc_store(struct device * dev,
     BUG_ON(pci_dma_mapping_error(pkdev->pci_dev, pk_area->phys_addr)!=0);
 #else
     pk_area->phys_addr = dma_to_phys(devptr, handle);
-    PLOG("dmahandle=%llx phys=%llx",handle, pk_area->phys_addr);
 #endif
     
 
@@ -353,16 +347,13 @@ static ssize_t dma_alloc_store(struct device * dev,
     UNLOCK_DMA_AREA_LIST;
 
     /* testing purposes */
-    PDBG("module allocated %lu pages at (phys=%llx) (owner=%x) (order=%d)",
+    PDBG("module allocated %lu DMA pages at (phys=%llx) (owner=%x) (order=%d)",
          num_pages,
          virt_to_phys(new_mem),
          pk_area->owner_pid,
          pk_area->order
          );
-    //    __free_pages(new_mem, num_pages);
-    
   }
-  
 
   return count; // OK
 
@@ -536,7 +527,11 @@ static ssize_t dma_free_store(struct device * dev,
 #endif
 
         /* free memory */
-        __free_pages(area->p,get_order(area->order));
+        //        __free_pages(area->p,get_order(area->order));
+        dma_free_coherent(&pkdev->pci_dev->dev, 
+                          (1ULL << area->order)*PAGE_SIZE,
+                          area->p,
+                          area->phys_addr);
 
         /* remove from list */
         list_del(p);
