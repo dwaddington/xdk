@@ -41,7 +41,7 @@ namespace NVME
   } queue_type_t;
 
   enum {
-    BLOCK_SIZE=512,
+    BLOCK_SIZE=4096,//512,
   };
 }
 

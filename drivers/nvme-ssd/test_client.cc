@@ -94,12 +94,12 @@ int main()
 
   IBlockDevice * itf = (IBlockDevice *) comp->query_interface(IBlockDevice::iid());
 
-  itf->init_device(0, const_cast<char*>("config.xml"));
+  itf->init_device(1, const_cast<char*>("config.xml"));
 
   //  basic_test(itf);
 
   // 512 byte LBA format blast(itf,781422768);
-  blast(itf,5000); //97677846);
+  blast(itf,97677846);
   //(new mt_tests())->runTest(itf);
   //(new verify_tests())->runTest(itf);
 

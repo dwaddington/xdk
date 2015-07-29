@@ -10,11 +10,12 @@
 using namespace Exokernel;
 
 /* must allocate huge pages */
-/* use AHCI device for testing - remember to remove the stock AHCI module! */
+/* use AHCI or E1000 device for testing - remember to remove the stock AHCI module! */
 static Exokernel::device_vendor_pair_t 
 dev_tbl[] = {{0x8086,0x2922}, // Qemu
              {0x8086,0x3a22}, // Intel ICH
              {0x8086,0x2829}, // VirtualBox
+	     {0x8086,0x1528}, // X540 NIC card
              {0,0}};
 
 static Exokernel::Pagemap pm;

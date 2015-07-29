@@ -141,11 +141,20 @@ async_io(io_request_t io_request,
          unsigned device)
 {
   io_descriptor_t* io_desc = (io_descriptor_t*)io_request;
-
+#if 0
   return _dev->block_async_read(port,
                                 io_desc->buffer_phys,
                                 io_desc->offset,
                                 io_desc->num_blocks);
+#endif
+  assert (io_desc->action == NVME_READ || io_desc->action == NVME_WRITE);
+
+  _dev->async_io_batch(port /* same as queue */,
+                       io_desc,
+                       1,
+                       (Notify*)notify);
+
+  return S_OK;
 }
 
 /* async I/O batch */
