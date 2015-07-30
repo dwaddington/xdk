@@ -113,16 +113,8 @@ uint64_t Exokernel::Pagemap::__get_page_frame_number(void * vaddr) {
   /* each entry is a page; an entry is 64 bits. */
   offset = ((addr_t)vaddr >> PAGE_SHIFT) * sizeof(uint64_t);
 
-  off64_t o = lseek64(_fd_pagemap, offset, SEEK_SET);
-
-  while(pages_in_range > 0) {
-    read(_fd_pagemap,&entry,sizeof(addr_t));
-    pages_in_range--;
-    PLOG("entry=%016llX", entry); // & 0x7fffffffffffffULL);
-  }
-  //  int rc = pread(_fd_pagemap,(void*)&entry,8,offset);
-  //  assert(rc == 8);
-  
+  int rc = pread(_fd_pagemap,(void*)&entry,8,offset);
+  assert(rc == 8);
 
   if(entry & (1UL << 55)) { PLOG("page soft-dirty"); }
   if(entry & (1UL << 61)) { PLOG("page is shared-anon or file-page"); }
