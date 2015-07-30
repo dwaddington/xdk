@@ -391,6 +391,7 @@ alloc_dma_pages(size_t num_pages,
  * 
  * @param num_pages Number of pages (2MB each)
  * @param phys_addr Returned physical address
+ * @param addr_hint Returned virtual address hint
  * @param numa_node Numa node to allocate from
  * @param flags Additional flags
  * 
@@ -398,7 +399,7 @@ alloc_dma_pages(size_t num_pages,
  */
 void * 
 Exokernel::Device_sysfs::
-alloc_dma_huge_pages(size_t num_pages, addr_t * phys_addr, int numa_node, int flags) 
+alloc_dma_huge_pages(size_t num_pages, addr_t * phys_addr, void * addr_hint, int numa_node, int flags) 
 {
   assert(!_fs_root_name.empty());
 
@@ -447,7 +448,7 @@ alloc_dma_huge_pages(size_t num_pages, addr_t * phys_addr, int numa_node, int fl
       if(fd == -1)
         throw Exokernel::Fatal(__FILE__,__LINE__,"unable to open /dev/parasite");
           
-      p = mmap(NULL,
+      p = mmap(addr_hint,
                num_pages * HUGE_PAGE_SIZE, 
                PROT_READ | PROT_WRITE, // prot
                MAP_SHARED | MAP_ANONYMOUS | MAP_HUGETLB | flags,     // flags

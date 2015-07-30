@@ -436,12 +436,14 @@ namespace Exokernel
      * 
      * @param num_pages Number of 2MB pages
      * @param phys_addr Return physical address
+     * @param addr_hint Return virtual address hint
      * @param numa_node NUMA node from which to allocate memory
      * 
      * @return Virtual address of allocated memory
      */
     void * alloc_dma_huge_pages(size_t num_pages, 
-                                addr_t * phys_addr, 
+                                addr_t * phys_addr,
+                                void * addr_hint = NULL,
                                 int numa_node = -1,
                                 int flags = 0); 
 
