@@ -44,6 +44,7 @@
 #include <common/cycles.h>
 
 using namespace Exokernel;
+using namespace std;
 using namespace Component;
 
 class Tx_thread : public Exokernel::Base_thread {
@@ -71,14 +72,11 @@ private:
   void * entry(void *) {
     while(!_start) { usleep(1000); }
 
-    PLOG("TX thread %d on core %d started!!", _tid, _affinity);
+    PLOG("TX thread [global ID %u, local ID %u] on core %d started!!", _tid, _local_id, _affinity);
 
-    while (1) {
-      unsigned queue = 2*_local_id+1; 
+    /* send raw ETH packet */
+    send_pkt_test();
 
-      /* send raw ETH packet */
-      send_pkt_test(queue);
-    }
     return NULL;
   } 
 
@@ -122,20 +120,20 @@ public:
     exit_thread();
   }
 
-  void send_pkt_test(unsigned tid) {
+  void send_pkt_test() {
 
     enum { PACKET_LEN = 64 };
   
     unsigned char packet[PACKET_LEN] = {
-          0xa0, 0x36, 0x9f, 0x1c, 0x34, 0x7a,  // dest mac
-          0xa0, 0x36, 0x9f, 0x17, 0x4d, 0xc2,  // src mac
+          0xa0, 0x36, 0x9f, 0x46, 0xe1, 0x9c,  // dest mac
+          0xa0, 0x36, 0x9f, 0x1d, 0x65, 0xce,  // src mac
           0x08, 0x00, // type: ip datagram
           0x45, 0x00, // version
           0x00, 50, // length
           0x00, 0x05, 0x40, 0x00, 0x3f, 0x11, 0x27, 0xb4,//ip header with checksum
           //0x00, 0x05, 0x40, 0x00, 0x3f, 0x11, 0x00, 0x00,//ip header without checksum
-          0x0a, 0x00, 0x00, 0x01, // src: 10.0.0.1
-          0x0a, 0x00, 0x00, 0x0b, // dst: 10.0.0.11
+          0x0a, 0x00, 0x00, 33, // src: 10.0.0.33
+          0x0a, 0x00, 0x00, 6, // dst: 10.0.0.6
           0xdd, 0xd5, 0x2b, 0xcb, 0x00, 30, 0x00, 0x00, // UDP header
           0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
           10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
@@ -149,7 +147,7 @@ public:
 
     for (i = 0; i < 1024; i++) {
       void * temp;
-      if (_mem->alloc((addr_t *)&temp, PACKET_ALLOCATOR, _nic_index, _nic->rx_core[tid]) != Exokernel::S_OK) {
+      if (_mem->alloc((addr_t *)&temp, PACKET_ALLOCATOR, _nic_index, _nic->rx_core[_local_id]) != Exokernel::S_OK) {
         panic("PACKET_ALLOCATOR failed!\n");
       }
       assert(temp);
@@ -168,15 +166,13 @@ public:
       xmit_addr_pool[i]->nb_segment = 1;
     }
   
-    unsigned queue = 2*tid+1;
+    unsigned queue = 2*_local_id;
     unsigned counter = 0;
     cpu_time_t start_time=0;
     cpu_time_t finish_time=0;
     uint64_t cpu_freq = (uint64_t)(get_tsc_frequency_in_mhz() * 1000000); 
 
     while (1) {
-      sleep(1);
-
       if (counter==0)
         start_time=rdtsc();
   
@@ -185,32 +181,23 @@ public:
       /* main TX function, return the actual packets sent out */
   
       if (pkt_burst_size<=IXGBE_TX_MAX_BURST) {
-        /* Try to transmit at least chunks of TX_MAX_BURST pkts */
-        n = pkt_burst_size;
-        _nic->send(&xmit_addr_pool[counter % 512], n, queue);
-        sent_num = n;
+        //_nic->send(&xmit_addr_pool[counter % 512], n, queue);
+        sent_num = _nic->send(&xmit_addr_pool[0], pkt_burst_size, queue);
       }
       else {
-        /* transmit more than the max burst, in chunks of TX_MAX_BURST */
-        unsigned nb_pkts = pkt_burst_size;
-        while(nb_pkts) {
-          size_t ret, n;
-          n = (uint16_t)EXO_MIN(nb_pkts, (unsigned)IXGBE_TX_MAX_BURST);
-          ret = n;
-          _nic->send(&xmit_addr_pool[counter % 512], ret, queue);
-          sent_num += ret;
-          nb_pkts -= ret;
-          if (ret < n)
-            break;
-        }
+        PWRN("pkt_burst_size exceeds IXGBE_TX_MAX_BURST!");
       }
       counter += sent_num;
 
       if (counter >= _stats_num) {
         finish_time=rdtsc();
-        printf("[TID %d] TX THROUGHPUT %llu PPS\n",
-               tid,
-               (((unsigned long long)counter) * cpu_freq) / (finish_time - start_time));
+        unsigned long long pps = (((unsigned long long)counter) * cpu_freq) / (finish_time - start_time);
+        double gbps = (pps * (PACKET_LEN+20) * 8 * 1.0) / (1000*1000*1000);
+        printf("[TID %d] TX THROUGHPUT: %f MPPS or %f Gbps (pkt size = %u bytes)\n",
+               _local_id,
+               pps*1.0/1000000,  
+               gbps,
+               PACKET_LEN);
         counter = 0;
       }
     }

@@ -193,10 +193,18 @@ static int probe(struct pci_dev *dev,
   if (pci_find_capability(dev,PCI_CAP_ID_MSIX)) {
     msi=2;
     pci_disable_msix(dev);
+
     /* for MSI-X we assume 64bit DMA. */
-    pci_set_consistent_dma_mask(dev, DMA_BIT_MASK(64));
-    pci_set_dma_mask(dev,DMA_BIT_MASK(64));
-    PLOG("detected MSIX support");
+    if(pci_set_consistent_dma_mask(dev, DMA_BIT_MASK(64))) {
+      PLOG("unable to set consistent DMA mask to 64 bits");
+      return -1;
+    }
+    if(pci_set_dma_mask(dev,DMA_BIT_MASK(64))) {
+      PLOG("unable to set DMA mask to 64 bits");
+      return -1;
+    }
+    PLOG("DMA masks set OK (dev=%p)",dev);
+    PLOG("Detected MSIX support");
   }
   
   if(msi==0) {
@@ -243,6 +251,8 @@ static int probe(struct pci_dev *dev,
       break;
     }
   }
+
+
 
 
   return 0;

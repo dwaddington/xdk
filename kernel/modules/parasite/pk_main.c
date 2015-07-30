@@ -66,6 +66,7 @@ extern struct device_attribute dev_attr_dma_page_alloc;
 extern struct device_attribute dev_attr_dma_page_free;
 extern struct device_attribute dev_attr_msi_alloc;
 extern struct device_attribute dev_attr_msi_cap;
+extern struct device_attribute dev_attr_grant_access;
 
 static ssize_t  pk_detach_store(struct class *class, 
                                 struct class_attribute *attr,
@@ -161,6 +162,7 @@ struct pk_device * sysfs_class_register_device(struct pci_dev * pci_dev)
   device_create_file(pkdev->dev, &dev_attr_dma_page_free);
   device_create_file(pkdev->dev, &dev_attr_msi_alloc);
   device_create_file(pkdev->dev, &dev_attr_msi_cap);
+  device_create_file(pkdev->dev, &dev_attr_grant_access);
 
   /* create procfs dir */
   ASSERT(pk_proc_dir_root!=NULL);
@@ -622,6 +624,7 @@ void free_minor(struct pk_device *pkdev)
   device_remove_file(pkdev->dev, &dev_attr_dma_page_free);
   device_remove_file(pkdev->dev, &dev_attr_msi_alloc);
   device_remove_file(pkdev->dev, &dev_attr_msi_cap);
+  device_remove_file(pkdev->dev, &dev_attr_grant_access);
 #endif
 
   /* clean up device created with device_create API */

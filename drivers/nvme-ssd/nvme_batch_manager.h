@@ -155,9 +155,11 @@ class NVME_batch_manager {
     NVME_batch_manager() : _last_available_cmdid(0x0) {
       _array = _buffer.get_array();
     }
+
     ~NVME_batch_manager() {}
 
     bool push(const batch_info_t& item) {return _buffer.push(item);}
+
     bool pop(batch_info_t& item) {return _buffer.pop(item);}
 
     //done by consumer
@@ -174,6 +176,7 @@ class NVME_batch_manager {
       return Exokernel::S_OK;
     }
 
+#if 0
     //done by producer
     void add_to_last_batch(uint16_t cmdid) {
       //get_last_entry() checks if the queue is empty
@@ -183,6 +186,7 @@ class NVME_batch_manager {
 
       _array[last_entry].end_cmdid = cmdid;
       _array[last_entry].total++;
+
       assert(
           (_array[last_entry].end_cmdid - _array[last_entry].start_cmdid + 1 == _array[last_entry].total) || 
           (_array[last_entry].end_cmdid + BATCH_INFO_BUFFER_SIZE - _array[last_entry].start_cmdid == _array[last_entry].total) // 0 is not used for cmd id
@@ -196,16 +200,21 @@ class NVME_batch_manager {
       assert(_array[last_entry].ready == false);
       _array[last_entry].ready = true;
     }
+#endif
 
-    //check if the cmd id has been released by the head batch
-    //assuming this can only be called by producer, which alloc cmd ids by incrementing counters
+    /**
+     * check if the cmd id has been released by the head batch
+     * assuming this can only be called by producer, which alloc cmd ids by incrementing counters
+     */
     bool is_available(uint16_t cmdid) {
       uint16_t val = _last_available_cmdid.load(boost::memory_order_relaxed);
       return (cmdid != val);
     }
 
-    //check if the range of cmd id has been released by the head batch
-    //assuming this can only be called by producer, which alloc cmd ids by incrementing counters
+    /**
+     * check if the range of cmd id has been released by the head batch
+     * assuming this can only be called by producer, which alloc cmd ids by incrementing counters
+     **/
     bool is_available(uint16_t cmdid_start, uint16_t cmdid_end) {
       assert(cmdid_start <= cmdid_end);
       uint16_t val = _last_available_cmdid.load(boost::memory_order_relaxed);
@@ -215,16 +224,20 @@ class NVME_batch_manager {
              );
     }
 
-    //check if we can safely reset the cmd id counter to 0
-    //the cmd id counter can be reset only when the values after(greater than) the current counter are not being used
-    //only called by producer
+    /**
+     * check if we can safely reset the cmd id counter to 0
+     * the cmd id counter can be reset only when the values after(greater than) the current counter are not being used
+     * Only called by producer
+     */
     bool can_reset_cmdid(uint16_t cmdid_counter) {
       uint16_t val = _last_available_cmdid.load(boost::memory_order_relaxed);
       return (val <= cmdid_counter);
     }
 
     bool wasEmpty() const { return _buffer.wasEmpty(); }
+
     bool wasFull() const { return _buffer.wasFull(); }
+
     bool isLockFree() const {return _buffer.isLockFree();}
 
 
@@ -257,7 +270,9 @@ class NVME_batch_manager {
       return true; //FIXME: flush command is not recorded in the batch manager
     }
 
+
     void _process_update_batch_info(size_t idx, size_t head, size_t tail) {
+
       _array[idx].counter++;
       assert(_array[idx].counter <= _array[idx].total);
 
@@ -269,8 +284,11 @@ class NVME_batch_manager {
         //if idx is the head, then pop all finished batch info
         if(idx == head) {
           batch_info_t bi;
+
           while(idx < tail) {
+
             size_t idx2 = idx % BATCH_INFO_BUFFER_SIZE;
+
             if(_is_complete(idx2)) {
               _buffer.pop(bi);
               _last_available_cmdid.store(bi.end_cmdid, boost::memory_order_relaxed);
