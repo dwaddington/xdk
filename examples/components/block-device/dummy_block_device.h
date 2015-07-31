@@ -74,4 +74,6 @@ public:
     delete this;
   }
 
+  DUMMY_IBASE_CONTROL;
+
 };

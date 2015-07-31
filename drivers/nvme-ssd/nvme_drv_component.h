@@ -39,6 +39,8 @@ public:
   Exokernel::Device * get_device();
   status_t shutdown_device();
 
+  DUMMY_IBASE_CONTROL;
+
   // IBlockData
   //
   status_t sync_read_block(void * buffer_virt, /* must be 512 byte aligned */
