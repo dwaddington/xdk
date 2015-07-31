@@ -30,6 +30,7 @@
 /*
   Authors:
   Copyright (C) 2013, Daniel G. Waddington <d.waddington@samsung.com>
+  Copyright (C) 2015, Juan A. Colmenares <juan.col@samsung.com>
 */
 
 #ifndef __CYCLES_H__
@@ -46,7 +47,7 @@
 #if defined(__amd64__)
 
 /** 
- * Reads complete 40 bit counter into 64 bit value.
+ * Reads the timestamp counter.
  * @return the read value. 
  */
 INLINE cpu_time_t rdtsc() {
@@ -65,6 +66,50 @@ INLINE uint32_t rdtsc_low() {
   asm volatile("lfence"); // should be mfence for AMD
   asm volatile("rdtsc" : "=a" (a)); //, "=d" (d)); 
   return a;
+}
+
+/**
+ * Returns the content of the timestamp counter (TSC) as well as the content of
+ * the 32-bit Machine-Specific-Register MSR_TSC_AUX, which stores a value that
+ * is unique to each logical processor. 
+ *
+ * Linux kernels (since about 2.6.34) use the MSR_TSC_AUX register to store the
+ * logical processor number and the socket number where that logical processor
+ * is located (in multi-socket systems).
+ *
+ * @param[out] aux the content of MSR_TSC_AUX register. 
+ * @return the timestamp counter's value. 
+ */
+INLINE 
+cpu_time_t rdtscp(uint32_t& aux) {
+  unsigned a, d;
+  asm volatile("lfence"); // should be mfence for AMD
+  asm volatile("rdtscp" : "=a" (a), "=d" (d), "=c" (aux));
+  return ((unsigned long long)a) | (((unsigned long long)d) << 32);;
+}
+
+
+/**
+ * Returns a timestamp counter (TSC) read, the number of the socket where the
+ * current processor is located, and the current processor's logical number. 
+ *
+ * Linux kernels (since about 2.6.34) use the 32-bit MSR_TSC_AUX register to
+ * store the logical processor number and (in multi-socket systems) the socket
+ * number where that logical processor is located.  
+ * The value stored in MSR_TSC_AUX is unique to each logical processor.  
+ *
+ * @param[out] socket_id the number of the socket for the current processor.  
+ * @param[out] cpu_id the current processor's logical number. 
+ * @return the timestamp counter's value. 
+ */
+INLINE 
+cpu_time_t rdtscp(uint32_t& socket_id, uint32_t& cpu_id) {
+  unsigned a, d, c;
+  asm volatile("lfence"); // should be mfence for AMD
+  asm volatile("rdtscp" : "=a" (a), "=d" (d), "=c" (c));
+  socket_id = (c & 0xFFF000)>>12;
+  cpu_id = c & 0xFFF;
+  return ((unsigned long long)a) | (((unsigned long long)d) << 32);;
 }
 
 

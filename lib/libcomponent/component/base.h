@@ -60,6 +60,12 @@
     return comp_uuid;                                               \
   }
 
+#define DUMMY_IBASE_CONTROL \
+  status_t start() { return E_NOT_IMPL; } \
+  status_t stop() { return E_NOT_IMPL; } \
+  status_t shutdown() { return E_NOT_IMPL; } \
+  status_t reset() { return E_NOT_IMPL; } 
+
 namespace Component
 {
   /** 
@@ -212,33 +218,25 @@ namespace Component
        Start component operation.  May be stopped through subsequent
        call to stop();
     */
-    virtual status_t start() {
-      return E_NOT_IMPL;
-    }
+    virtual status_t start() = 0;
 
     /**
        Stop the component operation.  May be restarted through a
        subsequent call to start();
     */
-    virtual status_t stop() {
-      return E_NOT_IMPL;
-    }
+    virtual status_t stop() = 0;
 
     /**
        Shutdown component. Stop and exit threads.  Component
        cannot be restarted after shutdown.  Once shutdown, the
        component should be ready for destruction (delete).
     */
-    virtual status_t shutdown() {
-      return E_NOT_IMPL;
-    }
+    virtual status_t shutdown() = 0;
 
     /** 
        Flush buffers and state.
      */
-    virtual status_t reset() {
-      return E_NOT_IMPL;
-    }
+    virtual status_t reset() = 0;
 
     virtual void set_dll_handle(void * dll) {
       assert(dll);
