@@ -35,6 +35,8 @@
 #include <iostream>
 #include "exo/pagemap.h"
 #include "exo/memory.h"
+
+#if defined(__x86_64__)
 /** 
  * Read in the current memory regions from /proc/self/maps.
  * 
@@ -122,5 +124,7 @@ uint64_t Exokernel::Pagemap::__get_page_frame_number(void * vaddr) {
   if(entry & (1UL << 63)) { PLOG("page is present"); }
 
   /* Page Frame Number is bit 0-54 */
-  return (entry & 0x7fffffffffffffULL);
+  return (entry & 0x7fffffffffffffUL);
 }
+
+#endif

@@ -175,6 +175,7 @@ namespace Exokernel
      */
     void * huge_mmap(size_t size, addr_t phys);
     
+#if defined(__x86_64__)
     /** 
      * Allocate N 4K pages and return physical address
      * 
@@ -184,7 +185,7 @@ namespace Exokernel
      * @return Virtual address
      */
     void * alloc_page(addr_t * phys_addr);
-
+#endif
     /** 
      * Free all pages associated with a previous alloc_pages call
      * 

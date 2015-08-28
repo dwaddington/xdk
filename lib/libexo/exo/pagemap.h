@@ -52,6 +52,9 @@
 
 namespace Exokernel
 {
+
+#if defined(__x86_64__)
+
   class Pagemap
   {
   private:
@@ -193,7 +196,11 @@ namespace Exokernel
 
       using namespace std;
       size_t s = file_size();
+#if (__SIZEOF_SIZE_T__ == 4)
+      printf("Pagemap size:%d bytes\n",s);
+#else
       printf("Pagemap size:%ld bytes\n",s);
+#endif
 
       /* retrieve the list of ranges from /proc/self/maps */
       vector<range_t> range_list;
@@ -239,6 +246,9 @@ namespace Exokernel
       if(f & PAGE_FLAG_THP) PLOG("pageflag:thp");
     }
   };
+
+#endif
+
 }
 
 #endif // __EXO_PAGEMAP_H__
