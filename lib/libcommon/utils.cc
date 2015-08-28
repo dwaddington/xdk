@@ -12,7 +12,6 @@
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
    Lesser General Public License for more details.
-
    You should have received a copy of the GNU Lesser General Public
    License along with the GNU C Library; if not, see
    <http://www.gnu.org/licenses/>.
@@ -45,7 +44,12 @@ extern "C" void panic(const char *fmt, ...) {
   vprintf(fmt, list);
   va_end(list);
   printf("\033[0m\n");
+
+#if defined(__i386__) || defined(__x86_64__)
   asm("int3");
+#else
+  __builtin_trap();
+#endif
 }
 
 /** 

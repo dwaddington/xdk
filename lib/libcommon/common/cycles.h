@@ -36,6 +36,11 @@
 #ifndef __CYCLES_H__
 #define __CYCLES_H__
 
+
+#include <stdlib.h>
+#include <linux/perf_event.h>
+#include <unistd.h>
+#include <sys/syscall.h>
 #include "types.h"
 
 #ifndef INLINE 
@@ -137,6 +142,37 @@ INLINE cpu_time_t rdtsc() {
  */
 double get_tsc_frequency_in_mhz(void); 
 
+#elif defined(__arm__)
+
+/* From https://github.com/thoughtpolic/enable_arm_pmu/blob/master/perf_event_open.c */
+
+static int fddev = -1;
+__attribute__((constructor)) static void
+init(void) {
+  static struct perf_event_attr attr;
+  attr.type = PERF_TYPE_HARDWARE;
+  attr.config = PERF_COUNT_HW_CPU_CYCLES;
+  fddev = syscall(__NR_perf_event_open, &attr, 0, -1, -1, 0);
+}
+
+__attribute__((destructor)) static void
+fini(void) {
+  close(fddev);
+}
+
+static inline long long rdtsc() {
+  long long result = 0;
+  if (read(fddev, &result, sizeof(result)) < sizeof(result)) return 0;
+  return result;
+}
+
+/**
+ * Returns the frequency of the timestamp counters in MHz.
+ * It does so by parsing the output of the "dmesg" command on Linux-like OSes.
+ *
+ * @return the TSC frequency in megahertz.
+ */
+double get_tsc_frequency_in_mhz(void); 
 
 #else
 #error Platform not supported.

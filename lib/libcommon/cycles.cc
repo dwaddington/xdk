@@ -41,6 +41,8 @@
 
 #include <sys/utsname.h>
 
+#if defined(__i386__) || defined(__x86_64__)
+
 double get_tsc_frequency_in_mhz() {
   FILE *fp;
   char output[128];
@@ -103,3 +105,4 @@ double get_tsc_frequency_in_mhz() {
   return tsc_freq_in_MHz;
 }
 
+#endif 
