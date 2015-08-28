@@ -30,18 +30,21 @@
 /*
   Authors:
   Copyright (C) 2013, Juan A. Colmenares <juan.col@samsung.com>
+  Copyright (C) 2015, Daniel G. Waddington <d.waddington@samsung.com>
 */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <iostream>
+#include <fstream>
 
 #include <common/cycles.h>
 #include <common/assert.h>
 
 #include <sys/utsname.h>
 
-#if defined(__i386__) || defined(__x86_64__) || defined(__arm__)
+#if defined(__i386__) || defined(__x86_64__)
 
 double get_tsc_frequency_in_mhz() {
   FILE *fp;
@@ -89,7 +92,7 @@ double get_tsc_frequency_in_mhz() {
     // Open the command for reading the cpu frequency in GHz from /proc/cpuinfo
     // file.
     //fp = popen("`which awk` '{ if ($2==\"name\")print $9 }' /proc/cpuinfo | `which uniq` | `which cut` -d \\G -f 1", "r");
-		fp = popen("`which cat` /proc/cpuinfo | `which grep` \"model name\" | `which uniq` | `which cut` -d \\@ -f 2", "r");
+    fp = popen("`which cat` /proc/cpuinfo | `which grep` \"model name\" | `which uniq` | `which cut` -d \\@ -f 2", "r");
     assert(fp!=NULL);
 
     assert(fgets(output, sizeof(output), fp) != NULL);
@@ -105,4 +108,14 @@ double get_tsc_frequency_in_mhz() {
   return tsc_freq_in_MHz;
 }
 
+#elif defined(__arm__)
+double get_tsc_frequency_in_mhz() {
+  
+  std::ifstream ifs("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq");
+  std::string line;
+  std::getline(ifs, line);
+
+  double result = strtod(line.c_str(), NULL);
+  return result / (1000.0);
+}
 #endif 
