@@ -38,7 +38,6 @@
 #include <stdint.h>
 
 typedef int                     status_t;
-//typedef uint64_t                cpu_mask_t;
 
 typedef unsigned long           addr_t;
 typedef unsigned long           umword_t;

@@ -162,7 +162,7 @@ fini(void) {
 
 static inline long long rdtsc() {
   long long result = 0;
-  if (read(fddev, &result, sizeof(result)) < sizeof(result)) return 0;
+  if (read(fddev, &result, sizeof(result)) < (ssize_t) sizeof(result)) return 0;
   return result;
 }
 

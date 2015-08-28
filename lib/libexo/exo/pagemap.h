@@ -53,8 +53,6 @@
 namespace Exokernel
 {
 
-#if defined(__x86_64__)
-
   class Pagemap
   {
   private:
@@ -246,8 +244,6 @@ namespace Exokernel
       if(f & PAGE_FLAG_THP) PLOG("pageflag:thp");
     }
   };
-
-#endif
 
 }
 
