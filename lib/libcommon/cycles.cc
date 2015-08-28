@@ -41,7 +41,7 @@
 
 #include <sys/utsname.h>
 
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(__i386__) || defined(__x86_64__) || defined(__arm__)
 
 double get_tsc_frequency_in_mhz() {
   FILE *fp;
@@ -101,7 +101,7 @@ double get_tsc_frequency_in_mhz() {
     tsc_freq_in_MHz = tsc_freq_in_MHz * 1000;
   }
 
-	pclose(fp);
+  pclose(fp);
   return tsc_freq_in_MHz;
 }
 
