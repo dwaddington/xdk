@@ -292,6 +292,7 @@ void *
 Exokernel::Device_sysfs::
 alloc_dma_pages(size_t num_pages, 
                 addr_t * phys_addr, 
+                dma_direction_t direction,
                 void * virt_hint,
                 int numa_node, 
                 int flags) 
@@ -308,7 +309,7 @@ alloc_dma_pages(size_t num_pages,
     fs.open(n.c_str());
 
     std::stringstream sstr;
-    sstr << num_pages << " " << numa_node << std::endl;
+    sstr << num_pages << " " << numa_node <<  " " << direction << std::endl;
     fs << sstr.str();
 
     /* Reset file pointer and read allocation results.  When we do
@@ -362,7 +363,7 @@ alloc_dma_pages(size_t num_pages,
       //      memset(p,0,num_pages * PAGE_SIZE);
 
       /* touch pages */
-      touch((void*)p,(size_t)(num_pages * PAGE_SIZE));
+      //touch((void*)p,(size_t)(num_pages * PAGE_SIZE));
 
       assert(check_aligned(p,PAGE_SIZE));          
       close(fd);

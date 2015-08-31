@@ -109,6 +109,8 @@ void* CQ_thread::entry(void* qb) {
       panic("unexpected");
       break;
     }
+#else
+    cpu_relax();
 #endif
     // _queues->_wake_cq_thread.wait();
     // _queues->_wake_cq_thread.reset();
@@ -141,7 +143,7 @@ void* CQ_thread::entry(void* qb) {
 #endif
 
       /* free slot */
-      _queues->release_slot(ccs->command_id-1);
+      //      _queues->release_slot(ccs->command_id-1);
 
       found_completion = true;
       // if(!woke_reader) {

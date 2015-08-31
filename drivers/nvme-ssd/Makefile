@@ -12,7 +12,7 @@ INCLUDES = -I$(XDK_BASE)/lib/libexo -I$(XDK_BASE)/lib/libcommon -I$(XDK_BASE)/li
 #CXXFLAGS += -DEXPONENTIAL_BACKOFF_LOOP
 #CXXFLAGS += -DDISABLE_BATCH_MANAGER_FOR_TESTING
 #CXXFLAGS += -pg
-CXXFLAGS += -g -O2 -fPIC $(INCLUDES)
+CXXFLAGS += -g -std=c++11 -O2 -fPIC $(INCLUDES)
 
 LIBS = -L$(XDK_BASE)/lib/libexo -L$(XDK_BASE)/lib/libcommon -L$(XDK_BASE)/lib/libcomponent -lcommon -lcomponent -lexo -lpthread -lrt -lnuma -ltinyxml -lboost_random
 

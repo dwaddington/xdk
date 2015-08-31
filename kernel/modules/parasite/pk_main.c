@@ -270,6 +270,7 @@ void pk_device_cleanup(struct pk_device * pkdev)
     PDBG("freeing DMA area %p (pages=%d)", 
          (void*) area->phys_addr, 1 << area->order);
     
+#if 0
     /* clear reserved bit on DMA pages before we free */
     {
       struct page * page = area->p;
@@ -281,9 +282,11 @@ void pk_device_cleanup(struct pk_device * pkdev)
         page++; // yes, they are contiguous
       }
     }
-
+#endif
     /* remove from list and free memory */
-    __free_pages(area->p, area->order);
+    //    void dma_unmap_page(struct device *dev, dma_addr_t dma_address, a
+    //                    size_t size, enum dma_data_direction direction);
+    //    __free_pages(area->p, area->order);
     list_del(p);
 
     /* free kernel memory for pk_dma_area */
