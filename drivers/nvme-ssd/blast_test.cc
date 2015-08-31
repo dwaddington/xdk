@@ -11,7 +11,7 @@
 #include "nvme_types.h"
 
 Exokernel::Spin_lock total_ops_lock;
-static std::atomic<uint64_t> total_ops;
+static uint64_t total_ops __attribute__((aligned(8)));
 static bool blast_exit = false;
 
 class BlasterThread : public Exokernel::Base_thread
@@ -42,7 +42,7 @@ public:
    */
   void blast_queue()
   {
-    const unsigned BATCH_SIZE = 1024;
+    const unsigned BATCH_SIZE = 32;
     Exokernel::Device * dev = itf_->get_device();
     addr_t phys = 0;
 
@@ -83,7 +83,7 @@ public:
 #endif
 
       if(total_ops % 100000 == 0)
-        printf("Op count: %ld\n",total_ops.load());
+        printf("Op count: %ld\n",total_ops);
      
     }
 

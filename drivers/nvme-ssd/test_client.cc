@@ -85,6 +85,8 @@ void basic_test(IBlockDevice * itf)
   dev->free_dma_pages(p);
 }
 
+#define DEVICE_INSTANCE 0
+
 int main()
 {
   Exokernel::set_thread_name("nvme_drv-test-client");
@@ -94,7 +96,7 @@ int main()
 
   IBlockDevice * itf = (IBlockDevice *) comp->query_interface(IBlockDevice::iid());
 
-  itf->init_device(1, const_cast<char*>("config.xml"));
+  itf->init_device(DEVICE_INSTANCE, const_cast<char*>("config.xml"));
 
   //  basic_test(itf);
 
