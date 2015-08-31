@@ -4,28 +4,30 @@
 #include <common/utils.h>
 #include <common/dump_utils.h>
 #include <exo/sysfs.h>
+#include <atomic>
 
 #include "nvme_drv_component.h"
 #include "nvme_device.h"
 #include "nvme_types.h"
 
 Exokernel::Spin_lock total_ops_lock;
-static uint64_t total_ops  __attribute__((aligned(8))) = 0;
+static std::atomic<uint64_t> total_ops;
 static bool blast_exit = false;
 
 class BlasterThread : public Exokernel::Base_thread
 {
 private:
-  IBlockDevice * itf;
-  unsigned queue; 
-  off_t max_lba;
+  IBlockDevice * itf_;
+  unsigned queue_; 
+  off_t max_lba_;
 
 public:
-  BlasterThread(unsigned core, IBlockDevice * itf, unsigned queue, off_t max_lba) : 
+  BlasterThread(unsigned core, IBlockDevice * itf, unsigned queue, off_t max_lba) :
+    queue_(queue),
+    max_lba_(max_lba),
+    itf_(itf),
     Exokernel::Base_thread(NULL, core) {
-    this->itf = itf;
-    this->queue = queue;
-    this->max_lba = max_lba;
+    PINF("Blaster thread core (%u)", core);
   }
 
   void* entry(void* param) {
@@ -40,8 +42,8 @@ public:
    */
   void blast_queue()
   {
-    const unsigned BATCH_SIZE = 32;    
-    Exokernel::Device * dev = itf->get_device();
+    const unsigned BATCH_SIZE = 1024;
+    Exokernel::Device * dev = itf_->get_device();
     addr_t phys = 0;
 
     void * p = dev->alloc_dma_pages(BATCH_SIZE,&phys,Exokernel::Device_sysfs::DMA_FROM_DEVICE);
@@ -62,33 +64,30 @@ public:
 
     while(!blast_exit) {
 
-#if 1
+#if 1 // batch version
       for(unsigned b=0;b<BATCH_SIZE;b++) {
-        io_desc[b].offset = rdtsc() % (max_lba - 8);
+        io_desc[b].offset = genrand64_int64() % (max_lba_ - 8);
       }
-      //    status_t st = itf->async_io_batch((io_request_t *)io_desc, BATCH_SIZE, notify, queue, 0);
-      status_t st = itf->async_io_batch((io_request_t *)io_desc, BATCH_SIZE, notify, queue, 0);
 
-      total_ops_lock.lock();
+      status_t st = itf_->async_io_batch((io_request_t *)io_desc, BATCH_SIZE, notify, queue_, 0);
+
       total_ops+=BATCH_SIZE;
-      total_ops_lock.unlock();
-#else
-      io_desc[0].offset = rdtsc() % (max_lba - 8);
-      itf->async_io((io_request_t)&io_desc[0], 
+
+#else // non-batch version
+      io_desc[0].offset = genrand64_int64() % (max_lba_ - 8);
+      //      printf("reading offset %ld\n",io_desc[0].offset);
+      itf_->async_io((io_request_t)&io_desc[0], 
                     notify, 
-                    queue /*queue/port*/, 0 /* device */);
+                    queue_ /*queue/port*/, 0 /* device */);
       total_ops++;
 #endif
 
       if(total_ops % 100000 == 0)
-        printf("Op count: %ld\n",total_ops);
-
-      //
-
-      usleep(10);
+        printf("Op count: %ld\n",total_ops.load());
+     
     }
 
-    itf->wait_io_completion(queue); //wait for IO completion
+    itf_->wait_io_completion(queue_); //wait for IO completion
 
     dev->free_dma_pages(p);
   }
@@ -104,7 +103,7 @@ public:
  */
 void blast(IBlockDevice * itf, off_t max_lba)
 {
-#define NUM_QUEUES 1
+#define NUM_QUEUES 4
 #define TIME_DURATION_SEC 10
 
   //  pthread_t threads[NUM_QUEUES];
@@ -112,7 +111,7 @@ void blast(IBlockDevice * itf, off_t max_lba)
 
   for(unsigned i=0;i<NUM_QUEUES;i++) {
 
-    threads[i] = new BlasterThread((i*2) /* core */,
+    threads[i] = new BlasterThread((i*2)+21 /* core */,
                                    itf,
                                    i+1, /* queue */
                                    max_lba);

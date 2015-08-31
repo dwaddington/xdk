@@ -63,17 +63,13 @@ NVME_queues_base::NVME_queues_base(NVME_device * dev, unsigned queue_id, unsigne
   _cq_head(0),
   _cq_phase(1),  
   _irq(irq),
-  _queue_items(queue_length),
+  _queue_max_items(queue_length),
   _cmdid_counter(0)
 {
   //   static unsigned stride = NVME_CAP_STRIDE(_registers->cap);
   //   unsigned db_offset = NVME_OFFSET_COMPLETION_DB(cap,queue_id,stride);
   //   *(offset<uint32_t>(db_offset)) = p;
   
-  /* allocate bitmap */
-  _bitmap = new Exokernel::Bitmap_tracker_threadsafe(queue_length*4);
-  assert(_bitmap);
-  _bitmap->next_free(); // use first slot to avoid cmdid==0
 
   /* allocate batch manager */
   _batch_manager = new NVME_batch_manager();
@@ -101,8 +97,6 @@ void NVME_queues_base::setup_doorbells()
 
 NVME_queues_base::~NVME_queues_base() 
 {
-  /* delete bitmap */
-  delete _bitmap;
   delete _batch_manager;
 }
 
@@ -117,10 +111,10 @@ NVME_queues_base::~NVME_queues_base()
 status_t NVME_queues_base::increment_submission_tail(queue_ptr_t * tptr) {
 
   /* check if the SQ is full */
-  uint16_t new_tail = _sq_tail + 1;
+  register uint16_t new_tail = _sq_tail + 1;
 
-  if(_unlikely(new_tail >= _queue_items)) 
-    new_tail -= _queue_items;
+  if(new_tail >= _queue_max_items) 
+    new_tail -= _queue_max_items;
 
   if( new_tail == _sq_head ) {
     PLOG("Queue %d is full (sq_head = %u, sq_tail = %u) !!", _queue_id, _sq_head, _sq_tail);
@@ -131,7 +125,7 @@ status_t NVME_queues_base::increment_submission_tail(queue_ptr_t * tptr) {
   *tptr = _sq_tail++;
 
   /* check for wrap-around */
-  if(_sq_tail == _queue_items)
+  if(_sq_tail == _queue_max_items)
     _sq_tail = 0;
   
   return Exokernel::S_OK;
@@ -147,7 +141,7 @@ status_t NVME_queues_base::increment_submission_tail(queue_ptr_t * tptr) {
  */
 unsigned NVME_queues_base::increment_completion_head() {
 
-  if(++_cq_head == _queue_items) {
+  if(++_cq_head == _queue_max_items) {
     _cq_head = 0;
     _cq_phase = !_cq_phase;
   }
@@ -247,7 +241,7 @@ void NVME_queues_base::dump_queue_info() {
 
   __sync_synchronize();
 
-  for(unsigned i=0;i < 20;i++) { // _queue_items
+  for(unsigned i=0;i < 20;i++) { // _queue_max_items
     PINF("SQCMD[%u][cid=%d](0x%x) CQCMD[%u][cid=%u](status=0x%x)(sct=0x%x)(phase=%u)(sqhd=%u)(result=%x)",
          i,
          _sub_cmd[i].command_id,
@@ -289,7 +283,7 @@ Submission_command_slot * NVME_queues_base::next_sub_slot(signed * cmdid) {
  * @return Pointer to completion slot
  */
 Completion_command_slot * NVME_queues_base::curr_comp_slot() {
-  assert(_cq_head < _queue_items);
+  assert(_cq_head < _queue_max_items);
   return &_comp_cmd[_cq_head];
 }
 
@@ -316,8 +310,6 @@ NVME_admin_queue::NVME_admin_queue(NVME_device * dev, unsigned irq) :
   assert(dev);
 
   NVME_registers * reg = dev->regs();
-
-  _queue_items = Admin_queue_len; 
 
   /* allocate memory for the completion queue */
   num_pages = round_up_page(CQ_entry_size_bytes * Admin_queue_len) / PAGE_SIZE;
@@ -503,13 +495,13 @@ uint32_t NVME_admin_queue::ring_wait_complete(Command_admin_base& cmd)
 
 status_t NVME_admin_queue::create_io_completion_queue(vector_t vector,
                                                       unsigned queue_id,
-                                                      size_t queue_items,
+                                                      size_t queue_max_items,
                                                       addr_t prp1)
 {
   assert(prp1);
 
   /* construct command */
-  Command_admin_create_io_cq cmd(this,vector,queue_id,queue_items,prp1);
+  Command_admin_create_io_cq cmd(this,vector,queue_id,queue_max_items,prp1);
 
   if(ring_wait_complete(cmd)!=0) 
     assert(0);
@@ -646,7 +638,6 @@ NVME_IO_queue::NVME_IO_queue(NVME_device * dev,
   NVME_admin_queue * admin = dev->admin_queues();
   assert(admin);
 
-  _queue_items = queue_length;
   _queue_id = queue_id; 
   assert(_queue_id > 0); /* admin Q is id 0 */
 
@@ -657,10 +648,11 @@ NVME_IO_queue::NVME_IO_queue(NVME_device * dev,
   drain_tsc = (unsigned long long)get_tsc_frequency_in_mhz() * US_PER_RING;
 
   /* allocate memory for the completion queue */
-  num_pages = (round_up_page(CQ_entry_size_bytes * _queue_items)/PAGE_SIZE)*2;
+  num_pages = (round_up_page(CQ_entry_size_bytes * _queue_max_items)/PAGE_SIZE)*2;
 
   PLOG("allocating %ld pages for IO completion queue",num_pages);
   _cq_dma_mem = dev->alloc_dma_pages(num_pages, &_cq_dma_mem_phys, Exokernel::Device_sysfs::DMA_FROM_DEVICE);  
+
   assert(_cq_dma_mem);
   assert(_cq_dma_mem_phys);
   memset(_cq_dma_mem,0,num_pages * PAGE_SIZE); /* important to zero phase bits */
@@ -672,12 +664,12 @@ NVME_IO_queue::NVME_IO_queue(NVME_device * dev,
   /* create IO completion queue */  
   rc = admin->create_io_completion_queue(_queue_id, /* logical vector */
                                          _queue_id,
-                                         _queue_items,
+                                         _queue_max_items,
                                          _cq_dma_mem_phys);
   assert(rc==Exokernel::S_OK);
 
   /* allocate memory for the submission queue */
-  num_pages = (round_up_page(SQ_entry_size_bytes * _queue_items)/PAGE_SIZE)*2;
+  num_pages = (round_up_page(SQ_entry_size_bytes * _queue_max_items)/PAGE_SIZE)*2;
 
   PLOG("allocating %ld pages for IO submission queue",num_pages);
   _sq_dma_mem = dev->alloc_dma_pages(num_pages, &_sq_dma_mem_phys, Exokernel::Device_sysfs::DMA_TO_DEVICE);
@@ -692,7 +684,7 @@ NVME_IO_queue::NVME_IO_queue(NVME_device * dev,
   
   /* create IO submission queue */
   rc = admin->create_io_submission_queue(_queue_id,
-                                         _queue_items,
+                                         _queue_max_items,
                                          _sq_dma_mem_phys,
                                          _queue_id);
   assert(rc==Exokernel::S_OK);
@@ -759,13 +751,17 @@ uint16_t NVME_IO_queue::issue_async_read(addr_t prp1,
   signed slot_id;
   Submission_command_slot * sc;
 
+#if COLLECT_STATS
   cpu_time_t start = rdtsc();
+#endif
 
 
   Completion_command_slot * ccs;
   if(!(sc = next_sub_slot(&slot_id))) {
     panic("no sub slots! issued=%u -- this should not happen!!",issued);
   }  
+
+  //  NVME_INFO("Submitting on queue %u\n", _queue_id);
 
   assert(slot_id >= 0);
   assert(slot_id > 0);
@@ -912,7 +908,8 @@ uint16_t NVME_IO_queue::issue_async_io_batch(io_descriptor_t* io_desc,
 
       PLOG("READ: issued cmdid = %u, offset = %lu(0x%lx), page_offset = %lu(0x%lx)\n", cmdid, io_desc_ptr->offset, io_desc_ptr->offset, io_desc_ptr->offset/8, io_desc_ptr->offset/8);
 
-    } else if (io_desc_ptr->action == NVME_WRITE) {
+    } 
+    else if (io_desc_ptr->action == NVME_WRITE) {
 
       cmdid = issue_async_write(io_desc_ptr->buffer_phys, 
                                 io_desc_ptr->offset,
@@ -920,7 +917,8 @@ uint16_t NVME_IO_queue::issue_async_io_batch(io_descriptor_t* io_desc,
 
       PLOG("WRITE: issued cmdid = %u, offset = %lu(0x%lx), page_offset = %lu(0x%lx)\n", cmdid, io_desc_ptr->offset, io_desc_ptr->offset, io_desc_ptr->offset/8, io_desc_ptr->offset/8);
 
-    } else {
+    } 
+    else {
       PERR("Unrecoganized Operaton !!");
       assert(false);
     }

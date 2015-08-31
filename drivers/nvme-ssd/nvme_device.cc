@@ -212,7 +212,7 @@ void NVME_device::nvme_init_device() {
     core_id_t core;
     unsigned qid = _config.io_queue_get_assigned_core(i,&core);
 
-    NVME_INFO("Assigning queue id (%u) to core (%u)\n",qid,core);
+    NVME_INFO("Assigning completion queue id (%u) to core (%u)\n",qid,core);
 
     NVME_IO_queue * ioq = 
       new NVME_IO_queue(this,

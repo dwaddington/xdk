@@ -363,7 +363,7 @@ alloc_dma_pages(size_t num_pages,
       //      memset(p,0,num_pages * PAGE_SIZE);
 
       /* touch pages */
-      touch((void*)p,(size_t)(num_pages * PAGE_SIZE));
+      //touch((void*)p,(size_t)(num_pages * PAGE_SIZE));
 
       assert(check_aligned(p,PAGE_SIZE));          
       close(fd);
