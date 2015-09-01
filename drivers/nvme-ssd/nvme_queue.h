@@ -538,10 +538,9 @@ public:
                              unsigned nsid=1);
 
 
-  uint16_t issue_async_io_batch(io_descriptor_t* io_desc,
-                                uint64_t length,
-                                Notify *notify
-                                );
+  uint16_t issue_async_io_batch(io_request_t* io_desc,
+                                uint64_t length);
+
 
   status_t wait_io_completion();
 

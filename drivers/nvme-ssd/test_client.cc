@@ -40,11 +40,9 @@
 
 #include "nvme_drv_component.h"
 #include "tests.h"
-#include "mt_tests.cc"
-#include "verify_tests.cc"
 
 void read_blast(IBlockDevice * itf, off_t max_lba);
-void verify_blast(IBlockDevice * itf, off_t max_lba);
+void verify_blast(IBlockDevice * itf);
 
 /* very basic test */
 void basic_test(IBlockDevice * itf)
@@ -57,36 +55,33 @@ void basic_test(IBlockDevice * itf)
     
   memset(p,0xA,PAGE_SIZE);
 
-  io_descriptor_t* io_desc = (io_descriptor_t *)malloc(sizeof(io_descriptor_t));
-  memset(io_desc, 0, sizeof(io_descriptor_t));
-  io_desc->action = NVME_WRITE;
-  io_desc->buffer_virt = p;
-  io_desc->buffer_phys = phys;
-  io_desc->offset = lba;
-  io_desc->num_blocks = 1;
+  io_request_t io_desc;
+  io_desc.action = BLOCK_WRITE;
+  io_desc.buffer_virt = p;
+  io_desc.buffer_phys = phys;
+  io_desc.offset = lba;
+  io_desc.num_blocks = 1;
    
-  itf->sync_io((io_request_t)io_desc, 1, 0);
+  itf->sync_io(io_desc,1 /* port */);
 
   PLOG("======= DONE WRITE ========");
 
   memset(p,0,PAGE_SIZE);
 
+  io_desc.action = BLOCK_READ;
+  io_desc.buffer_virt = p;
+  io_desc.buffer_phys = phys;
+  io_desc.offset = lba;
+  io_desc.num_blocks = 1;
 
-  memset(io_desc, 0, sizeof(io_descriptor_t));
-  io_desc->action = NVME_READ;
-  io_desc->buffer_virt = p;
-  io_desc->buffer_phys = phys;
-  io_desc->offset = lba;
-  io_desc->num_blocks = 1;
-
-  itf->sync_io((io_request_t)io_desc, 1, 0);
+  itf->sync_io(io_desc, 1);
 
   hexdump(p,512);
 
   dev->free_dma_pages(p);
 }
 
-#define DEVICE_INSTANCE 1
+#define DEVICE_INSTANCE 0
 
 int main()
 {
@@ -97,17 +92,17 @@ int main()
 
   IBlockDevice * itf = (IBlockDevice *) comp->query_interface(IBlockDevice::iid());
 
-  itf->init_device(DEVICE_INSTANCE, const_cast<char*>("config.xml"));
+  itf->init_device(DEVICE_INSTANCE, "file=./config.xml");
 
   //  basic_test(itf);
 
   // 512 byte LBA format blast(itf,781422768);
-  //  read_blast(itf,97677846); // size of SSD1 NVME drive
 
-  verify_blast(itf, 100);
+  read_blast(itf,97677846); // size of SSD1 NVME drive
 
-  //(new mt_tests())->runTest(itf);
-  //  (new verify_tests())->runTest(itf);
+  //verify_blast(itf);
+
+
 
   itf->shutdown_device();
 

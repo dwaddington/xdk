@@ -53,17 +53,16 @@ public:
     assert(p);
 
 
-    io_descriptor_t* io_desc = (io_descriptor_t *) malloc(sizeof(io_descriptor_t) * BATCH_SIZE);
+    io_request_t* io_desc = (io_request_t *) malloc(sizeof(io_request_t) * BATCH_SIZE);
   
     for(unsigned b=0;b<BATCH_SIZE;b++) {
-      io_desc[b].action = NVME_READ;
+      io_desc[b].action = BLOCK_READ;
       io_desc[b].buffer_virt = p;
       io_desc[b].buffer_phys = phys;
       io_desc[b].num_blocks = 1;
     }
 
     uint64_t counter = 0;
-    Notify *notify = new Notify_Async();
 
     while(!blast_exit) {
 
@@ -72,18 +71,16 @@ public:
         io_desc[b].offset = genrand64_int64() % (max_lba_ - 8);
       }
 
-      status_t st = itf_->async_io_batch((io_request_t *)io_desc, 
+      status_t st = itf_->async_io_batch(io_desc, 
                                          BATCH_SIZE, 
-                                         notify, 
-                                         queue_, 0);
+                                         queue_);
 
       total_ops+=BATCH_SIZE;
 
 #else // non-batch version
       io_desc[0].offset = genrand64_int64() % (max_lba_ - 8);
       //      printf("reading offset %ld\n",io_desc[0].offset);
-      itf_->async_io((io_request_t)&io_desc[0], 
-                    notify, 
+      itf_->async_io(io_desc[0], 
                     queue_ /*queue/port*/, 0 /* device */);
       total_ops++;
 #endif
@@ -102,6 +99,7 @@ public:
 };
 
 #define ASYNC
+#define BATCH
 
 class VerifyBlasterThread : public Exokernel::Base_thread
 {
@@ -144,8 +142,6 @@ public:
 
     sleep(1);
 
-    Notify *notify = new Notify_Async();
-
     void * wb = dev->alloc_dma_pages(1,
                                      &wb_phys,
                                      Exokernel::Device_sysfs::DMA_TO_DEVICE);
@@ -154,11 +150,8 @@ public:
                                      &rb_phys,
                                      Exokernel::Device_sysfs::DMA_FROM_DEVICE);
 
-    PINF("qid = %d", queue_);
-    PINF("Allocated DMA");
-
-    io_descriptor_t io_desc;
-    io_desc.action = NVME_WRITE;
+    io_request_t io_desc;
+    io_desc.action = BLOCK_WRITE;
     io_desc.buffer_virt = wb;
     io_desc.buffer_phys = wb_phys;
     io_desc.num_blocks = 1;
@@ -186,13 +179,16 @@ public:
 
       *((uint64_t *) io_desc.buffer_virt) = (uint64_t) (((uint64_t) queue_)<<32  | i);
 
-#ifdef ASYNC
-      status_t st = itf_->async_io_batch((void**)&io_desc, 1,
-                                          notify, 
-                                          queue_, 0);
+#if defined(ASYNC) && defined(BATCH)
+      status_t st = itf_->async_io_batch(&io_desc, 1,
+                                         queue_);
       assert(st == S_OK);
       itf_->wait_io_completion(queue_); //wait for IO completion     
-
+#elif defined(ASYNC) && !defined(BATCH)
+      status_t st = itf_->async_io_batch(io_desc, 
+                                         queue_);
+      assert(st == S_OK);
+      itf_->wait_io_completion(queue_); //wait for IO completion     
 #else // sync version
       itf_->sync_io((void**)&io_desc, 1);
 #endif
@@ -201,7 +197,7 @@ public:
 
     PINF("(%d) Write phase complete OK.", queue_);
 
-    io_desc.action = NVME_READ;
+    io_desc.action = BLOCK_READ;
     io_desc.buffer_virt = rb;
     io_desc.buffer_phys = rb_phys;
     io_desc.num_blocks = 1;
@@ -215,10 +211,14 @@ public:
 
         ::memset(io_desc.buffer_virt,0xFE,4096);
 
-#ifdef ASYNC
-        status_t st = itf_->async_io_batch((void**)&io_desc, 1,
-                                           notify, 
-                                           queue_, 0);
+#if defined(ASYNC) && defined(BATCH)
+        status_t st = itf_->async_io_batch(&io_desc, 1,
+                                           queue_);
+        assert(st == S_OK);
+        itf_->wait_io_completion(queue_); //wait for IO completion     
+#elif defined(ASYNC) && !defined(BATCH)
+        status_t st = itf_->async_io_batch(io_desc,
+                                           queue_);
         assert(st == S_OK);
         itf_->wait_io_completion(queue_); //wait for IO completion     
 #else
@@ -283,7 +283,7 @@ void read_blast(IBlockDevice * itf, off_t max_lba)
 }
 
 
-void verify_blast(IBlockDevice * itf, off_t max_lba)
+void verify_blast(IBlockDevice * itf)
 {
   const int NUM_QUEUES = 8;
   const int TIME_DURATION_SEC = 10;

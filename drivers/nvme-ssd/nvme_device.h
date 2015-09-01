@@ -35,7 +35,6 @@
 #include "nvme_registers_wrappers.h"
 #include "nvme_queue.h"
 #include "cq_thread.h"
-#include "notify.h"
 #include "config.h"
 
 #define CONFIG_MAX_IO_QUEUES 32 /* increase this to support more queues */
@@ -227,9 +226,8 @@ public:
   }
 
   status_t async_io_batch(unsigned queue_id,
-                          io_descriptor_t* io_desc,
-                          uint64_t length,
-                          Notify* notify
+                          io_request_t* io_desc,
+                          uint64_t length
                           )
   {
     if((queue_id > _num_io_queues)||(queue_id == 0)) {
@@ -238,7 +236,7 @@ public:
       return Exokernel::E_INVAL;
     }
     assert(_io_queues[queue_id - 1]);
-    return _io_queues[queue_id - 1]->issue_async_io_batch(io_desc, length, notify);
+    return _io_queues[queue_id - 1]->issue_async_io_batch(io_desc, length);
   }
 
   status_t flush(unsigned nsid, unsigned queue_id)

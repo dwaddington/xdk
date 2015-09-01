@@ -195,7 +195,7 @@ class NVME_batch_manager {
 
     //done by producer
     void finish_batch() {
-      //Under a memory modle where stores can be reordered, a memory barrier/fence is needed here
+      //Under a memory model where stores can be reordered, a memory barrier/fence is needed here
       size_t last_entry = _buffer.get_last_entry();
       assert(_array[last_entry].ready == false);
       _array[last_entry].ready = true;
