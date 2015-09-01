@@ -138,7 +138,7 @@ int Exokernel::Memory::huge_free(void * ptr) {
 }
 
 
-
+#if defined(__x86_64__)
 /** 
  * Allocate N 4K pages and return physical address
  * 
@@ -172,6 +172,8 @@ void * Exokernel::Memory::alloc_page(addr_t* phys_addr)
   return ptr;
 
 } __attribute__((deprecated))
+
+#endif
 
 /** 
  * Free all pages associated with a previous alloc_pages call

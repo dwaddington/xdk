@@ -35,6 +35,7 @@
 #include <iostream>
 #include "exo/pagemap.h"
 #include "exo/memory.h"
+
 /** 
  * Read in the current memory regions from /proc/self/maps.
  * 
@@ -84,14 +85,14 @@ uint64_t Exokernel::Pagemap::__get_page_frame_number(void * vaddr) {
 
   using namespace std;
 
-  size_t pages_in_range;
-
+  //  unsigned long pages_in_range = 0;
+  
   /* check vaddr exists */
   vector<range_t> range_list;
   read_regions(range_list);
   for (unsigned i=0;i<range_list.size();i++) {
 
-    pages_in_range = (range_list[i].end - range_list[i].start) / _page_size;
+    //    pages_in_range = (range_list[i].end - range_list[i].start) / _page_size;
 
     /* check if this is our range */
     if ((((addr_t)vaddr) >= range_list[i].start) 
@@ -116,11 +117,8 @@ uint64_t Exokernel::Pagemap::__get_page_frame_number(void * vaddr) {
   int rc = pread(_fd_pagemap,(void*)&entry,8,offset);
   assert(rc == 8);
 
-  if(entry & (1UL << 55)) { PLOG("page soft-dirty"); }
-  if(entry & (1UL << 61)) { PLOG("page is shared-anon or file-page"); }
-  if(entry & (1UL << 62)) { PLOG("page is swapped"); }
-  if(entry & (1UL << 63)) { PLOG("page is present"); }
-
   /* Page Frame Number is bit 0-54 */
-  return (entry & 0x7fffffffffffffULL);
+  return (entry & 0x7fffffffffffffUL);
 }
+
+

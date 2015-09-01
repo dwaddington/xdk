@@ -48,15 +48,12 @@
 #define INLINE inline __attribute__((always_inline))
 #endif
 
-#ifdef __amd64
+#if defined(__x86_64__) || defined(__i386__) || defined(__ARM_ARCH_7A__)
 #define CACHE_LINE_SIZE 64
 #endif
 
 /* Compile read-write barrier */
 #define xdk_barrier() asm volatile("": : :"memory")
-
-/* Pause instruction to prevent excess processor bus usage */ 
-#define cpu_relax() asm volatile("pause\n": : :"memory")
 
 #define cmpxchg(P, O, N) __sync_val_compare_and_swap((P), (O), (N))
 #define atomic_xadd(P, V) __sync_fetch_and_add((P), (V))
@@ -74,6 +71,8 @@ static inline void *xchg(void *ptr, void *x)
                        :"m" (*(volatile long long *)ptr), "0" ((unsigned long long) x)
                        :"memory");
 #elif defined(__i386__)
+  return (void *) __atomic_exchange_n((unsigned long *)ptr, (unsigned long *)x, __ATOMIC_RELAXED);
+#elif defined(__arm__)
   return (void *) __atomic_exchange_n((unsigned long *)ptr, (unsigned long *)x, __ATOMIC_RELAXED);
 #else
 #error Unsupported platform
