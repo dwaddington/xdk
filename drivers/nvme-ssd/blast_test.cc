@@ -5,6 +5,7 @@
 #include <common/dump_utils.h>
 #include <exo/sysfs.h>
 #include <atomic>
+#include <list>
 
 #include "nvme_drv_component.h"
 #include "nvme_device.h"
@@ -129,61 +130,81 @@ public:
    */
   void blast_loop()
   {
-    const unsigned BATCH_SIZE = 256;
+    const unsigned BATCH_SIZE = 32;
     Exokernel::Device * dev = itf_->get_device();
-    addr_t phys = 0;
-    unsigned long count = 0;
+    addr_t wb_phys = 0, rb_phys = 0;
+    unsigned char c = 'A';
 
-    void * p = dev->alloc_dma_pages(BATCH_SIZE,
-                                    &phys,
-                                    Exokernel::Device_sysfs::DMA_FROM_DEVICE);
-    assert(p);
-
-
-    io_descriptor_t* io_desc = (io_descriptor_t *) malloc(sizeof(io_descriptor_t) * BATCH_SIZE);
-  
-    for(unsigned b=0;b<BATCH_SIZE;b++) {
-      io_desc[b].action = NVME_READ;
-      io_desc[b].buffer_virt = p;
-      io_desc[b].buffer_phys = phys;
-      io_desc[b].num_blocks = 1;
-    }
-
-    uint64_t counter = 0;
     Notify *notify = new Notify_Async();
 
-    while(!blast_exit) {
+    void * wb = dev->alloc_dma_pages(1,
+                                     &wb_phys,
+                                     Exokernel::Device_sysfs::DMA_TO_DEVICE);
 
-#if 1 // batch version
-      for(unsigned b=0;b<BATCH_SIZE;b++) {
-        io_desc[b].offset = genrand64_int64() % (max_lba_ - 8);
-      }
+    void * rb = dev->alloc_dma_pages(1,
+                                     &rb_phys,
+                                     Exokernel::Device_sysfs::DMA_FROM_DEVICE);
 
-      status_t st = itf_->async_io_batch((io_request_t *)io_desc, 
-                                         BATCH_SIZE, 
+    io_descriptor_t io_desc;
+    io_desc.action = NVME_WRITE;
+    io_desc.buffer_virt = wb;
+    io_desc.buffer_phys = wb_phys;
+    io_desc.num_blocks = 1;
+
+    std::list<off_t> written_offsets;
+
+    for(unsigned char c='A'; c <= 'Z' ; c++) {
+      io_desc.offset = genrand64_int64() % (max_lba_ - 8);
+      written_offsets.push_back(io_desc.offset);
+
+      memset(io_desc.buffer_virt,c,4096);
+
+      status_t st = itf_->async_io_batch((void**)&io_desc, 1,
                                          notify, 
                                          queue_, 0);
-
-      total_ops+=BATCH_SIZE;
-
-#else // non-batch version
-      io_desc[0].offset = genrand64_int64() % (max_lba_ - 8);
-      //      printf("reading offset %ld\n",io_desc[0].offset);
-      itf_->async_io((io_request_t)&io_desc[0], 
-                    notify, 
-                    queue_ /*queue/port*/, 0 /* device */);
-      total_ops++;
-#endif
-
-      if(total_ops % 100000 == 0)
-        printf("Op count: %ld\n",total_ops);
-
     }
+
+
+  
+    
+
+//     uint64_t counter = 0;
+//     Notify *notify = new Notify_Async();
+
+//     while(!blast_exit) {
+
+// #if 1 // batch version
+//       for(unsigned b=0;b<BATCH_SIZE;b++) {
+//         io_desc[b].offset = genrand64_int64() % (max_lba_ - 8);
+//         memset(io_desc[b].buffer_virt,c,4096);
+//       }
+
+//       status_t st = itf_->async_io_batch((io_request_t *)io_desc, 
+//                                          BATCH_SIZE, 
+//                                          notify, 
+//                                          queue_, 0);
+
+//       total_ops+=BATCH_SIZE;
+
+// #else // non-batch version
+//       io_desc[0].offset = genrand64_int64() % (max_lba_ - 8);
+//       //      printf("reading offset %ld\n",io_desc[0].offset);
+//       itf_->async_io((io_request_t)&io_desc[0], 
+//                     notify, 
+//                     queue_ /*queue/port*/, 0 /* device */);
+//       total_ops++;
+// #endif
+
+//       if(total_ops % 100000 == 0)
+//         printf("Op count: %ld\n",total_ops);
+
+//     }
 
     // wait for batch?
     itf_->wait_io_completion(queue_); //wait for IO completion     
 
-    dev->free_dma_pages(p);
+    dev->free_dma_pages(wb);
+    dev->free_dma_pages(rb);
   }
 
 };
@@ -197,8 +218,8 @@ public:
  */
 void read_blast(IBlockDevice * itf, off_t max_lba)
 {
-#define NUM_QUEUES 8
-#define TIME_DURATION_SEC 10
+  const int NUM_QUEUES = 8;
+  const int TIME_DURATION_SEC = 10;
 
   //  pthread_t threads[NUM_QUEUES];
   ReadBlasterThread * threads[NUM_QUEUES];
@@ -227,10 +248,9 @@ void read_blast(IBlockDevice * itf, off_t max_lba)
 
 void verify_blast(IBlockDevice * itf, off_t max_lba)
 {
-#define NUM_QUEUES 8
-#define TIME_DURATION_SEC 10
+  const int NUM_QUEUES = 1;
+  const int TIME_DURATION_SEC = 10;
 
-  //  pthread_t threads[NUM_QUEUES];
   VerifyBlasterThread * threads[NUM_QUEUES];
 
   for(unsigned i=0;i<NUM_QUEUES;i++) {
