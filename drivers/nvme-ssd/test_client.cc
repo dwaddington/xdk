@@ -86,7 +86,7 @@ void basic_test(IBlockDevice * itf)
   dev->free_dma_pages(p);
 }
 
-#define DEVICE_INSTANCE 0
+#define DEVICE_INSTANCE 1
 
 int main()
 {

@@ -101,21 +101,28 @@ public:
 
 };
 
+#define ASYNC
 
 class VerifyBlasterThread : public Exokernel::Base_thread
 {
 private:
   IBlockDevice * itf_;
   unsigned queue_; 
-  off_t max_lba_;
+  off_t start_lba_;
+  off_t end_lba_;
 
 public:
-  VerifyBlasterThread(unsigned core, IBlockDevice * itf, unsigned queue, off_t max_lba) :
+  VerifyBlasterThread(unsigned core, 
+                      IBlockDevice * itf, 
+                      unsigned queue,                       
+                      off_t start_lba,
+                      off_t end_lba) :
     queue_(queue),
-    max_lba_(max_lba),
+    start_lba_(start_lba),
+    end_lba_(end_lba),
     itf_(itf),
     Exokernel::Base_thread(NULL, core) {
-    PINF("Verify blaster thread core (%u)", core);
+    PINF("Verify blaster thread core (%u) LBA:%ld-%ld", core, start_lba, end_lba);
   }
 
   void* entry(void* param) {
@@ -135,6 +142,8 @@ public:
     addr_t wb_phys = 0, rb_phys = 0;
     unsigned char c = 'A';
 
+    sleep(1);
+
     Notify *notify = new Notify_Async();
 
     void * wb = dev->alloc_dma_pages(1,
@@ -153,29 +162,44 @@ public:
     io_desc.buffer_virt = wb;
     io_desc.buffer_phys = wb_phys;
     io_desc.num_blocks = 1;
-    io_desc.offset = queue_ * 4000;
+    io_desc.offset = start_lba_;
 
     std::list<off_t> written_offsets;
+    std::set<off_t> offset_set;
 
-    for(uint64_t i=0;i<100;i++) {
+    for(uint64_t i=0;i<((end_lba_-start_lba_)/4);i++) {
 
-      io_desc.offset += genrand64_int64() % 100;
-      PINF("writing @%ld (val=%lx)",io_desc.offset, 
-           (uint64_t) (((uint64_t) queue_)<<32  | i));
+      do {
+        io_desc.offset += genrand64_int64() % 100 + 1;
+
+        if(io_desc.offset > end_lba_) { // wrap
+          io_desc.offset = start_lba_ + genrand64_int64() % 100 + 1;
+        }
+      }
+      while(offset_set.find(io_desc.offset)!=offset_set.end());
+        
+      // PINF("(%d) writing @%ld (val=%lx)",queue_, io_desc.offset, 
+      //      (uint64_t) (((uint64_t) queue_)<<32  | i));
 
       written_offsets.push_back(io_desc.offset);
+      offset_set.insert(io_desc.offset);
 
       *((uint64_t *) io_desc.buffer_virt) = (uint64_t) (((uint64_t) queue_)<<32  | i);
 
+#ifdef ASYNC
       status_t st = itf_->async_io_batch((void**)&io_desc, 1,
-                                         notify, 
-                                         queue_, 0);
+                                          notify, 
+                                          queue_, 0);
       assert(st == S_OK);
       itf_->wait_io_completion(queue_); //wait for IO completion     
+
+#else // sync version
+      itf_->sync_io((void**)&io_desc, 1);
+#endif
     }
 
 
-    PINF("Write phase complete OK.");
+    PINF("(%d) Write phase complete OK.", queue_);
 
     io_desc.action = NVME_READ;
     io_desc.buffer_virt = rb;
@@ -191,61 +215,31 @@ public:
 
         ::memset(io_desc.buffer_virt,0xFE,4096);
 
+#ifdef ASYNC
         status_t st = itf_->async_io_batch((void**)&io_desc, 1,
                                            notify, 
                                            queue_, 0);
         assert(st == S_OK);
         itf_->wait_io_completion(queue_); //wait for IO completion     
+#else
+        itf_->sync_io((void**)&io_desc, 1);
+#endif
 
         int64_t val = *((uint64_t *) io_desc.buffer_virt);
 
         if(val != (uint64_t) (((uint64_t) queue_)<<32  | i)) {
-          PINF("ERROR! read value=%lx @%ld",val, off);
+          PINF("ERROR! Invalid data: read value=%lx @%ld",val, off);
+          exit(0);
         }
         else {
-          PINF("Record at %ld OK! (%lx)",off, val);
+          //          PINF("(%d) Record at %ld OK! (%lx)",queue_, off, val);
         }
         i++;
       }
-
     }
+
+    PINF("(%d) Verify phase complete OK.", queue_);
     
-
-//     uint64_t counter = 0;
-//     Notify *notify = new Notify_Async();
-
-//     while(!blast_exit) {
-
-// #if 1 // batch version
-//       for(unsigned b=0;b<BATCH_SIZE;b++) {
-//         io_desc[b].offset = genrand64_int64() % (max_lba_ - 8);
-//         memset(io_desc[b].buffer_virt,c,4096);
-//       }
-
-//       status_t st = itf_->async_io_batch((io_request_t *)io_desc, 
-//                                          BATCH_SIZE, 
-//                                          notify, 
-//                                          queue_, 0);
-
-//       total_ops+=BATCH_SIZE;
-
-// #else // non-batch version
-//       io_desc[0].offset = genrand64_int64() % (max_lba_ - 8);
-//       //      printf("reading offset %ld\n",io_desc[0].offset);
-//       itf_->async_io((io_request_t)&io_desc[0], 
-//                     notify, 
-//                     queue_ /*queue/port*/, 0 /* device */);
-//       total_ops++;
-// #endif
-
-//       if(total_ops % 100000 == 0)
-//         printf("Op count: %ld\n",total_ops);
-
-//     }
-
-    // wait for batch?
-    itf_->wait_io_completion(queue_); //wait for IO completion     
-
     dev->free_dma_pages(wb);
     dev->free_dma_pages(rb);
   }
@@ -285,13 +279,13 @@ void read_blast(IBlockDevice * itf, off_t max_lba)
     threads[i]->join();
   }
 
-  printf("Random Read Rate: %ld IOPS\n", total_ops / TIME_DURATION_SEC);
+  PINF("Random Read Rate: %ld IOPS\n", total_ops / TIME_DURATION_SEC);
 }
 
 
 void verify_blast(IBlockDevice * itf, off_t max_lba)
 {
-  const int NUM_QUEUES = 1;
+  const int NUM_QUEUES = 8;
   const int TIME_DURATION_SEC = 10;
 
   VerifyBlasterThread * threads[NUM_QUEUES];
@@ -299,21 +293,23 @@ void verify_blast(IBlockDevice * itf, off_t max_lba)
   for(unsigned i=0;i<NUM_QUEUES;i++) {
 
     threads[i] = new VerifyBlasterThread((i*2) /* core */,
-                                   itf,
-                                   i+1, /* queue */
-                                   max_lba);
+                                         itf,
+                                         i+1, /* queue */
+                                         i*1000000, // set for ssdX NVME devices
+                                         i*1000000+900000
+                                         );
     threads[i]->start();
   }
-  sleep(TIME_DURATION_SEC);
 
-  /* signal threads to exit */
-  blast_exit = true;
 
   /* join threads */
   for(unsigned i=0;i<NUM_QUEUES;i++) {
     threads[i]->join();
+    delete threads[i];
   }
 
-  printf("RW Rate: %ld IOPS\n", total_ops / TIME_DURATION_SEC);
+  PINF("Verify complete. OK.");
 
 }
+
+#undef ASYNC
