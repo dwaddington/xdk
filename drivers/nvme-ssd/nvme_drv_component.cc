@@ -41,7 +41,7 @@ status_t NVME_driver_component::init_device(unsigned instance, const char * conf
     split_config_string(std::string(config), params);
     if(!params["file"].empty()) {
       filename = params["file"];
-      PLOG("opening config file (%s)", filename.c_str());
+      PLOG("Opening config file (%s)", filename.c_str());
     }
   }
   

@@ -30,15 +30,12 @@
 #include <libexo.h>
 #include <sys/param.h>
 #include <common/cycles.h>
-#include <exo/pagemap.h>
 
 #include "nvme_queue.h"
 #include "nvme_device.h"
 #include "nvme_command.h"
 #include "nvme_command_admin.h"
 #include "nvme_command_io.h"
-
-static Exokernel::Pagemap pm;
 
 using namespace Exokernel;
 

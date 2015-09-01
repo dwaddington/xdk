@@ -64,8 +64,7 @@ Exokernel::Device_sysfs::Pci_config_space::Pci_config_space(std::string& root_fs
 {
   const std::string config_node = root_fs + "/config";
 
-  if(verbose)
-    PLOG("Opening config space (%s)",config_node.c_str());
+  PINF("Opening config space (%s)",config_node.c_str());
 
   _fd = open(config_node.c_str(), O_RDWR|O_SYNC);
 
