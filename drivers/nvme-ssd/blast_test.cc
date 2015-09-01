@@ -145,27 +145,70 @@ public:
                                      &rb_phys,
                                      Exokernel::Device_sysfs::DMA_FROM_DEVICE);
 
+    PINF("qid = %d", queue_);
+    PINF("Allocated DMA");
+
     io_descriptor_t io_desc;
     io_desc.action = NVME_WRITE;
     io_desc.buffer_virt = wb;
     io_desc.buffer_phys = wb_phys;
     io_desc.num_blocks = 1;
+    io_desc.offset = queue_ * 4000;
 
     std::list<off_t> written_offsets;
 
-    for(unsigned char c='A'; c <= 'Z' ; c++) {
-      io_desc.offset = genrand64_int64() % (max_lba_ - 8);
+    for(uint64_t i=0;i<100;i++) {
+
+      io_desc.offset += genrand64_int64() % 100;
+      PINF("writing @%ld (val=%lx)",io_desc.offset, 
+           (uint64_t) (((uint64_t) queue_)<<32  | i));
+
       written_offsets.push_back(io_desc.offset);
 
-      memset(io_desc.buffer_virt,c,4096);
+      *((uint64_t *) io_desc.buffer_virt) = (uint64_t) (((uint64_t) queue_)<<32  | i);
 
       status_t st = itf_->async_io_batch((void**)&io_desc, 1,
                                          notify, 
                                          queue_, 0);
+      assert(st == S_OK);
+      itf_->wait_io_completion(queue_); //wait for IO completion     
     }
 
 
-  
+    PINF("Write phase complete OK.");
+
+    io_desc.action = NVME_READ;
+    io_desc.buffer_virt = rb;
+    io_desc.buffer_phys = rb_phys;
+    io_desc.num_blocks = 1;
+
+    // read the data back and check it!
+    {
+      unsigned i = 0;
+      for(auto off: written_offsets) {
+
+        io_desc.offset = off;
+
+        ::memset(io_desc.buffer_virt,0xFE,4096);
+
+        status_t st = itf_->async_io_batch((void**)&io_desc, 1,
+                                           notify, 
+                                           queue_, 0);
+        assert(st == S_OK);
+        itf_->wait_io_completion(queue_); //wait for IO completion     
+
+        int64_t val = *((uint64_t *) io_desc.buffer_virt);
+
+        if(val != (uint64_t) (((uint64_t) queue_)<<32  | i)) {
+          PINF("ERROR! read value=%lx @%ld",val, off);
+        }
+        else {
+          PINF("Record at %ld OK! (%lx)",off, val);
+        }
+        i++;
+      }
+
+    }
     
 
 //     uint64_t counter = 0;
@@ -255,7 +298,7 @@ void verify_blast(IBlockDevice * itf, off_t max_lba)
 
   for(unsigned i=0;i<NUM_QUEUES;i++) {
 
-    threads[i] = new VerifyBlasterThread((i*2)+21 /* core */,
+    threads[i] = new VerifyBlasterThread((i*2) /* core */,
                                    itf,
                                    i+1, /* queue */
                                    max_lba);

@@ -44,6 +44,7 @@
 #include "verify_tests.cc"
 
 void read_blast(IBlockDevice * itf, off_t max_lba);
+void verify_blast(IBlockDevice * itf, off_t max_lba);
 
 /* very basic test */
 void basic_test(IBlockDevice * itf)
@@ -101,7 +102,10 @@ int main()
   //  basic_test(itf);
 
   // 512 byte LBA format blast(itf,781422768);
-  read_blast(itf,97677846);
+  //  read_blast(itf,97677846); // size of SSD1 NVME drive
+
+  verify_blast(itf, 100);
+
   //(new mt_tests())->runTest(itf);
   //  (new verify_tests())->runTest(itf);
 

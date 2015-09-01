@@ -3,21 +3,11 @@
     <!-- Settings for NVME -->
     <IO_queue_config length="1024" />
     <IO_queues>
-      <Submission_queue id="1" core="21"/>
-      <Completion_queue id="1" core="22"/>
-      <Submission_queue id="2" core="23"/>
-      <Completion_queue id="2" core="24"/>
-      <Submission_queue id="3" core="25"/>
-      <Completion_queue id="3" core="26"/>
-      <Submission_queue id="4" core="27"/>
-      <Completion_queue id="4" core="28"/>
-      <Submission_queue id="5" core="29"/>
-      <Completion_queue id="5" core="30"/>
-      <Submission_queue id="6" core="31"/>
-      <Completion_queue id="6" core="32"/>
-      <Submission_queue id="7" core="33"/>
-      <Completion_queue id="7" core="34"/>
-      <Submission_queue id="8" core="35"/>
-      <Completion_queue id="8" core="36"/>
+      <Submission_queue id="1" core="1"/>
+      <Completion_queue id="1" core="2"/>
+      <Submission_queue id="2" core="3"/>
+      <Completion_queue id="2" core="4"/>
+      <Submission_queue id="3" core="5"/>
+      <Completion_queue id="3" core="6"/>
     </IO_queues>    
 </NVME_driver>
