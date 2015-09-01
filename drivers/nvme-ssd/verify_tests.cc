@@ -33,10 +33,10 @@
 #undef VERIFY_FILL
 #undef ASYNC_FILL
 
-#define MAX_LBA (512*1024*1024) //actually, max 781,422,768 sectors
+#define MAX_LBA (97677846) //actually, max 781,422,768 sectors
 #define COUNT_VERIFY (64)
 #define NUM_QUEUES (1)
-#define SLAB_SIZE (1024)
+#define SLAB_SIZE (4096)
 #define NUM_BLOCKS (8)
 
 #define CONST_MARKER 0x7d
@@ -374,7 +374,6 @@ class verify_tests {
       using namespace Exokernel;
       Device * dev = itf->get_device();
 
-      assert(SLAB_SIZE == 1024);
       for(unsigned i=0; i<NUM_QUEUES; i++) {
         addr_t phys_addr = 0;
         void *p = dev->alloc_dma_pages(SLAB_SIZE, &phys_addr);

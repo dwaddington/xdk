@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <NVME_driver>
     <!-- Settings for NVME -->
-    <IO_queue_config length="2048" />
+    <IO_queue_config length="1024" />
     <IO_queues>
       <Submission_queue id="1" core="21"/>
       <Completion_queue id="1" core="22"/>

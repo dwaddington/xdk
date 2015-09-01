@@ -43,7 +43,7 @@
 #include "mt_tests.cc"
 #include "verify_tests.cc"
 
-void blast(IBlockDevice * itf, off_t max_lba);
+void read_blast(IBlockDevice * itf, off_t max_lba);
 
 /* very basic test */
 void basic_test(IBlockDevice * itf)
@@ -101,9 +101,9 @@ int main()
   //  basic_test(itf);
 
   // 512 byte LBA format blast(itf,781422768);
-  blast(itf,97677846);
+  read_blast(itf,97677846);
   //(new mt_tests())->runTest(itf);
-  //(new verify_tests())->runTest(itf);
+  //  (new verify_tests())->runTest(itf);
 
   itf->shutdown_device();
 
