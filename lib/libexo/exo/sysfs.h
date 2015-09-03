@@ -308,7 +308,10 @@ namespace Exokernel
        * @param index Counting from 0 index
        * @param bar_region_size Size of region as probe from PCI BAR
        */
-      Pci_mapped_memory_region(std::string& root_fs, unsigned index, uint32_t bar, uint32_t bar_region_size);
+      Pci_mapped_memory_region(std::string& root_fs, 
+                               unsigned index, 
+                               uint32_t bar, 
+                               uint32_t bar_region_size);
 
       /** 
        * Dump information about memory region
@@ -480,6 +483,7 @@ namespace Exokernel
      * @return DMA allocation list.  Entries of the form ownerpid, numa, order, physaddr.
      */
     std::string debug_fetch_dma_allocations();
+
 
     /**----------------------------------------------------------- 
      * MSI and MSI-X interrupt services

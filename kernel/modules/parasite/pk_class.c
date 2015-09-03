@@ -1067,6 +1067,7 @@ static ssize_t irq_mode_show(struct device *dev,
     PLOG("irq_mode_show: failed parse of parameters");
     return -EINVAL; 
   }
+
   pkdev->irq_mode = mode;
   BUG_ON(mode > 2 || mode == 0);
  
@@ -1163,7 +1164,8 @@ void free_dma_memory(struct pk_device * pkdev)
 
 
 /** 
- * Write to /grant_access_store used to grant access to allocated memory.
+ * Write to grant_access_store used to grant access to allocated memory
+ * for the purpose of sharing memory across applications.
  * 
  * @param dev 
  * @param attr 
