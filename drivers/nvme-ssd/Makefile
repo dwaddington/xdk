@@ -7,7 +7,7 @@ nvme_command.cc nvme_device.cc tests.cc nvme_drv_component.cc
 INCLUDES = -I$(XDK_BASE)/lib/libexo -I$(XDK_BASE)/lib/libcommon -I$(XDK_BASE)/lib/libcomponent
 
 #CXXFLAGS += -DCONFIG_IRQ_COAL
-CXXFLAGS += -DCONFIG_BUILD_DEBUG
+#CXXFLAGS += -DCONFIG_BUILD_DEBUG
 #CXXFLAGS += -DEXPONENTIAL_BACKOFF_LOOP
 #CXXFLAGS += -DDISABLE_BATCH_MANAGER_FOR_TESTING
 #CXXFLAGS += -pg

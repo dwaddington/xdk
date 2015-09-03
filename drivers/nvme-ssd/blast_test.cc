@@ -10,6 +10,7 @@
 #include "nvme_drv_component.h"
 #include "nvme_device.h"
 #include "nvme_types.h"
+#include "tests.h"
 
 Exokernel::Spin_lock total_ops_lock;
 static uint64_t total_ops __attribute__((aligned(8)));
@@ -255,7 +256,12 @@ public:
  */
 void read_blast(IBlockDevice * itf, off_t max_lba)
 {
+
+#ifdef QEMU
+  const int NUM_QUEUES = 3;
+#else
   const int NUM_QUEUES = 8;
+#endif
   const int TIME_DURATION_SEC = 10;
 
   //  pthread_t threads[NUM_QUEUES];
@@ -263,10 +269,17 @@ void read_blast(IBlockDevice * itf, off_t max_lba)
 
   for(unsigned i=0;i<NUM_QUEUES;i++) {
 
+#ifdef QEMU
+    threads[i] = new ReadBlasterThread(i /* core */,
+                                   itf,
+                                   i+1, /* queue */
+                                   max_lba);
+#else
     threads[i] = new ReadBlasterThread((i*2)+21 /* core */,
                                    itf,
                                    i+1, /* queue */
                                    max_lba);
+#endif
     threads[i]->start();
   }
   sleep(TIME_DURATION_SEC);

@@ -92,13 +92,15 @@ int main()
 
   IBlockDevice * itf = (IBlockDevice *) comp->query_interface(IBlockDevice::iid());
 
-  itf->init_device(DEVICE_INSTANCE, "file=./config.xml");
+
+  itf->init_device(DEVICE_INSTANCE, "file=./config_qemu.xml");
 
   //  basic_test(itf);
-
-  // 512 byte LBA format blast(itf,781422768);
-
+#ifdef QEMU
+  read_blast(itf,10000);
+#else
   read_blast(itf,97677846); // size of SSD1 NVME drive
+#endif
 
   //verify_blast(itf);
 
