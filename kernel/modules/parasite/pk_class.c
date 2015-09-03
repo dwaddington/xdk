@@ -280,6 +280,8 @@ static ssize_t dma_alloc_store(struct device * dev,
   {
     int gfp;
     struct pk_dma_area * pk_area = kmalloc(sizeof(struct pk_dma_area),GFP_KERNEL);
+    struct device * devptr;
+
     pk_area->dma_direction = direction;
 
     if (pk_area==NULL) 
@@ -294,7 +296,7 @@ static ssize_t dma_alloc_store(struct device * dev,
     }
            
     /* allocate memory pages */
-    struct device * devptr = &pkdev->pci_dev->dev;
+    devptr = &pkdev->pci_dev->dev;
 
     pk_area->page = alloc_pages(gfp, order);
     if (pk_area->page == NULL) {
@@ -312,7 +314,7 @@ static ssize_t dma_alloc_store(struct device * dev,
 
     PLOG("dma_map_page ok. (%lld)", pk_area->handle);
 
-    if(pk_area->handle == NULL) {
+    if(pk_area->handle == 0) {
       PLOG("unable to alloc requested pages.");
       kfree(pk_area);
       return -ENOMEM;
@@ -351,7 +353,7 @@ static ssize_t dma_alloc_store(struct device * dev,
     UNLOCK_DMA_AREA_LIST;
 
     /* testing purposes */
-    PDBG("module allocated %lu DMA pages at (phys=%llx) (owner=%x) (order=%d)",
+    PDBG("module allocated %lu DMA pages at (phys=%llx) (owner=%x) (order=%ld)",
          num_pages,
          pk_area->handle,
          pk_area->owner_pid,
@@ -404,7 +406,7 @@ static ssize_t dma_alloc_show(struct device *dev,
       if(area->owner_pid != curr_task_pid)
         continue;
       
-      num_chars = sprintf((char *)tmp,"0x%x %d %u 0x%llx\n",             
+      num_chars = sprintf((char *)tmp,"0x%x %d %lu 0x%llx\n",             
                           area->owner_pid,
                           area->node_id,
                           area->order,
@@ -1137,9 +1139,9 @@ void free_dma_memory(struct pk_device * pkdev)
     
     area = list_entry(p,struct pk_dma_area, list);
 
-    /* TODO security issue */
-    /* if (area->owner_pid != curr_task_pid)  */
-    /*   continue; */
+    /* check the caller is the owner */
+    if (area->owner_pid != curr_task_pid)
+      continue; 
 
     PLOG("freeing %d pages at (%llx)",
          1 << area->order,
