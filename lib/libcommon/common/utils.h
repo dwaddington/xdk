@@ -169,11 +169,9 @@ INLINE addr_t round_up_log2(addr_t a) {
 
 
 
-typedef struct timeval timestamp;
-
 /** Returns current system time. */
-INLINE static timestamp now() {
-  timestamp t;
+INLINE static struct timeval now() {
+  struct timeval t;
 
   /** 
    * Beware this is doing a system call.
@@ -190,7 +188,7 @@ INLINE static timestamp now() {
  * @return the difference the two timestamps.
  */
 INLINE static  
-double operator-(const timestamp& t1, const timestamp& t2) {
+double operator-(const struct timeval& t1, const struct timeval& t2) {
   return (double)(t1.tv_sec  - t2.tv_sec) + 1.0e-6f * (t1.tv_usec - t2.tv_usec);
 }
 
