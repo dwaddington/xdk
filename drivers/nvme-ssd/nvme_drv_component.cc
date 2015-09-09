@@ -3,21 +3,51 @@
 #include <stdio.h>
 #include <common/logging.h>
 #include <component/base.h>
+#include <boost/tokenizer.hpp>
 
 #include "nvme_drv_component.h"
+
+static void split_config_string(std::string op, std::map<std::string, std::string>& result)
+{
+  using namespace boost;
+  using namespace std;
+
+  char_separator<char> sep("&");
+  tokenizer<char_separator<char>> tokens(op, sep);
+
+  vector<string> pairs;
+  for(const auto& t : tokens) {
+
+    char_separator<char> sep("=");
+    tokenizer<char_separator<char>> inner_tokens(t, sep);    
+    tokenizer<char_separator<char>>::iterator iter = inner_tokens.begin();
+    std::string left = *iter;
+    ++iter;
+    result[left] = *iter;
+  }
+}
+
 
 //////////////////////////////////////////////////////////////////////
 // IDeviceControl interface
 //
-status_t NVME_driver_component::init_device(unsigned instance, config_t config) {
+status_t NVME_driver_component::init_device(unsigned instance, const char * config) {
+
   PLOG("init_device(instance=%u)",instance);
+
+  std::string filename = "config.xml";
+  if(config) {
+    std::map<std::string, std::string> params;
+    split_config_string(std::string(config), params);
+    if(!params["file"].empty()) {
+      filename = params["file"];
+      PLOG("Opening config file (%s)", filename.c_str());
+    }
+  }
   
   try {
     PLOG("instantiating new NVME_device instance");
-    if(config == NULL)
-      _dev = new NVME_device("config.xml", instance); //compatibility
-    else
-      _dev = new NVME_device((char*)config, instance);
+    _dev = new NVME_device(filename.c_str(), instance); //compatibility
   }
   catch(Exokernel::Exception e) {
     NVME_INFO("EXCEPTION: error in NVME device initialization (%s) \n",e.cause());
@@ -69,22 +99,21 @@ sync_read_block(void * buffer_virt, /* must be 512 byte aligned */
                 unsigned port       /* device port */
                 )
 {
-  const unsigned qid = port; /* do we want to change IBlockDevice? */
+  assert(0);
+  // const unsigned qid = port; /* do we want to change IBlockDevice? */
 
-  Notify_object nobj;
+  // /* set up call back */
+  // _dev->io_queue(qid)->callback_manager()->register_callback(&Notify_object::notify_callback,
+  //                                                            (void*)&nobj);
 
-  /* set up call back */
-  _dev->io_queue(qid)->callback_manager()->register_callback(&Notify_object::notify_callback,
-                                                             (void*)&nobj);
+  // uint16_t cid = _dev->block_async_read(qid,
+  //                                       buffer_phys,
+  //                                       lba,
+  //                                       num_blocks); /* num blocks */
+  // nobj.set_when(cid);
+  // nobj.wait();
 
-  uint16_t cid = _dev->block_async_read(qid,
-                                        buffer_phys,
-                                        lba,
-                                        num_blocks); /* num blocks */
-  nobj.set_when(cid);
-  nobj.wait();
-
-  return S_OK;
+  return E_NOT_IMPL;
 }
 
 
@@ -97,22 +126,23 @@ sync_write_block(void * buffer_virt, /* must be 512 byte aligned */
                  unsigned port       /* device port */
                  )
 {
-  const unsigned qid = port; /* do we want to change IBlockDevice? */
+  assert(0);
+  // const unsigned qid = port; /* do we want to change IBlockDevice? */
 
-  Notify_object nobj;
+  // Notify_object nobj;
 
-  /* set up call back */
-  _dev->io_queue(qid)->callback_manager()->register_callback(&Notify_object::notify_callback,
-                                                             (void*)&nobj);
+  // /* set up call back */
+  // _dev->io_queue(qid)->callback_manager()->register_callback(&Notify_object::notify_callback,
+  //                                                            (void*)&nobj);
 
-  uint16_t cid = _dev->block_async_write(qid,
-                                         buffer_phys,
-                                         lba,
-                                         num_blocks); /* num blocks */
-  nobj.set_when(cid);
-  nobj.wait();
+  // uint16_t cid = _dev->block_async_write(qid,
+  //                                        buffer_phys,
+  //                                        lba,
+  //                                        num_blocks); /* num blocks */
+  // nobj.set_when(cid);
+  // nobj.wait();
 
-  return S_OK;
+  return E_NOT_IMPL;
 }
 
 
@@ -120,11 +150,10 @@ sync_write_block(void * buffer_virt, /* must be 512 byte aligned */
 status_t
 NVME_driver_component::
 sync_io(io_request_t io_request,
-        unsigned port,
-        unsigned device)
+        unsigned port)
 {
   Notify_Sync nobj;
-  async_io(io_request, (notify_t)&nobj, port, device);
+  async_io(io_request, port);
 
   nobj.wait();
 
@@ -136,23 +165,11 @@ sync_io(io_request_t io_request,
 status_t
 NVME_driver_component::
 async_io(io_request_t io_request,
-         notify_t notify,
-         unsigned port,
-         unsigned device)
+         unsigned port)
 {
-  io_descriptor_t* io_desc = (io_descriptor_t*)io_request;
-#if 0
-  return _dev->block_async_read(port,
-                                io_desc->buffer_phys,
-                                io_desc->offset,
-                                io_desc->num_blocks);
-#endif
-  assert (io_desc->action == NVME_READ || io_desc->action == NVME_WRITE);
-
   _dev->async_io_batch(port /* same as queue */,
-                       io_desc,
-                       1,
-                       (Notify*)notify);
+                       &io_request,
+                       1);
 
   return S_OK;
 }
@@ -162,14 +179,11 @@ status_t
 NVME_driver_component::
 async_io_batch(io_request_t* io_requests,
                size_t length,
-               notify_t notify,
-               unsigned port,
-               unsigned device)
+               unsigned port)
 {
   _dev->async_io_batch(port /* same as queue */,
-                       (io_descriptor_t*)io_requests, 
-                       length, 
-                       (Notify*)notify);
+                       io_requests, 
+                       length);
 
   return S_OK;
 }
@@ -177,8 +191,7 @@ async_io_batch(io_request_t* io_requests,
 
 status_t
 NVME_driver_component::
-wait_io_completion(unsigned port,
-                   unsigned device)
+wait_io_completion(unsigned port)
 {
   _dev->wait_io_completion(port /* same as queue */);
   return S_OK;
@@ -188,7 +201,7 @@ wait_io_completion(unsigned port,
 
 status_t
 NVME_driver_component::
-flush(unsigned nsid, unsigned port, unsigned device)
+flush(unsigned nsid, unsigned port)
 {
   _dev->flush(nsid, port /* queue */);
   return S_OK;

@@ -104,7 +104,8 @@ public:
     c->command_id = _cid = command_id; //ioq->next_command_id();
     c->prp1 = prp1;
     c->slba = offset;
-    c->length = num_blocks;
+
+    c->length = num_blocks - 1;
 
     __builtin_memcpy(&c->dsmgmt,&dsm,1);
 

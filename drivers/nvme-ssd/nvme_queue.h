@@ -62,7 +62,6 @@ typedef uint32_t queue_ptr_t;
 class NVME_queues_base
 {
 protected:
-  Exokernel::Bitmap_tracker_threadsafe * _bitmap;
   NVME_batch_manager * _batch_manager;
   
 protected:
@@ -87,7 +86,7 @@ protected:
   addr_t               _cq_dma_mem_phys;
   volatile uint32_t *  _cq_db;         /* pointer to CQ doorbell */
 
-  unsigned             _queue_items;   /* maximum number of items for each queue */
+  const unsigned       _queue_max_items;   /* maximum number of items for each queue */
 
   Submission_command_slot * _sub_cmd;  /* array of submission commands */
   Completion_command_slot * _comp_cmd; /* array of completion commands */
@@ -171,11 +170,6 @@ public:
     _cmdid_counter = 0;
   }
 
-  void release_slot(uint16_t slot) {
-    //status_t s = _bitmap->mark_free(slot);
-    //assert(s==Exokernel::S_OK);
-  }
-
   /**
    * update the head of IO sub queue
    */
@@ -200,7 +194,7 @@ public:
   }
 
   unsigned queue_length() const {
-    return _queue_items;
+    return _queue_max_items;
   }
 
 
@@ -259,7 +253,7 @@ public:
 #define N_ITEMS (128)//(64+4)
   void dump_queue_info(unsigned n_entries = N_ITEMS) {
 
-    unsigned max_entries = _queue_items>n_entries?n_entries:_queue_items; 
+    unsigned max_entries = _queue_max_items>n_entries?n_entries:_queue_max_items; 
 
     PLOG("SQ_Tail=%u SQ_HEAD=%u CQ_Head=%u",_sq_tail, _sq_head, _cq_head);
     //PLOG("CQ hd vaddr=%p (paddr=0x%lx)",_comp_cmd, (unsigned long) pm.virt_to_phys(_comp_cmd));
@@ -267,7 +261,7 @@ public:
     __sync_synchronize();
 
     PLOG("===== SQ dump ======");
-    for(unsigned i=0; i<max_entries; i++) { // _queue_items
+    for(unsigned i=0; i<max_entries; i++) { // _queue_max_items
       struct nvme_rw_command * c = (struct nvme_rw_command *) _sub_cmd[i].raw();
       PLOG("SQCMD[%u] (%s) command cid=%u prp1=0x%lx nsid=%d slba=%ld nblocks=%u control=0x%x dsmgmt=0x%x",
           i,
@@ -283,7 +277,7 @@ public:
     }
 
     PLOG("===== CQ dump ======");
-    for(unsigned i=0; i<max_entries; i++) { // _queue_items
+    for(unsigned i=0; i<max_entries; i++) { // _queue_max_items
       PLOG("CQCMD[%u][cid=%u](status=0x%x)(sct=0x%x)(phase=%u)(sqhd=%u)(result=%x)",
           i,
           _comp_cmd[i].command_id,
@@ -544,10 +538,9 @@ public:
                              unsigned nsid=1);
 
 
-  uint16_t issue_async_io_batch(io_descriptor_t* io_desc,
-                                uint64_t length,
-                                Notify *notify
-                                );
+  uint16_t issue_async_io_batch(io_request_t* io_desc,
+                                uint64_t length);
+
 
   status_t wait_io_completion();
 

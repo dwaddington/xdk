@@ -78,6 +78,10 @@ void panic(const char *format, ...) __attribute__((format(printf, 1, 2)));
 #define mb()  asm volatile("lock; addl $0,0(%%esp)", "mfence", (0*32+26))
 #define rmb() asm volatile("lock; addl $0,0(%%esp)", "lfence", (0*32+26))
 #define wmb() asm volatile("lock; addl $0,0(%%esp)", "sfence", (0*32+25))
+#elif defined(__arm__)
+#define mb()  asm volatile("":::"memory")
+#define rmb() asm volatile("":::"memory")
+#define wmb() asm volatile("":::"memory")
 #else
 #error Memory barriers not implemented
 #endif
@@ -165,11 +169,9 @@ INLINE addr_t round_up_log2(addr_t a) {
 
 
 
-typedef struct timeval timestamp;
-
 /** Returns current system time. */
-INLINE static timestamp now() {
-  timestamp t;
+INLINE static struct timeval now() {
+  struct timeval t;
 
   /** 
    * Beware this is doing a system call.
@@ -186,7 +188,7 @@ INLINE static timestamp now() {
  * @return the difference the two timestamps.
  */
 INLINE static  
-double operator-(const timestamp& t1, const timestamp& t2) {
+double operator-(const struct timeval& t1, const struct timeval& t2) {
   return (double)(t1.tv_sec  - t2.tv_sec) + 1.0e-6f * (t1.tv_usec - t2.tv_usec);
 }
 
@@ -252,7 +254,12 @@ Cpu_bitset
 get_actual_affinities(const Cpu_bitset& logical_affinities, 
                       const int numa_node);
 
-
+#if defined(__i386__) || defined(__x86_64__)
 #define cpu_relax() asm volatile("pause\n": : :"memory")
+#elif defined(__arm__)
+#define cpu_relax() asm volatile("": : :"memory")
+#else
+#error Cpu relax not defined for architecture
+#endif
 
 #endif // __EXO_UTILS_H__

@@ -243,12 +243,23 @@ static ssize_t dma_alloc_store(struct device * dev,
 
   unsigned long num_pages = 0;
   int node_id = 0, order = 0;
+  int direction = 0;
+  enum dma_data_direction dir;
+  
+  
 
   if(!pkdev) goto error;
   if(!pkdev->pci_dev) goto error;
-  
-  if (sscanf(buf,"%lu %d",&num_pages, &node_id)!=2)
-    return -EINVAL; 
+
+  PLOG("dma_alloc_store wr=(%s)", buf);
+
+  if (sscanf(buf,"%lu %d %d",&num_pages, &node_id, &direction) != 3) {
+    if (sscanf(buf,"%lu %d",&num_pages, &node_id) != 2) {
+      return -EINVAL; 
+    }
+    dir = DMA_BIDIRECTIONAL;
+  }
+  dir = direction;
 
   if(node_id < 0)
     node_id = numa_node_id(); // current node id
@@ -267,11 +278,11 @@ static ssize_t dma_alloc_store(struct device * dev,
   }
 
   {
-    // Currently using dma_alloc_coherent. This is not NUMA aware though.
-    //
-    void * new_mem;
     int gfp;
     struct pk_dma_area * pk_area = kmalloc(sizeof(struct pk_dma_area),GFP_KERNEL);
+    struct device * devptr;
+
+    pk_area->dma_direction = direction;
 
     if (pk_area==NULL) 
       return -ENOMEM;
@@ -284,17 +295,26 @@ static ssize_t dma_alloc_store(struct device * dev,
         gfp |= GFP_DMA32;
     }
            
-    /* allocate NUMA-aware memory */
-    //    new_mem = alloc_pages_node(node_id, gfp, order);
+    /* allocate memory pages */
+    devptr = &pkdev->pci_dev->dev;
 
-    dma_addr_t handle;
-    struct device * devptr = &pkdev->pci_dev->dev;
-    new_mem = dma_alloc_coherent(devptr,
-                                 (1ULL << order) * PAGE_SIZE,
-                                 &handle,
-                                 gfp);
+    pk_area->page = alloc_pages(gfp, order);
+    if (pk_area->page == NULL) {
+      PLOG("alloc_pages failed.");
+      return -ENOMEM;
+    }
 
-    if(new_mem == NULL) {
+    PLOG("dma direction = %d", dir);
+
+    pk_area->handle = dma_map_page(devptr,
+                                   pk_area->page,
+                                   0,
+                                   (1ULL << order) * PAGE_SIZE,
+                                   dir); /* sets DMA direction */
+
+    PLOG("dma_map_page ok. (%lld)", pk_area->handle);
+
+    if(pk_area->handle == 0) {
       PLOG("unable to alloc requested pages.");
       kfree(pk_area);
       return -ENOMEM;
@@ -304,25 +324,11 @@ static ssize_t dma_alloc_store(struct device * dev,
     /*   PLOG("DMA memory set for testing"); */
     /* } */
 
-    pk_area->p = new_mem;
     pk_area->node_id = node_id;
     pk_area->order = order;
     pk_area->flags = 0;
     pk_area->owner_pid = task_pid_nr(current); /* later for use with capability model */
-
-#ifdef USE_IOMMU
-#error "Don't use this!"
-    /* set up DMA permissions in IO-MMU */
-    pk_area->phys_addr = pci_map_page(pkdev->pci_dev,
-                                      new_mem,
-                                      0,/* offset */
-                                      (PAGE_SIZE << order),
-                                      DMA_BIDIRECTIONAL);
-    
-    BUG_ON(pci_dma_mapping_error(pkdev->pci_dev, pk_area->phys_addr)!=0);
-#else
-    pk_area->phys_addr = dma_to_phys(devptr, handle);
-#endif
+    pk_area->phys_addr = dma_to_phys(devptr, pk_area->handle);
     
 
     //    BUG_ON(!page_mapped(new_mem));
@@ -347,9 +353,9 @@ static ssize_t dma_alloc_store(struct device * dev,
     UNLOCK_DMA_AREA_LIST;
 
     /* testing purposes */
-    PDBG("module allocated %lu DMA pages at (phys=%llx) (owner=%x) (order=%d)",
+    PDBG("module allocated %lu DMA pages at (phys=%llx) (owner=%x) (order=%ld)",
          num_pages,
-         virt_to_phys(new_mem),
+         pk_area->handle,
          pk_area->owner_pid,
          pk_area->order
          );
@@ -400,7 +406,7 @@ static ssize_t dma_alloc_show(struct device *dev,
       if(area->owner_pid != curr_task_pid)
         continue;
       
-      num_chars = sprintf((char *)tmp,"0x%x %d %u 0x%llx\n",             
+      num_chars = sprintf((char *)tmp,"0x%x %d %lu 0x%llx\n",             
                           area->owner_pid,
                           area->node_id,
                           area->order,
@@ -515,24 +521,17 @@ static ssize_t dma_free_store(struct device * dev,
             ClearPageReserved(page);
         }
 #endif
-        /* decrement ref count and free page */
-	//        atomic_dec(&area->p->_count);
 
-#ifdef USE_IOMMU
-        /* unmap from DMA subsystem */
-        pci_unmap_page(pkdev->pci_dev,
-                       area->phys_addr,
-                       (PAGE_SIZE << area->order),
-                       DMA_BIDIRECTIONAL);
-#endif
+#if 0
+        /* unmap */
+        dma_unmap_page(&pkdev->pci_dev->dev,
+                       area->handle,
+                       (1ULL << area->order) * PAGE_SIZE,
+                       area->dma_direction);
 
         /* free memory */
-        //        __free_pages(area->p,get_order(area->order));
-        dma_free_coherent(&pkdev->pci_dev->dev, 
-                          (1ULL << area->order)*PAGE_SIZE,
-                          area->p,
-                          area->phys_addr);
-
+        __free_pages(area->page,area->order);
+#endif
         /* remove from list */
         list_del(p);
        
@@ -1068,6 +1067,7 @@ static ssize_t irq_mode_show(struct device *dev,
     PLOG("irq_mode_show: failed parse of parameters");
     return -EINVAL; 
   }
+
   pkdev->irq_mode = mode;
   BUG_ON(mode > 2 || mode == 0);
  
@@ -1140,9 +1140,9 @@ void free_dma_memory(struct pk_device * pkdev)
     
     area = list_entry(p,struct pk_dma_area, list);
 
-    /* TODO security issue */
-    /* if (area->owner_pid != curr_task_pid)  */
-    /*   continue; */
+    /* check the caller is the owner */
+    if (area->owner_pid != curr_task_pid)
+      continue; 
 
     PLOG("freeing %d pages at (%llx)",
          1 << area->order,
@@ -1150,7 +1150,7 @@ void free_dma_memory(struct pk_device * pkdev)
 
     /* decrement ref count and free page */
     //TOFIX    atomic_dec(&area->p->_count);
-    __free_pages(area->p,get_order(area->order));
+    //    __free_pages(area->p,get_order(area->order));
     
     /* remove from list */
     list_del(p);
@@ -1164,7 +1164,8 @@ void free_dma_memory(struct pk_device * pkdev)
 
 
 /** 
- * Write to /grant_access_store used to grant access to allocated memory.
+ * Write to grant_access_store used to grant access to allocated memory
+ * for the purpose of sharing memory across applications.
  * 
  * @param dev 
  * @param attr 

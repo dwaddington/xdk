@@ -64,8 +64,7 @@ Exokernel::Device_sysfs::Pci_config_space::Pci_config_space(std::string& root_fs
 {
   const std::string config_node = root_fs + "/config";
 
-  if(verbose)
-    PLOG("Opening config space (%s)",config_node.c_str());
+  PDBG("opening config space (%s)",config_node.c_str());
 
   _fd = open(config_node.c_str(), O_RDWR|O_SYNC);
 
@@ -86,12 +85,16 @@ void Exokernel::Device_sysfs::Pci_config_space::interrogate_bar_regions()
 {
   for(unsigned i=0;i<6;i++) {
 
+    PDBG("accessing PCI bar (%u)", i);
+
     uint32_t bar = read32(PCI_BAR_0+i*4);
     if (bar > 0) {
+
       write32(PCI_BAR_0+i*4,~(0U));
       uint32_t ss_value = read32(PCI_BAR_0+i*4);
       ss_value &= ~0xFU;
       _bar_region_sizes[i] = ss_value & ~( ss_value - 1 );
+      PLOG("PCI bar region %u is %ld bytes",i, _bar_region_sizes[i]);
       
       write32(PCI_BAR_0+i*4,bar);  // replace original
     } 
@@ -172,8 +175,11 @@ uint8_t Exokernel::Device_sysfs::Sysfs_file_accessor::read8(unsigned offset)
   assert(_fd > 0);
   uint8_t val;
 
-  if(pread(_fd,&val,1,offset) != 1) 
-    throw Exokernel::Fatal(__FILE__,__LINE__,"unable to read8 PCI config space");
+  if(pread(_fd,&val,1,offset) != 1) {
+    std::stringstream ss;
+    ss << "unable to read8 PCI config space, offset: " << offset;
+    throw Exokernel::Fatal(__FILE__,__LINE__,ss.str().c_str());
+  }
 
   return val;
 }
@@ -292,6 +298,7 @@ void *
 Exokernel::Device_sysfs::
 alloc_dma_pages(size_t num_pages, 
                 addr_t * phys_addr, 
+                dma_direction_t direction,
                 void * virt_hint,
                 int numa_node, 
                 int flags) 
@@ -308,7 +315,7 @@ alloc_dma_pages(size_t num_pages,
     fs.open(n.c_str());
 
     std::stringstream sstr;
-    sstr << num_pages << " " << numa_node << std::endl;
+    sstr << num_pages << " " << numa_node <<  " " << direction << std::endl;
     fs << sstr.str();
 
     /* Reset file pointer and read allocation results.  When we do
@@ -351,7 +358,7 @@ alloc_dma_pages(size_t num_pages,
                PROT_READ | PROT_WRITE, // prot
                MAP_SHARED | flags,
                fd,
-               paddr);
+               paddr); // phys address will be passed through as offset
         
       if(p==MAP_FAILED) {
         close(fd);
@@ -362,7 +369,7 @@ alloc_dma_pages(size_t num_pages,
       //      memset(p,0,num_pages * PAGE_SIZE);
 
       /* touch pages */
-      touch((void*)p,(size_t)(num_pages * PAGE_SIZE));
+      //touch((void*)p,(size_t)(num_pages * PAGE_SIZE));
 
       assert(check_aligned(p,PAGE_SIZE));          
       close(fd);
