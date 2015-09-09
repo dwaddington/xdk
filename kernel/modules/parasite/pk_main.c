@@ -67,6 +67,7 @@ extern struct device_attribute dev_attr_dma_page_free;
 extern struct device_attribute dev_attr_msi_alloc;
 extern struct device_attribute dev_attr_msi_cap;
 extern struct device_attribute dev_attr_grant_access;
+extern struct device_attribute dev_attr_grant_device;
 
 static ssize_t  pk_detach_store(struct class *class, 
                                 struct class_attribute *attr,
@@ -163,6 +164,7 @@ struct pk_device * sysfs_class_register_device(struct pci_dev * pci_dev)
   device_create_file(pkdev->dev, &dev_attr_msi_alloc);
   device_create_file(pkdev->dev, &dev_attr_msi_cap);
   device_create_file(pkdev->dev, &dev_attr_grant_access);
+  device_create_file(pkdev->dev, &dev_attr_grant_device);
 
   /* create procfs dir */
   ASSERT(pk_proc_dir_root!=NULL);
@@ -270,6 +272,7 @@ void pk_device_cleanup(struct pk_device * pkdev)
     PDBG("freeing DMA area %p (pages=%d)", 
          (void*) area->phys_addr, 1 << area->order);
     
+#if 0
     /* clear reserved bit on DMA pages before we free */
     {
       struct page * page = area->p;
@@ -281,9 +284,11 @@ void pk_device_cleanup(struct pk_device * pkdev)
         page++; // yes, they are contiguous
       }
     }
-
+#endif
     /* remove from list and free memory */
-    __free_pages(area->p, area->order);
+    //    void dma_unmap_page(struct device *dev, dma_addr_t dma_address, a
+    //                    size_t size, enum dma_data_direction direction);
+    //    __free_pages(area->p, area->order);
     list_del(p);
 
     /* free kernel memory for pk_dma_area */
@@ -625,6 +630,7 @@ void free_minor(struct pk_device *pkdev)
   device_remove_file(pkdev->dev, &dev_attr_msi_alloc);
   device_remove_file(pkdev->dev, &dev_attr_msi_cap);
   device_remove_file(pkdev->dev, &dev_attr_grant_access);
+  device_remove_file(pkdev->dev, &dev_attr_grant_device);
 #endif
 
   /* clean up device created with device_create API */

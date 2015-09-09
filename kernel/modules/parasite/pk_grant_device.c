@@ -20,7 +20,7 @@
 
 /*
   Authors:
-  Copyright (C) 2014, Daniel G. Waddington <daniel.waddington@acm.org>
+  Copyright (C) 2015, Daniel G. Waddington <daniel.waddington@acm.org>
 */
 
 #include <linux/module.h>
@@ -30,16 +30,30 @@
 #include <linux/slab.h>
 #include <linux/string.h>
 
+/** 
+ * Device grant means assigning a device to a particular process if
+ * the device has not already been assigned.  This will control
+ * access to the device PCI config space and IO memory space.
+ * 
+ */
 
-ssize_t pk_grant_store(struct class *class, struct class_attribute *attr,
-                        const char *buf, size_t count)
+static ssize_t pk_grant_device_store(struct device * dev,
+                                     struct device_attribute *attr, 
+                                     const char * buf,
+                                     size_t count)
 {
   return count;
 }
 
-ssize_t pk_grant_show(struct class *class,
-                             struct class_attribute *attr, char *buf)
+static ssize_t pk_grant_device_show(struct device *dev,
+                                    struct device_attribute *attr, 
+                                    char *buf)
 {
   return sprintf(buf, "%s\n", "yo! grant!!");
 }
 
+/** 
+ * Device attribute declaration
+ * 
+ */
+DEVICE_ATTR(grant_device, S_IRUGO | S_IWUGO, pk_grant_device_show, pk_grant_device_store);

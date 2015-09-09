@@ -35,7 +35,18 @@ public:
 
   // IDeviceControl
   //
-  status_t init_device(unsigned instance, config_t config = NULL);
+
+  /** 
+   * Initialize device
+   * 
+   * @param instance Device instance counting from 0 (determined by PCI order)
+   * @param config Configuration string (e.g., file=config.xml&param2=foobar)
+   * 
+   * @return S_OK on success
+   */
+  status_t init_device(unsigned instance, const char * config);
+
+
   Exokernel::Device * get_device();
   status_t shutdown_device();
 
@@ -43,46 +54,67 @@ public:
 
   // IBlockData
   //
-  status_t sync_read_block(void * buffer_virt, /* must be 512 byte aligned */
+
+  /** 
+   * Synchronously (block until completion) read N blocks
+   * 
+   * @param buffer_virt Pointer to DMA buffer (must be device block size (e.g., 4K) aligned)
+   * @param buffer_phys Physical address of DMA buffer (must be device block size (e.g., 4K) aligned)
+   * @param offset Offset in blocks 
+   * @param num_blocks Number of blocks to read
+   * @param port Port/queue to use
+   * 
+   * @return S_OK on success
+   */
+  status_t sync_read_block(void * buffer_virt, 
                            addr_t buffer_phys, 
-                           off_t offset,       /* store offset */
-                           size_t num_blocks,  /* each block is 512 bytes */
-                           unsigned port       /* device port */
+                           off_t offset,       
+                           size_t num_blocks,  
+                           unsigned port       
                            );
-  
-  status_t sync_write_block(void * buffer_virt, /* must be 512 byte aligned */
+
+  /** 
+   * Synchronously (block until completion) write N blocks
+   * 
+   * @param buffer_virt Pointer to DMA buffer (must be device block size (e.g., 4K) aligned)
+   * @param buffer_phys Physical address of DMA buffer (must be device block size (e.g., 4K) aligned)
+   * @param offset Offset in blocks 
+   * @param num_blocks Number of blocks to read
+   * @param port Port/queue to use
+   * 
+   * @return S_OK on success
+   */  
+  status_t sync_write_block(void * buffer_virt, 
                             addr_t buffer_phys, 
-                            off_t offset,       /* store offset */
-                            size_t num_blocks,  /* each block is 512 bytes */
-                            unsigned port       /* device port */
+                            off_t offset,       
+                            size_t num_blocks,  
+                            unsigned port       
                             );
 
+  /** 
+   * Generalized non-batching synchronous IO
+   * 
+   * @param io_request IO request
+   * @param port Queue/port
+   * @param device Device instance
+   * 
+   * @return S_OK on success
+   */
   status_t sync_io(io_request_t io_request,
-                   unsigned port,
-                   unsigned device
-                  );
+                   unsigned port);
+
 
   status_t async_io(io_request_t io_request,
-                    notify_t notify,
-                    unsigned port,
-                    unsigned device
-                   );
+                    unsigned port);
 
   status_t async_io_batch(io_request_t* io_requests,
                           size_t length,
-                          notify_t notify,
-                          unsigned port,
-                          unsigned device
-                          );
+                          unsigned port);
 
-  status_t wait_io_completion(unsigned port,
-                              unsigned device
-                             );
+  status_t wait_io_completion(unsigned port);
 
   status_t flush(unsigned nsid,
-                 unsigned port,
-                 unsigned device
-                 );
+                 unsigned port);
 
 
 };

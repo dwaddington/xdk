@@ -15,10 +15,12 @@ public:
    * Initialize device. Called once.
    * 
    * @param instance Device instance identifier counting from 0.
+   * @param configuration Implementation specific configuration string
    * 
    * @return S_OK on successfully device intialization. E_NOT_FOUND if device instance cannot be found.
    */
-  virtual status_t init_device(unsigned instance, config_t config = NULL) = 0;
+  virtual status_t init_device(unsigned instance, 
+                               const char * configuration = NULL) = 0;
 
   /** 
    * Shutdown the device and free resources.  After this is called no other methods can be called subsequently.

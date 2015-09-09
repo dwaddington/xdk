@@ -77,7 +77,9 @@ enum {
  */
 struct pk_dma_area {
   struct list_head list;
-  void *    p;
+  struct page *    page;
+  dma_addr_t       handle;
+  int              dma_direction;
   int              node_id;
   size_t           order;
   dma_addr_t       phys_addr;

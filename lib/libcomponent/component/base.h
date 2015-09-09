@@ -152,12 +152,24 @@ namespace Component
      * [optional] Connect to another component.  Used for third-party binding. If used
      * with release_bindings, the implementation should increment reference count.
      * 
-     * @param component Component to connect to 
+     * @param component Component which is offering its interface
      * 
      * @return Number of connections remaining to be made. Returns -1
      * on error and 0 when all bindings are complete.
      */
     virtual int bind(IBase * component) { return 0; /* by default, no bindings to perform */ }
+
+
+    /** 
+     * [optional] Called to connect to another component.  
+     * 
+     * @param component Component which is offering its interface
+     * @param id Identifies the role of the binding
+     * 
+     * @return Number of connections remaining to be made. Returns -1
+     * on error and 0 when all bindings are complete.
+     */
+    virtual int specified_bind(IBase * component, int id) { return 0; /* by default, no bindings to perform */ }
 
     /** 
      * [optional] Release as many bindings as possible.

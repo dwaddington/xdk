@@ -36,9 +36,9 @@
 #define __COMP_TYPES_H__
 
 #include <stdint.h>
+#include <stdio.h>
 
 typedef int                     status_t;
-//typedef uint64_t                cpu_mask_t;
 
 typedef unsigned long           addr_t;
 typedef unsigned long           umword_t;
@@ -71,7 +71,22 @@ namespace Component
   typedef unsigned allocator_t;
   typedef unsigned state_t;
 }
-  typedef void * io_request_t;
-  typedef void * notify_t;
-  typedef void * config_t;
+
+/* IO descriptor */
+enum io_action_t {
+  BLOCK_READ = 0,
+  BLOCK_WRITE
+};
+
+typedef struct {
+  io_action_t action;
+  void*       buffer_virt;
+  addr_t      buffer_phys;
+  off_t       offset;
+  size_t      num_blocks;
+} io_request_t;
+
+
+//typedef void * notify_t;
+
 #endif

@@ -308,7 +308,10 @@ namespace Exokernel
        * @param index Counting from 0 index
        * @param bar_region_size Size of region as probe from PCI BAR
        */
-      Pci_mapped_memory_region(std::string& root_fs, unsigned index, uint32_t bar, uint32_t bar_region_size);
+      Pci_mapped_memory_region(std::string& root_fs, 
+                               unsigned index, 
+                               uint32_t bar, 
+                               uint32_t bar_region_size);
 
       /** 
        * Dump information about memory region
@@ -407,6 +410,13 @@ namespace Exokernel
      *-------------------------------------------------------------- 
      */
 
+    enum dma_direction_t {
+      DMA_BIDIRECTIONAL = 0,
+      DMA_TO_DEVICE = 1,
+      DMA_FROM_DEVICE = 2,
+      DMA_NONE = 3,
+    };
+
     /** 
      * Allocate physically contiguous memory and map with 4K TLB entries
      * 
@@ -419,6 +429,7 @@ namespace Exokernel
      */
     void * alloc_dma_pages(size_t num_pages, 
                            addr_t * phys_addr, 
+                           dma_direction_t direction = DMA_BIDIRECTIONAL,
                            void * virt_hint = NULL,
                            int numa_node = -1,
                            int flags = 0);
@@ -472,6 +483,7 @@ namespace Exokernel
      * @return DMA allocation list.  Entries of the form ownerpid, numa, order, physaddr.
      */
     std::string debug_fetch_dma_allocations();
+
 
     /**----------------------------------------------------------- 
      * MSI and MSI-X interrupt services

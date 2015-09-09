@@ -30,6 +30,8 @@
 #ifndef __NVME_TYPES_H__
 #define __NVME_TYPES_H__
 
+#include <common/types.h>
+
 typedef unsigned vector_t;
 typedef unsigned core_id_t;
 
@@ -48,19 +50,6 @@ namespace NVME
 typedef void (*notify_callback_t)(unsigned, void *);
 typedef unsigned callback_handle_t;
 
-/* IO descriptor */
-enum ACTION {
-  NVME_READ = 0,
-  NVME_WRITE
-};
-
-typedef struct {
-  ACTION    action;
-  void*     buffer_virt;
-  addr_t    buffer_phys;
-  off_t     offset;
-  size_t    num_blocks;
-}__attribute__((aligned(64))) io_descriptor_t;
 
 
 #endif // __NVME_TYPES_H__

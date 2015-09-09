@@ -146,40 +146,24 @@ static int fops_mmap(struct file *file, struct vm_area_struct *vma)
   //vma->vm_page_prot = pgprot_writecombine(vma->vm_page_prot); /* cache write combine */
 
   /* check this area was allocated by the parasitic kernel and
-     also check the owner pid
+     also check that it is owned by the current task
   */
-
-  // TOFIX:
-  // !!! For the moment switch off. Since I want to use this for device mapping 
-  // we need to add checks to see if the memory belongs to this device.
-#if 0
-  // perform ownership check
   {
-    struct pk_dma_area * area = get_owned_dma_area(start);
-    if(!area)
-      return -EINVAL;
-
-    if(!(area->flags & DMA_AREA_FLAG_SHARED_ALL)) {
-      PWRN("attemp to mmap to memory that has not been flagged as shared.");
+    addr_t phys = vma->vm_pgoff << PAGE_SHIFT;
+    struct pk_dma_area * area = get_owned_dma_area(phys);
+    if(!area) {
+      PWRN("DMA area (%p) is not owned by caller",(void *) phys);
       return -EINVAL;
     }
   }
 
-#endif
-
-  {
-    // unsigned long pfn = vma->vm_pgoff;
-    // PLOG("pfn=%lx",pfn << PAGE_SHIFT);
-
-    if (remap_pfn_range(vma, 
-                        vma->vm_start,
-                        vma->vm_pgoff, // passed through physical address 
-                        vma->vm_end - vma->vm_start,
-                        vma->vm_page_prot)) {
-      PLOG("remap_pfn_range failed.");
-      return -EAGAIN;
-    }
-
+  if (remap_pfn_range(vma, 
+                      vma->vm_start,
+                      vma->vm_pgoff, // passed through physical address 
+                      vma->vm_end - vma->vm_start,
+                      vma->vm_page_prot)) {
+    PLOG("remap_pfn_range failed.");
+    return -EAGAIN;
   }
 
   vma->vm_ops = &pk_dma_mmap_fops;
