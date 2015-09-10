@@ -43,6 +43,7 @@
 #include "pk_fops.h"
 #include "pk.h"
 #include "version.h"
+#include "pk_grant_device.h"
 
 #define DEVICE_NAME "parasite"
 #define PARASITIC_KERNEL_VER "0.1"
@@ -67,7 +68,7 @@ extern struct device_attribute dev_attr_dma_page_free;
 extern struct device_attribute dev_attr_msi_alloc;
 extern struct device_attribute dev_attr_msi_cap;
 extern struct device_attribute dev_attr_grant_access;
-extern struct device_attribute dev_attr_grant_device;
+
 
 static ssize_t  pk_detach_store(struct class *class, 
                                 struct class_attribute *attr,
@@ -166,7 +167,6 @@ struct pk_device * sysfs_class_register_device(struct pci_dev * pci_dev)
   device_create_file(pkdev->dev, &dev_attr_msi_alloc);
   device_create_file(pkdev->dev, &dev_attr_msi_cap);
   device_create_file(pkdev->dev, &dev_attr_grant_access);
-  device_create_file(pkdev->dev, &dev_attr_grant_device);
 
   /* create procfs dir */
   ASSERT(pk_proc_dir_root!=NULL);
@@ -463,6 +463,9 @@ static struct class_attribute pk_version =
 static struct class_attribute pk_detach = 
   __ATTR(detach, S_IWUSR, NULL, pk_detach_store);
 
+static struct class_attribute pk_grant_device = 
+  __ATTR(grant, S_IWUSR | S_IRUSR, pk_grant_device_show, pk_grant_device_store);
+
 
 /** 
  * Write handler for /sys/class/parasite/new_id, which is
@@ -553,7 +556,7 @@ status_t class_init(void)
   if(IS_ERR(parasite_class = class_create(THIS_MODULE,"parasite"))) 
     goto err_class_register;
 
-  /* set attributes for class */
+  /* set attributes for class (i.e. /sys/class/parasite/version etc.) */
   ret = class_create_file(parasite_class, &pk_version);
   if(ret)
     goto err_class_create_file;
@@ -563,6 +566,10 @@ status_t class_init(void)
     goto err_class_create_file;
 
   ret = class_create_file(parasite_class, &pk_new_id);
+  if(ret)
+    goto err_class_create_file;
+
+  ret = class_create_file(parasite_class, &pk_grant_device);
   if(ret)
     goto err_class_create_file;
 
