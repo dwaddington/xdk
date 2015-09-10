@@ -55,7 +55,7 @@ ssize_t pk_grant_device_store(struct class * class,
             &bus, 
             &devfn,
             &uid,
-            &op) != 4) {
+            &op) != 5) {
     PERR("invalid call to grant device (store). params <domain> <bus> <fn> <uid> <op>");
     return -EINVAL;
   }
