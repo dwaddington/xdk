@@ -82,6 +82,8 @@ static DEFINE_MUTEX(minor_lock);
 static DEFINE_IDR(pk_idr);
 
 LIST_HEAD(g_pkdevice_list);
+LIST_HEAD(g_pkgrant_list);
+spinlock_t g_pkgrant_list_lock;
 
 struct proc_dir_entry * pk_proc_dir_root;
 
@@ -385,6 +387,10 @@ static status_t major_init(void)
   
   pk_major = MAJOR(pk_device);
   pk_cdev = cdev;
+
+  /* init device grant list */
+  INIT_LIST_HEAD(&g_pkgrant_list);
+  spin_lock_init(&g_pkgrant_list_lock);
 
   /* create proc dir entry */
   pk_proc_dir_root = proc_mkdir(DEVICE_NAME, NULL);    
