@@ -74,6 +74,7 @@ static ssize_t show_version(struct device *dev,
   return sprintf(buf, "0.1\n");
 }
 
+  
 
 /** 
  * This attribute (pci) is used so that user-space processes can easily
@@ -885,11 +886,11 @@ int setup_msix_handlers(struct pk_device * pkdev)
     /* allocate /proc item */
     {
       char entry_name[16];     
-        
+ 
       sprintf(entry_name,"msix-%d",this_vector);
 
       /* TODO: permissions should be locked down to owner */
-      proc_create_data(entry_name, 
+      proc_create_data(entry_name,
                        0666, 
                        pkdev->msi_proc_dir_root,
                        &msix_proc_fops,
@@ -898,7 +899,6 @@ int setup_msix_handlers(struct pk_device * pkdev)
 
       pkdev->msi_proc_dir_entry_num += 1;
       
-      PLOG("creating /proc/parasite/%s/%s entry (pkdev=%p)",pkdev->name, entry_name, pkdev);
     }
 
   }
@@ -1212,7 +1212,6 @@ static ssize_t grant_access_store(struct device * dev,
   return -EIO;
 
 }
-
 
 
 /** 

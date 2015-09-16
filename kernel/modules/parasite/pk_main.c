@@ -43,7 +43,6 @@
 #include "pk_fops.h"
 #include "pk.h"
 #include "version.h"
-#include "pk_grant_device.h"
 
 #define DEVICE_NAME "parasite"
 #define PARASITIC_KERNEL_VER "0.1"
@@ -53,6 +52,7 @@ MODULE_AUTHOR("Daniel G. Waddington");
 MODULE_DESCRIPTION("Parasitic Kernel Module");
 
 struct class * parasite_class;
+
 
 
 /* attributes for each pkXXX device created - defined in pk_class.c */
@@ -69,6 +69,8 @@ extern struct device_attribute dev_attr_msi_alloc;
 extern struct device_attribute dev_attr_msi_cap;
 extern struct device_attribute dev_attr_grant_access;
 
+extern void setup_pci_config_procfs(struct pk_device * pkdev);
+extern void cleanup_pci_config_procfs(struct pk_device *pkdev);
 
 static ssize_t  pk_detach_store(struct class *class, 
                                 struct class_attribute *attr,
@@ -83,8 +85,6 @@ static DEFINE_MUTEX(minor_lock);
 static DEFINE_IDR(pk_idr);
 
 LIST_HEAD(g_pkdevice_list);
-LIST_HEAD(g_pkgrant_list);
-spinlock_t g_pkgrant_list_lock;
 
 struct proc_dir_entry * pk_proc_dir_root;
 
@@ -174,6 +174,9 @@ struct pk_device * sysfs_class_register_device(struct pci_dev * pci_dev)
   PLOG("creating /proc/parasite/%s entry.",pkdev->name);
   pkdev->msi_proc_dir_root = proc_mkdir(pkdev->name,pk_proc_dir_root);
 
+  /* set up pci_config space in /proc/parasite/pk0 fs */
+  setup_pci_config_procfs(pkdev);
+
   /* finally add to list of pk_devices */
   list_add(&pkdev->list,&g_pkdevice_list);
 
@@ -206,6 +209,9 @@ void pk_device_cleanup(struct pk_device * pkdev)
   msi = pkdev->msi_support;
 
   /* remove /proc/parasite/pkXXX/NNN entries */
+  PDBG("removing pci_config entry.");
+  cleanup_pci_config_procfs(pkdev);
+
   if (msi & 0x2) {
 
     unsigned i;
@@ -388,10 +394,6 @@ static status_t major_init(void)
   pk_major = MAJOR(pk_device);
   pk_cdev = cdev;
 
-  /* init device grant list */
-  INIT_LIST_HEAD(&g_pkgrant_list);
-  spin_lock_init(&g_pkgrant_list_lock);
-
   /* create proc dir entry */
   pk_proc_dir_root = proc_mkdir(DEVICE_NAME, NULL);    
   ASSERT(pk_proc_dir_root);
@@ -462,9 +464,6 @@ static struct class_attribute pk_version =
 
 static struct class_attribute pk_detach = 
   __ATTR(detach, S_IWUSR, NULL, pk_detach_store);
-
-static struct class_attribute pk_grant_device = 
-  __ATTR(grant, S_IWUSR | S_IRUSR, pk_grant_device_show, pk_grant_device_store);
 
 
 /** 
@@ -569,11 +568,6 @@ status_t class_init(void)
   if(ret)
     goto err_class_create_file;
 
-  ret = class_create_file(parasite_class, &pk_grant_device);
-  if(ret)
-    goto err_class_create_file;
-
-
 	return S_OK;
 
 err_class_create_file:
@@ -630,21 +624,6 @@ void free_minor(struct pk_device *pkdev)
 	mutex_lock(&minor_lock);
 	idr_remove(&pk_idr, pkdev->minor); 
 	mutex_unlock(&minor_lock); 
-
-#if 0
-  /* delete device attributes */
-  device_remove_file(pkdev->dev, &dev_attr_name);
-  device_remove_file(pkdev->dev, &dev_attr_version);
-  device_remove_file(pkdev->dev, &dev_attr_pci);
-  device_remove_file(pkdev->dev, &dev_attr_irq);
-  device_remove_file(pkdev->dev, &dev_attr_dma_mask);
-  device_remove_file(pkdev->dev, &dev_attr_dma_page_alloc);
-  device_remove_file(pkdev->dev, &dev_attr_dma_page_free);
-  device_remove_file(pkdev->dev, &dev_attr_msi_alloc);
-  device_remove_file(pkdev->dev, &dev_attr_msi_cap);
-  device_remove_file(pkdev->dev, &dev_attr_grant_access);
-  device_remove_file(pkdev->dev, &dev_attr_grant_device);
-#endif
 
   /* clean up device created with device_create API */
   device_destroy(parasite_class, MKDEV(pk_major, pkdev->minor));
