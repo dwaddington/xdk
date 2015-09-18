@@ -37,7 +37,7 @@
 //////////////////////////////////////////////////////////////////////
 // IDeviceControl interface
 //
-status_t IBlockDevice_impl::init_device(unsigned instance, config_t config = NULL) {
+status_t IBlockDevice_impl::init_device(unsigned instance, const char * config = NULL) {
   PLOG("init_device(instance=%u)",instance);
   return S_OK;
 }

@@ -160,6 +160,44 @@ namespace Exokernel
       void     write32(unsigned offset, uint32_t val);
     };
 
+    class Pci_config_space2 {
+    private:
+      std::string  _root_fs;
+      int          _fd;
+
+    public:
+      Pci_config_space2(std::string& root_fs) 
+      {
+        assert(!root_fs.empty());
+
+        _root_fs = "/proc/parasite/pk0/pci_config";
+
+        _fd = open(_root_fs.c_str(), O_RDWR|O_SYNC);
+        if(!_fd) {
+          PWRN("unable to open file (%s)", _root_fs.c_str());
+          throw Exokernel::Fatal(__FILE__,__LINE__,"unable to open PCI config space");
+        }
+        PLOG("Pci_config_space2 CTOR (root=%s)", _root_fs.c_str());
+        //        PLOG("vendor=%x device=%x", vendor(), device());
+      }
+
+      ~Pci_config_space2() {
+        if(_fd)
+          close(_fd);
+      }
+
+      uint16_t vendor()             { return read16(PCI_VENDOR_ID);    }
+      uint16_t device()             { return read16(PCI_DEVICE_ID);    }
+      
+      uint16_t read16(unsigned offset) {
+        uint16_t val;
+        
+        if(pread(_fd,&val,2,offset) != 2) 
+          throw Exokernel::Fatal(__FILE__,__LINE__,"unable to read16 PCI config space");
+        
+        return val;        
+      }
+    };
 
     /** 
      * Class providing access to the PCI configuration space
@@ -346,6 +384,8 @@ namespace Exokernel
   private:
 
     Pci_config_space *           _pci_config_space;
+    Pci_config_space2 *          _pci_config_space2;
+
     Pci_mapped_memory_region *   _mapped_memory[6];
     std::string                  _fs_root_name;
 
@@ -381,6 +421,9 @@ namespace Exokernel
       /* instantiate PCI configuration space memory mapping */
       _pci_config_space = new Pci_config_space(pci_root);
       assert(_pci_config_space);
+
+      _pci_config_space2 = new Pci_config_space2(pk_root);
+      assert(_pci_config_space2);
 
       /* instantiate Mapped Memory mappings pointed to by each BAR */
       for(unsigned i=0;i<6;i++) {
@@ -529,6 +572,10 @@ namespace Exokernel
      */
     INLINE Pci_config_space * const pci_config() {
       return _pci_config_space;
+    }
+
+    INLINE Pci_config_space2 * const pci_config2() {
+      return _pci_config_space2;
     }
 
     /** 

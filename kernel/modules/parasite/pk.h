@@ -74,6 +74,11 @@ enum {
 /** 
  * Types
  * 
+ */ 
+
+/** 
+ * Structure to hold information about allocated DMA memory
+ * 
  */
 struct pk_dma_area {
   struct list_head list;
@@ -85,6 +90,17 @@ struct pk_dma_area {
   dma_addr_t       phys_addr;
   int              owner_pid;
   unsigned         flags;
+};
+
+/** 
+ * Structure to track device grants
+ * 
+ * @return 
+ */
+struct pk_device_grant {
+  struct list_head list;
+  struct pci_dev * pci_dev;
+  unsigned int     uid;
 };
 
 #define PK_MAGIC 0xfeeb1e00
