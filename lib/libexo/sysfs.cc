@@ -52,7 +52,7 @@
 /**********************************************************************************
  * Pci_config_space
  **********************************************************************************/
-
+#if 0
 /** 
  * Constructor
  * 
@@ -103,6 +103,7 @@ void Exokernel::Device_sysfs::Pci_config_space::interrogate_bar_regions()
     }
   }
 }
+#endif
 
 /**********************************************************************************
  * Pci_mapped_memory_region
@@ -137,7 +138,7 @@ Pci_mapped_memory_region(std::string& root_fs,
     _fd = open(s.str().c_str(), O_RDWR);
 
     if(!_fd) {   
-      PWRN("Unable to open PCI config space (%s)",s.str().c_str());
+      PERR("Unable to open PCI config space (%s)",s.str().c_str());
       throw Exokernel::Fatal(__FILE__,__LINE__,"unable to open PCI mapped memory space");
     }
 
@@ -153,7 +154,8 @@ Pci_mapped_memory_region(std::string& root_fs,
                           0);  //offset; special meaning with sysfs mmap'able objects
     
     if(_mapped_memory == MAP_FAILED) {
-      perror("map failed:");
+      PERR("Unable to map in BAR region %d (size=%d)", index, bar_region_size);
+      _mapped_memory = NULL;
     }
     else {
       PLOG("Mapped region%u to _mapped_memory %p", index, _mapped_memory);
@@ -230,7 +232,7 @@ void Exokernel::Device_sysfs::Sysfs_file_accessor::write32(unsigned offset, uint
   assert(_fd > 0);
 
   if(pwrite(_fd,&val,4,offset) != 4) 
-    throw Exokernel::Fatal(__FILE__,__LINE__,"unable to write16 PCI config space");
+    throw Exokernel::Fatal(__FILE__,__LINE__,"unable to write32 PCI config space");
 }
 
 

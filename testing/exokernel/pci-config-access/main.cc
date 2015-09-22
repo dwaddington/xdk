@@ -23,13 +23,14 @@ public:
   }
 
 
-
 };
 
 
 int main()
 {
   Dummy_device dev;
+
+  // open /proc/parasite/pk0/pci_config and do some read?
 
   //  printf("Press return to continue....\n");
   // getchar();
