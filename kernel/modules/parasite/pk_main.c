@@ -75,6 +75,11 @@ extern void cleanup_pci_config_procfs(struct pk_device *pkdev);
 static ssize_t  pk_detach_store(struct class *class, 
                                 struct class_attribute *attr,
                                 const char *buf, size_t count);
+
+static ssize_t  pk_grant_device_store(struct class *class, 
+                                      struct class_attribute *attr,
+                                      const char *buf, size_t count);
+
 static status_t major_init(void);
 static void     major_cleanup(void);
 static int      get_minor(struct pk_device *dev);
@@ -85,6 +90,8 @@ static DEFINE_MUTEX(minor_lock);
 static DEFINE_IDR(pk_idr);
 
 LIST_HEAD(g_pkdevice_list);
+LIST_HEAD(g_pkdevice_grant_list);
+spinlock_t g_pkdevice_grant_list_lock;
 
 struct proc_dir_entry * pk_proc_dir_root;
 
@@ -342,6 +349,25 @@ static void major_cleanup(void)
 
   release_all_devices();
 
+  /* clean up grants */
+  {
+    int cleaned = 0;
+    struct list_head *pos, *q;
+
+    spin_lock(&g_pkdevice_grant_list_lock);
+    
+    list_for_each_safe(pos, q, &g_pkdevice_grant_list) {
+      struct pk_device_grant *tmp;
+      tmp = list_entry(pos, struct pk_device_grant, list);
+      list_del(pos);
+      kfree(tmp);
+      cleaned++;
+    }
+
+    spin_unlock(&g_pkdevice_grant_list_lock);
+    PLOG("cleaned up %d grants", cleaned);
+  }
+
   /* remove /proc/parasite */
   remove_proc_entry(DEVICE_NAME, NULL);
 
@@ -458,6 +484,86 @@ static ssize_t pk_detach_store(struct class *class,
 }
 
 
+/** 
+ * Handle writes to /sys/class/parasite/grant_device which is used to map
+ * PCI express devices to a given user id
+ * 
+ * @param class 
+ * @param attr 
+ * @param buf 
+ * @param count 
+ * 
+ * @return 
+ */
+static ssize_t pk_grant_device_store(struct class *class, 
+                                     struct class_attribute *attr,
+                                     const char *buf, 
+                                     size_t count)
+{
+  struct pk_device_grant * grant;
+  int fields = 0, bus = 0, slot = 0, func = 0, uid = 0;
+
+	fields = sscanf(buf, "%x:%x.%d %d",
+                  &bus, &slot, &func, &uid);
+
+  if(fields != 4) {
+    PLOG("invalid invocation on grant_device (fields=%d not 4)",fields);
+    return -EINVAL;
+  }
+
+  /* allocate new grant object */
+  grant = (struct pk_device_grant*) kmalloc(sizeof(struct pk_device_grant),GFP_KERNEL);
+  grant->bus = bus;
+  grant->slot = slot;
+  grant->func = func;
+  grant->uid = uid;
+
+  spin_lock(&g_pkdevice_grant_list_lock);
+  list_add(&grant->list, &g_pkdevice_grant_list);
+  spin_unlock(&g_pkdevice_grant_list_lock);
+
+  PLOG("granted PCI device %02x:%02x.%d to user %d", bus, slot, func, uid);
+  return count;
+}
+
+
+/** 
+ * Check if a device has been granted
+ * 
+ * @param bus Bus identifier
+ * @param slot Slot identifier
+ * @param func Function
+ * @param uid User id
+ * 
+ * @return true if granted
+ */
+bool is_device_granted(int bus, int slot, int func, int uid)  /* clean up grants */
+{
+  struct list_head *pos, *q;
+  bool found = false;
+
+  PLOG("checking params %x:%x.%d %d",bus, slot, func, uid);
+
+  spin_lock(&g_pkdevice_grant_list_lock);    
+  list_for_each_safe(pos, q, &g_pkdevice_grant_list) {
+    struct pk_device_grant *grant;
+    grant = list_entry(pos, struct pk_device_grant, list);
+    PLOG("checking grant %x:%x.%d %d",grant->bus, grant->slot, grant->func, grant->uid);
+    if((grant->bus == bus) &&
+       (grant->slot == slot) &&
+       (grant->func == func) &&
+       (grant->uid == uid)) {
+      PLOG("matched!");
+      found = true;
+      break;
+    }
+  }
+  spin_unlock(&g_pkdevice_grant_list_lock);
+
+  return found;
+}
+
+
 
 static struct class_attribute pk_version =
   __ATTR(version, S_IRUGO, pk_class_version_show, NULL);
@@ -465,6 +571,8 @@ static struct class_attribute pk_version =
 static struct class_attribute pk_detach = 
   __ATTR(detach, S_IWUSR, NULL, pk_detach_store);
 
+static struct class_attribute pk_grant_device = 
+  __ATTR(grant_device, S_IWUGO, NULL, pk_grant_device_store);
 
 /** 
  * Write handler for /sys/class/parasite/new_id, which is
@@ -484,7 +592,8 @@ static struct class_attribute pk_detach =
  */
 ssize_t pk_new_id_store(struct class *class, 
                         struct class_attribute *attr,
-                        const char *buf, size_t count)
+                        const char *buf, 
+                        size_t count)
 {
   // TODO: add access control
   //
@@ -527,6 +636,7 @@ ssize_t pk_new_id_store(struct class *class,
                          devclass, devclass_mask, driver_data);
 	if (retval)
 		return retval;
+
 	return count;
 }
 
@@ -561,6 +671,10 @@ status_t class_init(void)
     goto err_class_create_file;
 
   ret = class_create_file(parasite_class, &pk_detach);
+  if(ret)
+    goto err_class_create_file;
+
+  ret = class_create_file(parasite_class, &pk_grant_device);
   if(ret)
     goto err_class_create_file;
 

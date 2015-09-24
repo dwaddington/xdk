@@ -99,8 +99,10 @@ struct pk_dma_area {
  */
 struct pk_device_grant {
   struct list_head list;
-  struct pci_dev * pci_dev;
-  unsigned int     uid;
+  unsigned int bus;
+  unsigned int slot;
+  unsigned int func;
+  unsigned int uid;
 };
 
 #define PK_MAGIC 0xfeeb1e00
@@ -179,6 +181,7 @@ struct proc_dir_entry *proc_create_data(const char *name,
 
 
 struct pk_device * sysfs_class_register_device(struct pci_dev * pci_dev);
+bool is_device_granted(int bus, int slot, int func, int uid);
 
 /** 
  * PCI functions

@@ -1167,10 +1167,10 @@ void free_dma_memory(struct pk_device * pkdev)
  * Write to grant_access_store used to grant access to allocated memory
  * for the purpose of sharing memory across applications.
  * 
- * @param dev 
- * @param attr 
- * @param buf 
- * @param count 
+ * @param dev Device
+ * @param attr Device attributes
+ * @param buf Incoming buffer
+ * @param count Size of data in buffer
  * 
  * @return 
  */

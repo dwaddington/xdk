@@ -81,7 +81,6 @@ static irqreturn_t interrupt_handler(int irq,
   struct pci_dev * pci_dev = pkdev->pci_dev;
   u16 reg;
 
-  PLOG("PK interrupt!!");
   pci_bus_read_config_word(pci_dev->bus,
                            pci_dev->devfn,
                            0x4, // status reg
