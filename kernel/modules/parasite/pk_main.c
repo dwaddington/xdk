@@ -526,7 +526,6 @@ static ssize_t pk_grant_device_store(struct class *class,
   return count;
 }
 
-
 /** 
  * Check if a device has been granted
  * 
@@ -537,23 +536,25 @@ static ssize_t pk_grant_device_store(struct class *class,
  * 
  * @return true if granted
  */
-bool is_device_granted(int bus, int slot, int func, int uid)  /* clean up grants */
+static bool is_device_granted(int bus, 
+                              int slot, 
+                              int func, 
+                              int uid) 
 {
   struct list_head *pos, *q;
   bool found = false;
 
-  PLOG("checking params %x:%x.%d %d",bus, slot, func, uid);
+  //  PLOG("checking params %x:%x.%d %d",bus, slot, func, uid);
 
   spin_lock(&g_pkdevice_grant_list_lock);    
   list_for_each_safe(pos, q, &g_pkdevice_grant_list) {
     struct pk_device_grant *grant;
     grant = list_entry(pos, struct pk_device_grant, list);
-    PLOG("checking grant %x:%x.%d %d",grant->bus, grant->slot, grant->func, grant->uid);
+    
     if((grant->bus == bus) &&
        (grant->slot == slot) &&
        (grant->func == func) &&
        (grant->uid == uid)) {
-      PLOG("matched!");
       found = true;
       break;
     }
@@ -562,6 +563,23 @@ bool is_device_granted(int bus, int slot, int func, int uid)  /* clean up grants
 
   return found;
 }
+
+bool check_authority(struct pci_dev * pci_dev)
+{
+  int uid = uid = get_current_user()->uid.val;
+  struct pci_bus *bus = pci_dev->slot->bus;
+
+  bool result = is_device_granted(bus->number, 
+                                  PCI_SLOT(pci_dev->devfn), 
+                                  PCI_FUNC(pci_dev->devfn), 
+                                  uid);
+  if(result == false) {
+    PLOG("check_authority failed; access denied");
+  }
+
+  return result;
+}
+
 
 
 

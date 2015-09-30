@@ -86,7 +86,10 @@ namespace Exokernel
 
       Pci_config_space(std::string& root_fs) 
       {
-        assert(!root_fs.empty());
+        if(root_fs.empty()) {
+          throw Exokernel::Fatal(__FILE__,__LINE__,
+                                 "no access to device or device not found");
+        }
 
         std::string pci_config_location = "/proc/parasite/";
         pci_config_location += root_fs.substr(20);

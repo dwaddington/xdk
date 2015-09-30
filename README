@@ -6,6 +6,13 @@ The project was founded on code developed and released by Samsung Research Ameri
 History:
 --------
 
+29-09-2015:
+
+Re-write of PCI configuration space access via PK module.  PCI memory
+mapped resources still through /sys/bus/pci filesystem - this could be improved
+by putting into pkXXX node.  Still need to secure access to other pkXXX/xyz
+elements by verifying the device has been granted to the caller.
+
 29-01-2015:
 
 Initial version of NVMe SSD driver works on both QEMU and Samsung SSD

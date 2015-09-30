@@ -13,7 +13,6 @@ ssize_t pci_config_proc_read(struct file * fp,
   struct pk_device * pkdev;
   struct pci_dev * pci_dev;
   int rc;
-  int uid;
 
   pkdev = PDE_DATA(file_inode(fp));
   BUG_ON(pkdev == NULL);
@@ -21,27 +20,9 @@ ssize_t pci_config_proc_read(struct file * fp,
   pci_dev = pkdev->pci_dev;
   BUG_ON(pci_dev == NULL);
 
-  uid = get_current_user()->uid.val;
-
-  /* extract bus, slot, etc. for grant check */
-  {
-    struct pci_bus *bus = pci_dev->slot->bus;
-    
-    /* PLOG("uid=%d slot=%d bus=%d func=%d", */
-    /*      get_current_user()->uid.val, */
-    /*      PCI_SLOT(pci_dev->devfn), */
-    /*      bus->number, // PCI_BUS_NUM(pci_dev->devid), */
-    /*      PCI_FUNC(pci_dev->devfn)          */
-    /*      );    */
-    if(!is_device_granted(bus->number, 
-                          PCI_SLOT(pci_dev->devfn), 
-                          PCI_FUNC(pci_dev->devfn), 
-                          uid)) {
-      PLOG("device grant failed.");
-      return -EINVAL;
-    }     
-  }
-
+  /* check device permissions */
+  if(!check_authority(pci_dev))
+    return -EINVAL;
 
   switch(size) {
   case 4:
@@ -78,6 +59,10 @@ ssize_t pci_config_proc_write(struct file *fp,
   pci_dev = pkdev->pci_dev;
   BUG_ON(pci_dev == NULL);
 
+  /* check device permissions */
+  if(!check_authority(pci_dev))
+    return -EINVAL;
+
   switch(size) {
   case 4:
     rc = pci_write_config_dword(pci_dev, *offset, *((u32 *) buf));    
@@ -109,7 +94,7 @@ void setup_pci_config_procfs(struct pk_device * pkdev)
   BUG_ON(pkdev == NULL);
   PLOG("setting up /proc entry with %p",pkdev);
   proc_create_data("pci_config",
-                   0666, // TODO: owned by root, can we change it? 
+                   0666, // owned by root
                    pkdev->msi_proc_dir_root,
                    &pci_config_fops,
                    (void*)pkdev); /* pass through pkdev */

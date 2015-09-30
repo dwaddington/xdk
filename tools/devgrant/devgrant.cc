@@ -29,17 +29,19 @@
 
 /*
   Authors:
-  Copyright (C) 2014, Daniel G. Waddington <daniel.waddington@acm.org>
+  Copyright (C) 2014, 2015 Daniel G. Waddington <daniel.waddington@acm.org>
 */
 
 #include <stdio.h>
 #include <unistd.h>
+#include <iostream>
+#include <fstream>
 
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 
-void grant_files(std::string& path, uid_t owner);
+void grant_files(std::string pciaddr, std::string& path, uid_t owner);
 
 int main(int argc, char * argv[])
 {
@@ -82,24 +84,33 @@ int main(int argc, char * argv[])
 
   std::string path = "/sys/bus/pci/devices/0000:";
   path += vm["pciaddr"].as<std::string>();
-  grant_files(path, uid);
+  grant_files(vm["pciaddr"].as<std::string>(), path, uid);
 
   return 0;
 }
 
 
-void grant_files(std::string& path, uid_t owner) 
+void grant_files(std::string pciaddr, std::string& path, uid_t owner) 
 {
   std::cout << "Grant path: " << path << std::endl;
   std::cout << "UID: " << owner << std::endl;
-
-  /* config file */
   int rc;
-  std::string path_config = path + "/config";
-  rc = chown(path_config.c_str(), owner, owner);
-  if(rc) {
-    std::cout << "Unable to chown (" << path_config << "). Running as root?\n";
-    return;
+
+  /* set up pci config access through parasitic kernel */
+  {
+    std::string config_path = "/sys/class/parasite/grant_device";
+    try {
+      std::ofstream ofs(config_path.c_str());
+      
+      std::stringstream params;
+      params << pciaddr << " " << owner;
+
+      ofs << params.str();
+    }
+    catch(...) {
+      std::cerr << "ERROR: unable to open path " << config_path << std::endl;
+      return;
+    }
   }
 
   /* resource files */
@@ -114,7 +125,7 @@ void grant_files(std::string& path, uid_t owner)
       
       rc = chown(filename, owner, owner);
       if(rc) {
-        std::cout << "Unable to chown (" << path_config << "). Running as root?\n";
+        std::cout << "Unable to chown (" << filename << "). Running as root?\n";
         return;
       }
     }

@@ -55,6 +55,17 @@
 #include "config.h"
 #include "common.h"
 
+#define DECLARE_PKDEV_PCIDEV   struct pci_dev * pci_dev; \
+  struct pk_device * pkdev = (struct pk_device *) dev_get_drvdata(dev); \
+  BUG_ON(pkdev == NULL); \
+  pci_dev = pkdev->pci_dev; \
+  BUG_ON(pci_dev == NULL) 
+
+#define DECLARE_PKDEV \
+  struct pk_device * pkdev = (struct pk_device *) dev_get_drvdata(dev); \
+  BUG_ON(pkdev == NULL)
+
+
 extern struct proc_dir_entry * pk_proc_dir_root;
 extern void pk_device_cleanup(struct pk_device * pkdev);
 
@@ -90,25 +101,18 @@ static ssize_t show_pci(struct device *dev,
                         struct device_attribute *attr, 
                         char *buf)
 {
-  struct pci_dev * pcidev;
-  struct pk_device * pkdev = (struct pk_device *) dev_get_drvdata(dev);
+  DECLARE_PKDEV_PCIDEV;
 
-  if(!pkdev) 
-    goto error;
-
-  pcidev = pkdev->pci_dev;
-  if(!pcidev || !pcidev->bus) 
-    goto error;
+  /* check device permissions */
+  if(!check_authority(pci_dev))
+    return -EINVAL;
 
   return sprintf(buf, "/sys/bus/pci/devices/%04u:%02x:%02x.%x\n",
-                 //                 pci_is_pcie(pcidev) ? "_express" : "",
-                 pci_domain_nr(pcidev->bus),
-                 pcidev->bus->number,
-                 PCI_SLOT(pcidev->devfn),
-                 PCI_FUNC(pcidev->devfn));
-
- error:
-  return sprintf(buf, "error: %s\n",__FUNCTION__);
+                 //                 pci_is_pcie(pci_dev) ? "_express" : "",
+                 pci_domain_nr(pci_dev->bus),
+                 pci_dev->bus->number,
+                 PCI_SLOT(pci_dev->devfn),
+                 PCI_FUNC(pci_dev->devfn));
 }
 
 
@@ -126,10 +130,7 @@ static ssize_t wait_irq(struct device *dev,
                         struct device_attribute *attr, 
                         char *buf)
 {
-  struct pk_device * pkdev = (struct pk_device *) dev_get_drvdata(dev);
-
-  if(!pkdev) 
-    goto error;
+  DECLARE_PKDEV;
 
   wait_event_interruptible(pkdev->irq_wait, pkdev->irq_wait_flag != 0);
   pkdev->irq_wait_flag = 0;
@@ -138,9 +139,6 @@ static ssize_t wait_irq(struct device *dev,
   
   /* return the IRQ number */
   return sprintf(buf, "%d\n", pkdev->pci_dev->irq);
-
- error:
-  return sprintf(buf, "error: %s\n",__FUNCTION__);
 }
 
 
@@ -159,16 +157,9 @@ static ssize_t dma_mask_show(struct device *dev,
                              struct device_attribute *attr, 
                              char *buf)
 {
-  struct pk_device * pkdev = (struct pk_device *) dev_get_drvdata(dev);
-
-  if(!pkdev) goto error;
-  if(!pkdev->pci_dev) goto error;
-
+  DECLARE_PKDEV;
+  
   return sprintf((char*) buf, "%llx\n", pkdev->pci_dev->dma_mask);
-
- error:
-  PERR("dev_get_drvdata returned a NULL pointer.");
-  return 0;
 }
 
 /** 
@@ -190,9 +181,11 @@ static ssize_t dma_mask_store(struct device * dev,
                               size_t count)
 {
   u64 new_mask = 0ULL;
-  struct pk_device * pkdev = (struct pk_device *) dev_get_drvdata(dev);
-  if(!pkdev) goto error;
-  if(!pkdev->pci_dev) goto error;
+  DECLARE_PKDEV;
+
+  /* check device permissions */
+  if(!check_authority(pkdev->pci_dev))
+    return -EINVAL;
   
   if (sscanf(buf,"%llx",&new_mask)!=1)
     return -EINVAL;
@@ -208,10 +201,6 @@ static ssize_t dma_mask_store(struct device * dev,
 
   PLOG("DMA mask set to: 0x%llx \n",new_mask);
   return count;
-
- error:
-  PERR("dma_mask_store failed unexpectedly.");
-  return -EINVAL;
 }
 
 
@@ -240,17 +229,12 @@ static ssize_t dma_alloc_store(struct device * dev,
                                const char * buf,
                                size_t count)
 {
-  struct pk_device * pkdev = (struct pk_device *) dev_get_drvdata(dev);
-
   unsigned long num_pages = 0;
   int node_id = 0, order = 0;
   int direction = 0;
   enum dma_data_direction dir;
-  
-  
 
-  if(!pkdev) goto error;
-  if(!pkdev->pci_dev) goto error;
+  DECLARE_PKDEV;  
 
   PLOG("dma_alloc_store wr=(%s)", buf);
 
@@ -363,10 +347,6 @@ static ssize_t dma_alloc_store(struct device * dev,
   }
 
   return count; // OK
-
- error:
-  PERR("dev_get_drvdata returned a NULL pointer.");
-  return -EIO;
 }
 
 /** 
@@ -384,9 +364,7 @@ static ssize_t dma_alloc_show(struct device *dev,
                               char *buf)
 {
   unsigned total_chars = 0;
-  struct pk_device * pkdev = (struct pk_device *) dev_get_drvdata((struct device *)dev);
-  if(!pkdev) goto error;
-  if(!pkdev->pci_dev) goto error;
+  DECLARE_PKDEV;
 
   {
     struct list_head * p;
@@ -426,10 +404,6 @@ static ssize_t dma_alloc_show(struct device *dev,
   }
 
   return total_chars;
-
- error:
-  PERR("dev_get_drvdata returned a NULL pointer.");
-  return -EIO;
 }
 
 #if 0
@@ -478,12 +452,10 @@ static ssize_t dma_free_store(struct device * dev,
                               const char * buf,
                               size_t count)
 {
-  struct pk_device * pkdev = (struct pk_device *) dev_get_drvdata(dev);
   addr_t phys_addr = 0;
   bool free_all = false;
 
-  if(!pkdev) goto error;
-  if(!pkdev->pci_dev) goto error;
+  DECLARE_PKDEV;
 
   /* string is of the form "<address>" */
   if (sscanf(buf,"0x%lx",&phys_addr) != 1) {
@@ -549,10 +521,6 @@ static ssize_t dma_free_store(struct device * dev,
   }
 
   return count;
-
- error:
-  PERR("dev_get_drvdata returned a NULL pointer.");
-  return -EIO;
 }
 
 
@@ -570,59 +538,50 @@ static ssize_t msi_alloc_show(struct device *dev,
                               struct device_attribute *attr, 
                               char *buf)
 { 
-  struct pk_device * pkdev = (struct pk_device *) dev_get_drvdata(dev);
+  char tmp[256];
+  int i;
+  unsigned num_chars = 0, total_chars = 0;
 
-  if(!pkdev) goto error;
-  if(!pkdev->pci_dev) goto error;
+  DECLARE_PKDEV;
 
-  {
-    char tmp[256];
-    int i;
-    unsigned num_chars = 0, total_chars = 0;
-
-    /* return one vector per line */
-    buf[0] = '\0';
+  /* return one vector per line */
+  buf[0] = '\0';
     
-    // MSI-X
-    if(pkdev->msi_support & 0x2) {
+  // MSI-X
+  if(pkdev->msi_support & 0x2) {
 
-      for (i = 0;i < pkdev->msix_entry_num; i++) {
+    for (i = 0;i < pkdev->msix_entry_num; i++) {
 
-        num_chars = sprintf((char*) tmp,"%u\n",pkdev->msix_entry[i].vector);
+      num_chars = sprintf((char*) tmp,"%u\n",pkdev->msix_entry[i].vector);
         
-        if((total_chars + num_chars) > PAGE_SIZE) {
-          PWRN("total chars exceeds page size.");
-          return -EIO;
-        }
-        
-        strcat(buf,tmp);
+      if((total_chars + num_chars) > PAGE_SIZE) {
+        PWRN("total chars exceeds page size.");
+        return -EIO;
       }
-    }
-    // MSI
-    else if(pkdev->msi_support & 0x1) {
-
-      for (i = 0;i < pkdev->msi_entry_num; i++) {
-
-        num_chars = sprintf((char*) tmp,"%u\n",pkdev->pci_dev->irq+i);
-
-        if((total_chars + num_chars) > PAGE_SIZE) {
-          PWRN("total chars exceeds page size.");
-          return -EIO;
-        }
         
-        strcat(buf,tmp);
+      strcat(buf,tmp);
+    }
+  }
+  // MSI
+  else if(pkdev->msi_support & 0x1) {
+
+    for (i = 0;i < pkdev->msi_entry_num; i++) {
+
+      num_chars = sprintf((char*) tmp,"%u\n",pkdev->pci_dev->irq+i);
+
+      if((total_chars + num_chars) > PAGE_SIZE) {
+        PWRN("total chars exceeds page size.");
+        return -EIO;
       }
+        
+      strcat(buf,tmp);
     }
-    else {
-      PDBG("invalid call on msi_alloc_show, neither MSI or MSI-X are supported.");
-    }
+  }
+  else {
+    PDBG("invalid call on msi_alloc_show, neither MSI or MSI-X are supported.");
   }
 
   return sprintf(buf,"%s",buf); 
-
- error:
-  PERR("dev_get_drvdata returned a NULL pointer.");
-  return -EIO;
 }
 
 
@@ -921,12 +880,10 @@ static ssize_t msi_alloc_store(struct device *dev,
                                const char *buf, 
                                size_t count)
 {
-  struct pk_device * pkdev = (struct pk_device *) dev_get_drvdata(dev);
   unsigned num_vecs = 0;
   int rc;
 
-  if(!pkdev) goto error;
-  if(!pkdev->pci_dev) goto error;  
+  DECLARE_PKDEV;
 
   if(pkdev->msi_entry_num > 0) {
     return -EIO;
@@ -1018,10 +975,6 @@ static ssize_t msi_alloc_store(struct device *dev,
   }
   
   return count; // OK
-
- error:
-  PERR("dev_get_drvdata returned a NULL pointer.");
-  return -EIO;
 }
 
 static ssize_t msi_cap_show(struct device * dev, 
@@ -1029,15 +982,8 @@ static ssize_t msi_cap_show(struct device * dev,
                             char *buf)
 {
   int support = 0;
-  struct pci_dev * pcidev;
-  struct pk_device * pkdev = (struct pk_device *) dev_get_drvdata(dev);
 
-  if(!pkdev) 
-    goto error;
-
-  pcidev = pkdev->pci_dev;
-  if(!pcidev || !pcidev->bus) 
-    goto error;  
+  DECLARE_PKDEV_PCIDEV;
 
   /* check MSI/MSI-X support */
   if (pci_find_capability(pkdev->pci_dev,PCI_CAP_ID_MSI)) 
@@ -1047,9 +993,6 @@ static ssize_t msi_cap_show(struct device * dev,
     support |= (1 << 2);
 
   return sprintf(buf, "%d", support);
-
- error:
-  return sprintf(buf, "error: %s\n",__FUNCTION__);
 }
 
 static ssize_t irq_mode_show(struct device *dev,
@@ -1057,10 +1000,8 @@ static ssize_t irq_mode_show(struct device *dev,
                                char *buf)
 {
   unsigned mode;
-  struct pk_device * pkdev = (struct pk_device *) dev_get_drvdata(dev);
 
-  if(!pkdev) goto error;
-  if(!pkdev->pci_dev) goto error;
+  DECLARE_PKDEV;
 
   /* format "%d" where '%d' is number of vectors to allocate */
   if (sscanf(buf,"%u",&mode)!=1) {
@@ -1072,8 +1013,6 @@ static ssize_t irq_mode_show(struct device *dev,
   BUG_ON(mode > 2 || mode == 0);
  
   return sprintf(buf,"%s","to do..");
- error:
-  return -EIO;
 }
 
 /** 
@@ -1091,11 +1030,9 @@ static ssize_t irq_mode_store(struct device *dev,
                               const char *buf, 
                               size_t count)
 {
-  struct pk_device * pkdev = (struct pk_device *) dev_get_drvdata(dev);
   unsigned mode, i;
 
-  if(!pkdev) goto error;
-  if(!pkdev->pci_dev) goto error;  
+  DECLARE_PKDEV;
 
   /* format "%d" where '%d' is number of vectors to allocate */
   if (sscanf(buf,"%u",&mode)!=1) {
@@ -1124,8 +1061,6 @@ static ssize_t irq_mode_store(struct device *dev,
   }
 
   return count;
- error:
-  return -EIO;
 }
 
 void free_dma_memory(struct pk_device * pkdev)
@@ -1179,14 +1114,9 @@ static ssize_t grant_access_store(struct device * dev,
                                   const char * buf,
                                   size_t count)
 {
-  struct pk_device * pkdev = (struct pk_device *) dev_get_drvdata(dev);
   struct pk_dma_area * area;
   addr_t phys_addr = 0;
-
-  PDBG("grant_access_store called.");
-
-  if(!pkdev) goto error;
-  if(!pkdev->pci_dev) goto error;
+  DECLARE_PKDEV;
 
   /* string is of the form "<address>" */
   if (sscanf(buf,"0x%lx",&phys_addr) != 1) {
@@ -1206,11 +1136,6 @@ static ssize_t grant_access_store(struct device * dev,
   PDBG("granted shared-all access to 0x%lx", phys_addr);
 
   return count;
-
- error:
-  PERR("dev_get_drvdata returned a NULL pointer.");
-  return -EIO;
-
 }
 
 
@@ -1231,4 +1156,4 @@ DEVICE_ATTR(msi_cap, S_IRUGO, msi_cap_show, NULL);
 DEVICE_ATTR(grant_access, S_IWUGO, NULL, grant_access_store);
 
 
-
+#undef DECLARE_PCIDEV_PKDEV

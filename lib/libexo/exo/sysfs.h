@@ -261,7 +261,6 @@ namespace Exokernel
 
       /* instantiate PCI configuration space memory mapping */
       _pci_config_space = new Pci_config_space(pk_root);
-      assert(_pci_config_space);
 
       /* instantiate Mapped Memory mappings pointed to by each BAR */
       for(unsigned i=0;i<6;i++) {

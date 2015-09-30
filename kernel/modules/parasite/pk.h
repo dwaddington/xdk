@@ -181,7 +181,9 @@ struct proc_dir_entry *proc_create_data(const char *name,
 
 
 struct pk_device * sysfs_class_register_device(struct pci_dev * pci_dev);
-bool is_device_granted(int bus, int slot, int func, int uid);
+
+bool check_authority(struct pci_dev * pci_dev);
+//bool is_device_granted(int bus, int slot, int func, int uid);
 
 /** 
  * PCI functions
