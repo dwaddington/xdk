@@ -105,7 +105,7 @@ static ssize_t show_pci(struct device *dev,
 
   /* check device permissions */
   if(!check_authority(pci_dev))
-    return -EINVAL;
+    return -EPERM;
 
   return sprintf(buf, "/sys/bus/pci/devices/%04u:%02x:%02x.%x\n",
                  //                 pci_is_pcie(pci_dev) ? "_express" : "",
@@ -185,7 +185,7 @@ static ssize_t dma_mask_store(struct device * dev,
 
   /* check device permissions */
   if(!check_authority(pkdev->pci_dev))
-    return -EINVAL;
+    return -EPERM;
   
   if (sscanf(buf,"%llx",&new_mask)!=1)
     return -EINVAL;
@@ -236,7 +236,9 @@ static ssize_t dma_alloc_store(struct device * dev,
 
   DECLARE_PKDEV;  
 
-  PLOG("dma_alloc_store wr=(%s)", buf);
+  /* check permissions */
+  if(!check_authority(pkdev->pci_dev))
+    return -EPERM;
 
   if (sscanf(buf,"%lu %d %d",&num_pages, &node_id, &direction) != 3) {
     if (sscanf(buf,"%lu %d",&num_pages, &node_id) != 2) {
@@ -366,6 +368,10 @@ static ssize_t dma_alloc_show(struct device *dev,
   unsigned total_chars = 0;
   DECLARE_PKDEV;
 
+  /* check permissions */
+  if(!check_authority(pkdev->pci_dev))
+    return -EPERM;
+
   {
     struct list_head * p;
     struct pk_dma_area * area;
@@ -457,6 +463,10 @@ static ssize_t dma_free_store(struct device * dev,
 
   DECLARE_PKDEV;
 
+  /* check permissions */
+  if(!check_authority(pkdev->pci_dev))
+    return -EPERM;
+
   /* string is of the form "<address>" */
   if (sscanf(buf,"0x%lx",&phys_addr) != 1) {
     if (strncmp(buf,"*",1)==0) 
@@ -543,6 +553,10 @@ static ssize_t msi_alloc_show(struct device *dev,
   unsigned num_chars = 0, total_chars = 0;
 
   DECLARE_PKDEV;
+
+  /* check permissions */
+  if(!check_authority(pkdev->pci_dev))
+    return -EPERM;
 
   /* return one vector per line */
   buf[0] = '\0';
@@ -885,6 +899,10 @@ static ssize_t msi_alloc_store(struct device *dev,
 
   DECLARE_PKDEV;
 
+  /* check permissions */
+  if(!check_authority(pkdev->pci_dev))
+    return -EPERM;
+
   if(pkdev->msi_entry_num > 0) {
     return -EIO;
   }
@@ -985,6 +1003,10 @@ static ssize_t msi_cap_show(struct device * dev,
 
   DECLARE_PKDEV_PCIDEV;
 
+  /* check permissions */
+  if(!check_authority(pkdev->pci_dev))
+    return -EPERM;
+
   /* check MSI/MSI-X support */
   if (pci_find_capability(pkdev->pci_dev,PCI_CAP_ID_MSI)) 
     support = 0x1;
@@ -1033,6 +1055,10 @@ static ssize_t irq_mode_store(struct device *dev,
   unsigned mode, i;
 
   DECLARE_PKDEV;
+
+  /* check permissions */
+  if(!check_authority(pkdev->pci_dev))
+    return -EPERM;
 
   /* format "%d" where '%d' is number of vectors to allocate */
   if (sscanf(buf,"%u",&mode)!=1) {
@@ -1116,7 +1142,12 @@ static ssize_t grant_access_store(struct device * dev,
 {
   struct pk_dma_area * area;
   addr_t phys_addr = 0;
+
   DECLARE_PKDEV;
+
+  /* check permissions */
+  if(!check_authority(pkdev->pci_dev))
+    return -EPERM;
 
   /* string is of the form "<address>" */
   if (sscanf(buf,"0x%lx",&phys_addr) != 1) {
