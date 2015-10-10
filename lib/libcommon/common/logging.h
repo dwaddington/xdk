@@ -98,5 +98,6 @@
 #endif
 
 #define TRACE()  fprintf( stderr, "[XDK]: %s\n", __FUNCTION__)
+#define THREAD_ROLE(ROLE) PLOG("thread (%p) role:%s", (void*) pthread_self(), ROLE)
 
 #endif // __COMMON_LOGGING_H__
