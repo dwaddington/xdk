@@ -1,6 +1,7 @@
 XDK_HOME = @abs_top_builddir@
 XDK_BASE = $(XDK_HOME)
 XDK_NUMA_FLAG = @numa_flag@
+XDK_NUMA_LIB = @numa_lib@
 XDK_INCLUDES = -I$(XDK_BASE)/lib/libexo -I$(XDK_BASE)/lib/libcomponent -I$(XDK_BASE)/lib/libcommon
 XDK_LIBS = -L$(XDK_BASE)/lib/libexo -L$(XDK_BASE)/lib/libcomponent -L$(XDK_BASE)/lib/libcommon -lcomponent -lexo -lcommon
 

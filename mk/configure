@@ -583,6 +583,7 @@ PACKAGE_URL=''
 
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
+numa_lib
 numa_flag
 OBJEXT
 EXEEXT
@@ -2639,6 +2640,8 @@ if $use_numa
 then
 	numa_flag="-D NUMA_ENABLE"
 
+	numa_lib="-lnuma"
+
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for numa_available in -lnuma" >&5
 $as_echo_n "checking for numa_available in -lnuma... " >&6; }
 if ${ac_cv_lib_numa_numa_available+:} false; then :
@@ -2688,6 +2691,8 @@ fi
 
 else
 	numa_flag="-D NUMA_DISABLE"
+
+	numa_lib=" "
 
 fi
 
