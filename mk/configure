@@ -583,6 +583,7 @@ PACKAGE_URL=''
 
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
+numa_flag
 OBJEXT
 EXEEXT
 ac_ct_CC
@@ -2636,6 +2637,8 @@ esac
 
 if $use_numa
 then
+	numa_flag="-D NUMA_ENABLE"
+
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for numa_available in -lnuma" >&5
 $as_echo_n "checking for numa_available in -lnuma... " >&6; }
 if ${ac_cv_lib_numa_numa_available+:} false; then :
@@ -2683,8 +2686,8 @@ else
   as_fn_error $? "libnuma-dev not installed" "$LINENO" 5
 fi
 
-
-$as_echo "#define NUMA_ENABLE /**/" >>confdefs.h
+else
+	numa_flag="-D NUMA_DISABLE"
 
 fi
 

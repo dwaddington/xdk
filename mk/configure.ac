@@ -18,8 +18,10 @@ esac
 
 if $use_numa
 then
+	AC_SUBST(numa_flag, "-D NUMA_ENABLE")
 	AC_CHECK_LIB([numa],[numa_available],[],AC_MSG_ERROR([libnuma-dev not installed]))
-	AC_DEFINE([NUMA_ENABLE],,[Define NUMA_ENABLE to enable NUMA support.])
+else
+	AC_SUBST(numa_flag, "-D NUMA_DISABLE")
 fi
 
 # this should work but it doesn't?
