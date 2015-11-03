@@ -12,7 +12,7 @@ case "$enable_numa" in
 		use_numa=false
 		;;
 	*)	
-		AC_MSG_ERROR([--enable-numa takes yes or no])
+		AC_MSG_ERROR([numa flag must be specified (--enable-numa=yes or --enable-numa=no)])
 		;;
 esac
 

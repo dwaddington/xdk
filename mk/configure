@@ -2631,7 +2631,7 @@ case "$enable_numa" in
 		use_numa=false
 		;;
 	*)
-		as_fn_error $? "--enable-numa takes yes or no" "$LINENO" 5
+		as_fn_error $? "numa flag must be specified (--enable-numa=yes or --enable-numa=no)" "$LINENO" 5
 		;;
 esac
 
