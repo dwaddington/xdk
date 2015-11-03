@@ -42,7 +42,12 @@
 #include "cpu_bitset.h"
 #include "types.h"
 
-#include <numa.h>
+#ifdef NUMA_ENABLE
+	#include <numa.h>
+#else
+	#include "xdk_numa_wrapper.h"
+#endif
+
 
 #define INLINE inline __attribute__((always_inline))
 

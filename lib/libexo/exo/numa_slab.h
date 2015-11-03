@@ -41,7 +41,11 @@
 #include <common/cpu_bitset.h>
 #include "shm_table.h"
 
-#include "numa.h"
+#ifdef NUMA_ENABLE
+        #include <numa.h>
+#else
+        #include "common/xdk_numa_wrapper.h"
+#endif
 
 #include <string>
 

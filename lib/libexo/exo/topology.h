@@ -35,7 +35,12 @@
 #ifndef __EXOKERNEL_TOPOLOGY_H__
 #define __EXOKERNEL_TOPOLOGY_H__
 
-#include <numa.h>
+#ifdef NUMA_ENABLE
+        #include <numa.h>
+#else
+        #include "common/xdk_numa_wrapper.h"
+#endif
+
 #include <common/types.h>
 
 /* 
