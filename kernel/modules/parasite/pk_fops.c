@@ -152,8 +152,8 @@ static int fops_mmap(struct file *file, struct vm_area_struct *vma)
     addr_t phys = vma->vm_pgoff << PAGE_SHIFT;
     struct pk_dma_area * area = get_owned_dma_area(phys);
     if(!area) {
-      PWRN("DMA area (%p) is not owned by caller",(void *) phys);
-      return -EINVAL;
+      PWRN("DMA area (%p) is not owned by caller nor is it shared",(void *) phys);
+      return -EPERM;
     }
   }
 

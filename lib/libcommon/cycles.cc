@@ -95,13 +95,17 @@ double get_tsc_frequency_in_mhz() {
     fp = popen("`which cat` /proc/cpuinfo | `which grep` \"model name\" | `which uniq` | `which cut` -d \\@ -f 2", "r");
     assert(fp!=NULL);
 
-    assert(fgets(output, sizeof(output), fp) != NULL);
+    char * result = fgets(output, sizeof(output), fp);
+    if(result == NULL) {
+      PWRN("cannot parse /proc/cpuinfo");
+    }
+    else {
+      tsc_freq_in_MHz = atof(output);
+      assert(tsc_freq_in_MHz > 0);
 
-    tsc_freq_in_MHz = atof(output);
-    assert(tsc_freq_in_MHz > 0);
-
-    // As the value is in GHz, convert it to MHz.
-    tsc_freq_in_MHz = tsc_freq_in_MHz * 1000;
+      // As the value is in GHz, convert it to MHz.
+      tsc_freq_in_MHz = tsc_freq_in_MHz * 1000;
+    }
   }
 
   pclose(fp);
