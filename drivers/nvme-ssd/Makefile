@@ -13,7 +13,7 @@ CXXFLAGS += -DCONFIG_BUILD_DEBUG
 #CXXFLAGS += -pg
 CXXFLAGS += -g -std=c++11 -O2 -fPIC $(INCLUDES)
 
-LIBS = -L$(XDK_BASE)/lib/libexo -L$(XDK_BASE)/lib/libcommon -L$(XDK_BASE)/lib/libcomponent -lcommon -lcomponent -lexo -lpthread -lrt -lnuma -ltinyxml -lboost_random
+LIBS = -L$(XDK_BASE)/lib/libexo -L$(XDK_BASE)/lib/libcommon -L$(XDK_BASE)/lib/libcomponent -lcommon -lcomponent -lexo -lpthread -lrt $(XDK_NUMA_LIB) -ltinyxml -lboost_random
 
 RPATHS=-Wl,-rpath=$(XDK_BASE)/lib/libexo -Wl,-rpath=/usr/lib/x86_64-linux-gnu/ -Wl,-rpath=.
 

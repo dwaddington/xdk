@@ -37,8 +37,6 @@
 
 #include "x540_device.h"
 
-using namespace Exokernel;
-
 namespace Exokernel {
 
   class Nic_filter {

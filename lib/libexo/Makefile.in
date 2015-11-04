@@ -9,7 +9,7 @@ libexo.a: $(OBJS)
 	ar rcs libexo.a $(OBJS)
 
 #libexo.so: $(OBJS)
-#	gcc -g -shared -Wl,-soname,libexo.so -o libexo.so $(OBJS) -ldl -lnuma
+#	gcc -g -shared -Wl,-soname,libexo.so -o libexo.so $(OBJS) -ldl $(XDK_NUMA_LIB)
 
 clean:
 	rm -Rf obj

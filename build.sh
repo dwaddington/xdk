@@ -18,6 +18,7 @@ build_dir "core" "Kernel Module" kernel/modules/parasite
 build_dir "library" "libcommon" lib/libcommon
 build_dir "library" "libcomponent" lib/libcomponent
 build_dir "library" "libexo" lib/libexo
+build_dir "driver" "X540 NIC device driver" drivers/x540-nic
 build_dir "driver" "AHCI device driver" drivers/ahci
 build_dir "driver" "NVME-SSD device driver" drivers/nvme-ssd
 build_dir "component" "Base example component" examples/components/base-example

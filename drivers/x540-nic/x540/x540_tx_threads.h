@@ -43,7 +43,6 @@
 #include "driver_config.h"
 #include <common/cycles.h>
 
-using namespace Exokernel;
 using namespace std;
 using namespace Component;
 

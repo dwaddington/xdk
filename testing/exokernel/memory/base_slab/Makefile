@@ -2,7 +2,7 @@ include ../../../../mk/global.mk
 
 SOURCES = main.cc
 CXXFLAGS += -g -I$(XDK_BASE)/lib/libexo -I$(XDK_BASE)/lib/libcommon
-LIBS = -L$(XDK_BASE)/lib/libexo  -L$(XDK_BASE)/lib/libcommon -lcommon -lexo -lnuma
+LIBS = -L$(XDK_BASE)/lib/libexo  -L$(XDK_BASE)/lib/libcommon -lcommon -lexo $(XDK_NUMA_LIB) 
 
 
 all: baseslab

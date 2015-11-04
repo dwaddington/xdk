@@ -2,7 +2,7 @@ include ../../../../../tools/mk/global.mk
 
 SOURCES = main.cc
 CXXFLAGS += -g -I$(SILICA_BASE)/lib/libexo
-LIBS = -L$(SILICA_BASE)/lib/libexo -lexo -lnuma
+LIBS = -L$(SILICA_BASE)/lib/libexo -lexo $(XDK_NUMA_LIB) 
 
 all: pagemap
 

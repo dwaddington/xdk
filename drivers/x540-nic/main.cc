@@ -38,7 +38,6 @@
 #include "x540/x540_device.h"
 #include "xml_config_parser.h"
 
-using namespace Exokernel;
 using namespace Component;
 
 class Nic_comp_thread : public Exokernel::Base_thread {

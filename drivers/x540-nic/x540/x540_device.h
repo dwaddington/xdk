@@ -83,7 +83,6 @@ struct ip_addr {
 
 typedef struct ip_addr ip_addr_t;
 
-using namespace Exokernel;
 using namespace Component;
 
 class Intel_x540_uddk_device : public Exokernel::Pci_express_device {

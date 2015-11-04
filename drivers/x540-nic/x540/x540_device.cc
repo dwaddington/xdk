@@ -201,7 +201,7 @@ void Intel_x540_uddk_device::setup_msi_interrupt() {
   unsigned i;
   for (i = 0; i < msix_vector_num; i++) {
     _irq[i] = _msi_vectors[i];
-    route_interrupt(_msi_vectors[i],rx_core[i]);
+    Exokernel::route_interrupt(_msi_vectors[i],rx_core[i]);
     printf("[%u] msi %u goes to cpu %u\n",i, _msi_vectors[i],rx_core[i]);
   }
 }
@@ -576,7 +576,7 @@ void Intel_x540_uddk_device::clear_hw_counters() {
 }
 
 void Intel_x540_uddk_device::filter_setup(bool kvcache_server){
-  Nic_filter nic_filter(this);
+  Exokernel::Nic_filter nic_filter(this);
   /* setup a 5-tuple flow filter (sip, dip, sp, dp, proto)=(105.144.29.103, 105.144.29.109, 0x5678, 0x6789, UDP)*/
   // WARNING: big-endian format in sip, dip, sp and dp
 #if 0

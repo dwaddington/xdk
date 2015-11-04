@@ -9,7 +9,7 @@ LDFLAGS = $(OPT)
 
 
 # Libraries
-LIBS = $(XDK_LIBS) $(BOOST_LIBS) -L$(XDK_BASE)/lib/libexo -L$(XDK_BASE)/lib/libcomponent -lexo -lcomponent -lpthread -lnuma -ldl -lrt -lm -ltinyxml
+LIBS = $(XDK_LIBS) $(BOOST_LIBS) -L$(XDK_BASE)/lib/libexo -L$(XDK_BASE)/lib/libcomponent -lexo -lcomponent -lpthread $(XDK_NUMA_LIB) -ldl -lrt -lm -ltinyxml
 
 # Includes.
 LIBEXO_INC_DIR := ../../../lib/libexo
