@@ -613,3 +613,41 @@ numa_free(void *mem, size_t size)
   munmap(mem, size);
 }
 
+long
+get_mempolicy(int *policy, const unsigned long *nmask,
+                                unsigned long maxnode, void *addr, int flags)
+{
+  printf("%s: NOT IMPLEMENTED! return 0\n",__PRETTY_FUNCTION__);
+  return 0;
+}
+
+long 
+mbind(void *start, unsigned long len, int mode,
+        const unsigned long *nmask, unsigned long maxnode, unsigned flags)
+{
+  printf("%s: NOT IMPLEMENTED! return 0\n",__PRETTY_FUNCTION__);
+  return 0;
+}
+
+long 
+set_mempolicy(int mode, const unsigned long *nmask,
+                                   unsigned long maxnode)
+{
+  printf("%s: NOT IMPLEMENTED! return 0\n",__PRETTY_FUNCTION__);
+  return 0;
+}
+
+long 
+migrate_pages(int pid, unsigned long maxnode,
+        const unsigned long *frommask, const unsigned long *tomask)
+{
+  printf("%s: NOT IMPLEMENTED! return 0\n",__PRETTY_FUNCTION__);
+  return 0;
+}
+
+long move_pages(int pid, unsigned long count,
+        void **pages, const int *nodes, int *status, int flags)
+{
+  printf("%s: NOT IMPLEMENTED! return 0\n",__PRETTY_FUNCTION__);
+  return 0;      
+}
