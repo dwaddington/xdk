@@ -1,5 +1,5 @@
 CXX_FLAGS+=-I./
-OBJS=dump_utils.o cycles.o utils.o
+OBJS=dump_utils.o cycles.o utils.o xdk_numa_wrapper.o
 
 all: libcommon.a
 

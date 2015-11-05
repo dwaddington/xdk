@@ -1,8 +1,8 @@
 include ../../../mk/global.mk
 
 SOURCES = main.cc
-CXXFLAGS += -g -I$(XDK_BASE)/lib/libexo -I$(XDK_BASE)/lib/libcommon
-LIBS = -L$(XDK_BASE)/lib/libexo -lexo -lnuma
+CXXFLAGS += -g $(XDK_INCLUDES) 
+LIBS = $(XDK_LIBS) $(XDK_NUMA_LIB)
 
 all: test-client-1
 
@@ -17,4 +17,4 @@ clean:
 	rm -Rf *.o test-client-1 obj/
 
 
-.PHONY: clean
+.PHONY: test-client-1

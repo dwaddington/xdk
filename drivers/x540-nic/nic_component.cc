@@ -34,7 +34,6 @@
 
 #include "nic_component.h"
 
-using namespace Exokernel;
 using namespace Component;
 
 // ctor
@@ -42,7 +41,7 @@ Component::NicComponent::NicComponent() {
   for (unsigned i = 0; i < MAX_NIC_INSTANCE; i++)
     set_comp_state(NIC_INIT_STATE, i);
 
-  signed nd = query_num_registered_devices();
+  signed nd = Exokernel::query_num_registered_devices();
   printf("Got %d registered devices\n", nd);
 }
 

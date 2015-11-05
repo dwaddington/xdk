@@ -40,8 +40,6 @@
 #include "x540_device.h"
 #include "../xml_config_parser.h"
 
-using namespace Exokernel;
-
 class Irq_thread : public Exokernel::Base_thread {
 
 private:

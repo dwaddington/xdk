@@ -50,7 +50,7 @@ int main()
   
   /* allocate some memory */
   addr_t space_p = 0;
-  void * space_v = Exokernel::Memory::alloc_pages(actual_size/PAGE_SIZE, &space_p);
+  void * space_v = Exokernel::Memory::alloc_page(&space_p);
   assert(space_v);
 
   PLOG("allocated slab space (virt=%p)(phys=%p)",space_v, (void*) space_p);
@@ -73,7 +73,7 @@ int main()
     /* test fast slab allocator out */
 
     for(unsigned i=0;i<NUM_BLOCKS;i++) {
-      void * p = fsa->alloc(i);
+      void * p = fsa->alloc();
       assert(p);
       allocations[i] = p;
       memset(p,i % 255, BLOCK_SIZE);
@@ -94,7 +94,7 @@ int main()
 
   }  
               
-  Exokernel::Memory::free_pages(space_v);
+  Exokernel::Memory::free_page(space_v);
 
   PLOG("Slab allocator test OK!\n");
 
