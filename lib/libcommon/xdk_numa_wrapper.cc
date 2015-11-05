@@ -48,7 +48,7 @@
   Copyright (C) 2015, Jilong Kuang <jilong.kuang@samsung.com>
 */
 
-#include "common/xdk_numa_wrapper.h"
+#include <common/xdk_numa_wrapper.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>

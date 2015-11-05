@@ -52,7 +52,7 @@
 #ifdef NUMA_ENABLE
         #include <numa.h>
 #else
-        #include "common/xdk_numa_wrapper.h"
+        #include <common/xdk_numa_wrapper.h>
 #endif
 
 
