@@ -41,18 +41,25 @@ void NVME_INFO(const char *format, ...) __attribute__((format(printf, 1, 2)));
 #endif
 
 
-//#define NVME_LOOP_VERBOSE
+#define NVME_LOOP_VERBOSE
 #ifdef  NVME_LOOP_VERBOSE
 #define NVME_PRINT(f, a...)  fprintf( stdout, "[NVME]: %s:" f "\n",  __func__ , ## a)
 #else
 #define NVME_PRINT(f, a...)
 #endif
 
+#ifdef EXPONENTIAL_BACKOFF_LOOP
 #define NVME_LOOP_LABEL( condition, needStop, label )         \
 {                                                             \
   unsigned long long attempts = 0;                            \
+  unsigned MAX_DELAY = 1000000;                               \
+  unsigned delay = 1;                                         \
+                                                              \
   while( condition ) {                                        \
     attempts++;                                               \
+    usleep(delay);                                            \
+    if(delay <= MAX_DELAY) delay = delay*2;                   \
+                                                              \
     if(attempts%1000000 == 0){                                \
       NVME_PRINT("attempts = %llu (%s)", attempts, label);    \
     }                                                         \
@@ -62,6 +69,27 @@ void NVME_INFO(const char *format, ...) __attribute__((format(printf, 1, 2)));
     }                                                         \
   }                                                           \
 }
+
+#else /*non EXPONENTIAL_BACKOFF_LOOP*/
+
+#define NVME_LOOP_LABEL( condition, needStop, label )         \
+{                                                             \
+  unsigned long long attempts = 0;                            \
+  while( condition ) {                                        \
+    attempts++;                                               \
+    if(attempts%10000 == 0){                                \
+      NVME_PRINT("attempts = %llu (%s)", attempts, label);    \
+    }                                                         \
+    if(needStop && attempts > 1000000000ULL) {                \
+      NVME_PRINT("Timed out !!!!!");                          \
+      assert(false);                                          \
+    }                                                         \
+  for(unsigned i=0;i<attempts;i++) usleep(i);  \
+  }                                                           \
+}
+
+#endif /*EXPONENTIAL_BACKOFF_LOOP*/
+
 
 #define NVME_LOOP( condition, needStop )           \
         NVME_LOOP_LABEL( condition, needStop, "")

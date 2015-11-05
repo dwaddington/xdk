@@ -144,7 +144,7 @@ Component::MemComponent::init(arg_t arg) {
         total_size = MB(2);
       //printf("ready to allocate %lu bytes in shared memory\n",total_size); 
 
-      key_t key = j * _cpus_per_nic + id + 100;
+      key_t key = j * p->num_allocators + id + 100;
       int handle = -1;
       try {
         space_v = huge_shmem_alloc(key, total_size, j, &handle, NULL);

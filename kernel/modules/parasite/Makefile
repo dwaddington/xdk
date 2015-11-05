@@ -7,9 +7,7 @@ ccflags-y := -g -Wall
 
 obj-m += pk.o
 
-pk-objs := pk_main.o pk_fops.o pk_pci.o pk_class.o pk_grant.o
-
-#obj-$(CONFIG_UIO_PDRV_GENIRQ)   += uio_pdrv_genirq.o
+pk-objs := pk_main.o pk_fops.o pk_pci.o pk_pci_config.o pk_class.o common.o
 
 
 all: version.h pk.ko

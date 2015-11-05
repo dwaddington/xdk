@@ -34,6 +34,7 @@
 
 #include <iostream>
 #include "exo/pagemap.h"
+#include "exo/memory.h"
 
 /** 
  * Read in the current memory regions from /proc/self/maps.
@@ -84,16 +85,23 @@ uint64_t Exokernel::Pagemap::__get_page_frame_number(void * vaddr) {
 
   using namespace std;
 
+  //  unsigned long pages_in_range = 0;
+  
   /* check vaddr exists */
   vector<range_t> range_list;
   read_regions(range_list);
   for (unsigned i=0;i<range_list.size();i++) {
-        
+
+    //    pages_in_range = (range_list[i].end - range_list[i].start) / _page_size;
+
+    /* check if this is our range */
     if ((((addr_t)vaddr) >= range_list[i].start) 
         && (((addr_t)vaddr) < range_list[i].end)) {
+      PLOG("found %lx in range %lx-%lx",vaddr,range_list[i].start,range_list[i].end);
       goto found;
     }
   }
+
   PERR("virt_to_phys: invalid virtual address.");
   return 0;
       
@@ -104,11 +112,13 @@ uint64_t Exokernel::Pagemap::__get_page_frame_number(void * vaddr) {
   uint64_t entry = 0;
 
   /* each entry is a page; an entry is 64 bits. */
-  offset = (((addr_t)vaddr) / _page_size) * sizeof(addr_t);
+  offset = ((addr_t)vaddr >> PAGE_SHIFT) * sizeof(uint64_t);
 
   int rc = pread(_fd_pagemap,(void*)&entry,8,offset);
   assert(rc == 8);
-      
-  /* Page Frame Number) is bit 0-54 */
-  return (entry & 0x7fffffffffffffULL);
+
+  /* Page Frame Number is bit 0-54 */
+  return (entry & 0x7fffffffffffffUL);
 }
+
+

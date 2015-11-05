@@ -180,7 +180,11 @@ public:
   void show_table_info() {
     printf("Shared Table %d Control Block:\n", *_id);
     printf("Shared region address %p\n",_ptr);
+#if (__SIZEOF_SIZE_T__ == 4)
+    printf("Shared region size %u\n",*_size);
+#else
     printf("Shared region size %lu\n",*_size);
+#endif
     printf("The next row %u\n", *_next_row);
   }
 

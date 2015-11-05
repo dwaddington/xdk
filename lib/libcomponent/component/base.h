@@ -60,6 +60,12 @@
     return comp_uuid;                                               \
   }
 
+#define DUMMY_IBASE_CONTROL \
+  status_t start() { return E_NOT_IMPL; } \
+  status_t stop() { return E_NOT_IMPL; } \
+  status_t shutdown() { return E_NOT_IMPL; } \
+  status_t reset() { return E_NOT_IMPL; } 
+
 namespace Component
 {
   /** 
@@ -146,12 +152,24 @@ namespace Component
      * [optional] Connect to another component.  Used for third-party binding. If used
      * with release_bindings, the implementation should increment reference count.
      * 
-     * @param component Component to connect to 
+     * @param component Component which is offering its interface
      * 
      * @return Number of connections remaining to be made. Returns -1
      * on error and 0 when all bindings are complete.
      */
     virtual int bind(IBase * component) { return 0; /* by default, no bindings to perform */ }
+
+
+    /** 
+     * [optional] Called to connect to another component.  
+     * 
+     * @param component Component which is offering its interface
+     * @param id Identifies the role of the binding
+     * 
+     * @return Number of connections remaining to be made. Returns -1
+     * on error and 0 when all bindings are complete.
+     */
+    virtual int specified_bind(IBase * component, int id) { return 0; /* by default, no bindings to perform */ }
 
     /** 
      * [optional] Release as many bindings as possible.
@@ -212,33 +230,25 @@ namespace Component
        Start component operation.  May be stopped through subsequent
        call to stop();
     */
-    virtual status_t start() {
-      return E_NOT_IMPL;
-    }
+    virtual status_t start() = 0;
 
     /**
        Stop the component operation.  May be restarted through a
        subsequent call to start();
     */
-    virtual status_t stop() {
-      return E_NOT_IMPL;
-    }
+    virtual status_t stop() = 0;
 
     /**
        Shutdown component. Stop and exit threads.  Component
        cannot be restarted after shutdown.  Once shutdown, the
        component should be ready for destruction (delete).
     */
-    virtual status_t shutdown() {
-      return E_NOT_IMPL;
-    }
+    virtual status_t shutdown() = 0;
 
     /** 
        Flush buffers and state.
      */
-    virtual status_t reset() {
-      return E_NOT_IMPL;
-    }
+    virtual status_t reset() = 0;
 
     virtual void set_dll_handle(void * dll) {
       assert(dll);

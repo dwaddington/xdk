@@ -10,7 +10,7 @@ public:
 
   // IDeviceControl
   //
-  status_t init_device(unsigned instance,  config_t config);
+  status_t init_device(unsigned instance,  const char * config);
   Exokernel::Device * get_device();
   status_t shutdown_device();
 
@@ -18,32 +18,24 @@ public:
   //
   //new sync read
   status_t sync_io(io_request_t io_request,
-                           unsigned port,
-                           unsigned device=0
-                           ) { return S_OK; }
+                   unsigned port
+                   ) { return S_OK; }
 
   status_t async_io(io_request_t io_request,
-                            notify_t notify,
-                            unsigned port,
-                            unsigned device=0
-                            ) { return S_OK; }
+                    unsigned port
+                    ) { return S_OK; }
 
   /* async batch I/O operation*/
   status_t async_io_batch(io_request_t* io_requests,
                           size_t length,
-                          notify_t notify,
-                          unsigned port,
-                          unsigned device=0
+                          unsigned port
                           ) { return S_OK; }
 
 
-  status_t wait_io_completion(unsigned port,
-                      unsigned device=0
-                      ) { return S_OK; }
+  status_t wait_io_completion(unsigned port) { return S_OK; }
 
   status_t flush(unsigned nsid,
-                 unsigned port,
-                 unsigned device=0
+                 unsigned port
                  ) { return S_OK; }
 
 
@@ -73,5 +65,7 @@ public:
     printf("Unloading component.\n");
     delete this;
   }
+
+  DUMMY_IBASE_CONTROL;
 
 };

@@ -34,5 +34,6 @@ public:
     PLOG("Unloading component.");
     delete this;
   }
-
+  
+  DUMMY_IBASE_CONTROL;
 };

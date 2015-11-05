@@ -36,7 +36,6 @@
 #include "nvme_device.h"
 
 /* enable or disable the callback manager */
-//#define CONFIG_DISABLE_CALLBACK
 
 std::vector<CQ_thread *> cq_objs;
 
@@ -95,10 +94,6 @@ void* CQ_thread::entry(void* qb) {
   Completion_command_slot * ccs;
   status_t s;
 
-  //printf("++ CQ sleeping .............\n");
-  //sleep(5);
-
-  //  _queues->_pending_reader.wake_all();
   
   /* hmm, should be some other condition instead of while(1) !! */
   while(1) {
@@ -109,9 +104,9 @@ void* CQ_thread::entry(void* qb) {
       panic("unexpected");
       break;
     }
+#else
+    cpu_relax();
 #endif
-    // _queues->_wake_cq_thread.wait();
-    // _queues->_wake_cq_thread.reset();
     
     unsigned found_completion = false;
 
@@ -121,30 +116,19 @@ void* CQ_thread::entry(void* qb) {
   retry:
 
     unsigned cq_batch_counter = 0;
+
     /* iterate through the completed completion slots (looking at phase tag) */
     while((ccs = _queues->get_next_completion())!=NULL) {
 
-#ifndef CONFIG_DISABLE_CALLBACK
-      /* perform call back */
-      PLOG("IRQ handler calling callback ccs->command_id=%d queue-id=%u",ccs->command_id, _qid);
-      //s = _queues->callback_manager()->call(ccs->command_id);
-      //assert(s == Exokernel::S_OK);
-#endif
-
       /* update SQ head*/
       _queues->update_sq_head(ccs);
-      /* update batch info */
+
+      /* update batch info; this will free slot */
       s = _queues->update_batch_manager(ccs->command_id);
       assert(s == Exokernel::S_OK);
 
-      /* free slot */
-      _queues->release_slot(ccs->command_id-1);
-
       found_completion = true;
-      // if(!woke_reader) {
-      //   woke_reader = true;
-      //   _queues->_pending_reader.wake_one();
-      // }
+
       g_entries_cleared++;
       PLOG("cleared = %lu (Q:%u)", g_entries_cleared, _qid);
 
@@ -158,8 +142,6 @@ void* CQ_thread::entry(void* qb) {
       }
 #endif
 
-      // if(g_entries_cleared % 1024 == 0) 
-      //   PLOG("CQ thread cleared %lu entries",g_entries_cleared);
     }
 
     /* we may not have woken readers yet */

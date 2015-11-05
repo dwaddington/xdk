@@ -20,26 +20,26 @@
 
 /*
   Authors:
-  Copyright (C) 2014, Daniel G. Waddington <daniel.waddington@acm.org>
+  Copyright (C) 2015, Daniel G. Waddington <daniel.waddington@acm.org>
 */
+
+#ifndef __COMMON_H__
+#define __COMMON_H__
 
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/poll.h>
 #include <linux/device.h>
 #include <linux/slab.h>
+#include <linux/mm.h>
+#include <linux/idr.h>
 #include <linux/string.h>
+#include <linux/kobject.h>
+#include <linux/cdev.h>
+#include <linux/miscdevice.h>
 
+#include "pk.h"
 
-ssize_t pk_grant_store(struct class *class, struct class_attribute *attr,
-                        const char *buf, size_t count)
-{
-  return count;
-}
+struct pk_dma_area * get_owned_dma_area(addr_t addr);
 
-ssize_t pk_grant_show(struct class *class,
-                             struct class_attribute *attr, char *buf)
-{
-  return sprintf(buf, "%s\n", "yo! grant!!");
-}
-
+#endif // __COMMON_H__

@@ -35,7 +35,6 @@
 #include "nvme_registers_wrappers.h"
 #include "nvme_queue.h"
 #include "cq_thread.h"
-#include "notify.h"
 #include "config.h"
 
 #define CONFIG_MAX_IO_QUEUES 32 /* increase this to support more queues */
@@ -46,6 +45,7 @@
  */
 static Exokernel::device_vendor_pair_t dev_tbl[] = {{0x8086,0x5845}, // Intel SSD (QEMU)
                                                     {0x144d,0xa820}, // Samsung XS1715
+                                                    {0x8086,0x0953}, // Intel P750
                                                     {0,0}};
 
 class NVME_device : public Exokernel::Pci_express_device
@@ -226,17 +226,17 @@ public:
   }
 
   status_t async_io_batch(unsigned queue_id,
-                          io_descriptor_t* io_desc,
-                          uint64_t length,
-                          Notify* notify
+                          io_request_t* io_desc,
+                          uint64_t length
                           )
   {
     if((queue_id > _num_io_queues)||(queue_id == 0)) {
+      PERR("queue id (%u) > num IO queues! (%u)", queue_id, _num_io_queues);
       assert(0);
       return Exokernel::E_INVAL;
     }
     assert(_io_queues[queue_id - 1]);
-    return _io_queues[queue_id - 1]->issue_async_io_batch(io_desc, length, notify);
+    return _io_queues[queue_id - 1]->issue_async_io_batch(io_desc, length);
   }
 
   status_t flush(unsigned nsid, unsigned queue_id)
