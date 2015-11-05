@@ -583,3 +583,33 @@ numa_allocate_nodemask(void)
   bmp = numa_bitmask_alloc(nnodes);
   return bmp;
 }
+
+void *
+numa_alloc_onnode(size_t size, int node)
+{
+  if (node != 0) {
+    printf("%s: force numa node to 0!\n", __PRETTY_FUNCTION__);
+    node = 0;
+  }
+
+  char *mem;
+  struct bitmask *bmp;
+
+  bmp = numa_allocate_nodemask();
+  numa_bitmask_setbit(bmp, node);
+  mem = (char*)mmap(0, size, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS,
+             0, 0);
+  if (mem == (char *)-1)
+    mem = NULL;
+  else
+    dombind(mem, size, bind_policy, bmp);
+  numa_bitmask_free(bmp);
+  return mem;
+}
+
+void 
+numa_free(void *mem, size_t size)
+{
+  munmap(mem, size);
+}
+

@@ -35,15 +35,14 @@
 
 #include <common/types.h>
 #include <numa_channel/shm_channel.h>
-#include <net/udp.h>
 #include <pthread.h>
 #include <exo/shm_table.h>
 #include <libexo.h>
 #include <network/memory_itf.h>
-#include <x540/xml_config_parser.h>
-#include <x540/driver_config.h>
+#include <xml_config_parser.h>
 
 #define APP_THREAD_CPU_MASK         (0x12)
+#define CHANNEL_SIZE (1024)
 
 using namespace std;
 using namespace Component;
@@ -53,7 +52,8 @@ using namespace Exokernel::Memory;
 unsigned num_app_thread;
 unsigned num_app_thread_per_nic;
 
-typedef Shm_channel<pbuf_t, CHANNEL_SIZE, SPMC_circular_buffer> Shm_channel_t;
+typedef Shm_channel<char*, CHANNEL_SIZE, SPMC_circular_buffer> Shm_channel_t;
+typedef char* item_t;
 
 struct thread_info {
   unsigned core;
@@ -74,7 +74,7 @@ void * app_thread(void * arg) {
   /* Create app side channel */
   Shm_channel_t * app_side_channel = new Shm_channel_t(channel_id, false, nic_idx);
 
-  pbuf_t * item; 
+  item_t* item; 
   unsigned count = 0;
 
   while (1) {
@@ -85,9 +85,7 @@ void * app_thread(void * arg) {
     //printf("[Dummy App %d] Consumed an item at %p count = %u\n",tinfo->global_id, item, count);
 
     //calculate address delta based on allocator type. Refer to memory_itf.h for the allocator index;
-    //pbuf_t * my_item = (pbuf_t *)((addr_t)item + mapped_delta[nic_idx][PBUF_ALLOCATOR]);
-
-    //printf("[NIC %u CH %u] item %u -> udp_port = %u\n", nic_idx, channel_id, count, my_item->client_udp_port);
+    //item_t* my_item = (item_t*)((addr_t)item + mapped_delta[nic_idx][PBUF_ALLOCATOR]);
 
     ///////////////////////////////////////////////////
     //DUMMY APPLICATION LOGIC GOES HERE

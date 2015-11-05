@@ -50,7 +50,7 @@ void test_malloc()
 
 void test_huge_malloc()
 {  
-  q = Exokernel::Memory::huge_malloc(32,&q_p);
+  q = Exokernel::Memory::huge_malloc(32);
   assert(q);
   printf("Huge malloc v=%p p=%p\n",q,(void*) q_p);  
 }

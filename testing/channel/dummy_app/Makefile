@@ -26,7 +26,7 @@ INC = -I. -I$(XDK_BASE)/lib/libexo/ -I$(XDK_BASE)/lib/libcomponent/component -I$
 all: dummy_app
 
 TEST = dummy_app
-TEST_SRC = dummy_app.cc $(XDK_BASE)/drivers/x540-nic/x540/xml_config_parser.cc
+TEST_SRC = dummy_app.cc $(XDK_BASE)/drivers/x540-nic/xml_config_parser.cc
 
 # Double pattern substition to get the object files right.
 TEST_OBJ := $(patsubst %.cc, %.cc.o, $(TEST_SRC))
