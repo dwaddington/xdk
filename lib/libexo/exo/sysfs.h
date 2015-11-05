@@ -36,6 +36,7 @@
 #define __EXO_SYSFS_H__
 
 #include <sys/types.h>
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <vector>
@@ -160,6 +161,44 @@ namespace Exokernel
       void     write32(unsigned offset, uint32_t val);
     };
 
+    class Pci_config_space2 {
+    private:
+      std::string  _root_fs;
+      int          _fd;
+
+    public:
+      Pci_config_space2(std::string& root_fs) 
+      {
+        assert(!root_fs.empty());
+
+        _root_fs = "/proc/parasite/pk0/pci_config";
+
+        _fd = open(_root_fs.c_str(), O_RDWR|O_SYNC);
+        if(!_fd) {
+          PWRN("unable to open file (%s)", _root_fs.c_str());
+          throw Exokernel::Fatal(__FILE__,__LINE__,"unable to open PCI config space");
+        }
+        PLOG("Pci_config_space2 CTOR (root=%s)", _root_fs.c_str());
+        //        PLOG("vendor=%x device=%x", vendor(), device());
+      }
+
+      ~Pci_config_space2() {
+        if(_fd)
+          close(_fd);
+      }
+
+      uint16_t vendor()             { return read16(PCI_VENDOR_ID);    }
+      uint16_t device()             { return read16(PCI_DEVICE_ID);    }
+      
+      uint16_t read16(unsigned offset) {
+        uint16_t val;
+        
+        if(pread(_fd,&val,2,offset) != 2) 
+          throw Exokernel::Fatal(__FILE__,__LINE__,"unable to read16 PCI config space");
+        
+        return val;        
+      }
+    };
 
     /** 
      * Class providing access to the PCI configuration space
@@ -308,7 +347,10 @@ namespace Exokernel
        * @param index Counting from 0 index
        * @param bar_region_size Size of region as probe from PCI BAR
        */
-      Pci_mapped_memory_region(std::string& root_fs, unsigned index, uint32_t bar, uint32_t bar_region_size);
+      Pci_mapped_memory_region(std::string& root_fs, 
+                               unsigned index, 
+                               uint32_t bar, 
+                               uint32_t bar_region_size);
 
       /** 
        * Dump information about memory region
@@ -343,6 +385,8 @@ namespace Exokernel
   private:
 
     Pci_config_space *           _pci_config_space;
+    Pci_config_space2 *          _pci_config_space2;
+
     Pci_mapped_memory_region *   _mapped_memory[6];
     std::string                  _fs_root_name;
 
@@ -379,6 +423,9 @@ namespace Exokernel
       _pci_config_space = new Pci_config_space(pci_root);
       assert(_pci_config_space);
 
+      _pci_config_space2 = new Pci_config_space2(pk_root);
+      assert(_pci_config_space2);
+
       /* instantiate Mapped Memory mappings pointed to by each BAR */
       for(unsigned i=0;i<6;i++) {
         uint32_t b = _pci_config_space->bar(i);
@@ -407,17 +454,27 @@ namespace Exokernel
      *-------------------------------------------------------------- 
      */
 
+    enum dma_direction_t {
+      DMA_BIDIRECTIONAL = 0,
+      DMA_TO_DEVICE = 1,
+      DMA_FROM_DEVICE = 2,
+      DMA_NONE = 3,
+    };
+
     /** 
      * Allocate physically contiguous memory and map with 4K TLB entries
      * 
      * @param num_pages Number of 4K pages to allocate
      * @param phys_addr Return physical address
+     * @param virt_hint Request mapping to this virtual address if possible
      * @param numa_node NUMA node from which to allocate memory
      * 
      * @return Virtual address of allocated memory
      */
     void * alloc_dma_pages(size_t num_pages, 
                            addr_t * phys_addr, 
+                           dma_direction_t direction = DMA_BIDIRECTIONAL,
+                           void * virt_hint = NULL,
                            int numa_node = -1,
                            int flags = 0);
 
@@ -434,12 +491,14 @@ namespace Exokernel
      * 
      * @param num_pages Number of 2MB pages
      * @param phys_addr Return physical address
+     * @param addr_hint Return virtual address hint
      * @param numa_node NUMA node from which to allocate memory
      * 
      * @return Virtual address of allocated memory
      */
     void * alloc_dma_huge_pages(size_t num_pages, 
-                                addr_t * phys_addr, 
+                                addr_t * phys_addr,
+                                void * addr_hint = NULL,
                                 int numa_node = -1,
                                 int flags = 0); 
 
@@ -450,6 +509,16 @@ namespace Exokernel
      */
     void free_dma_huge_pages(void * p);
 
+
+    /** 
+     * Grant all processes access to allocated memory
+     * 
+     * @param phys_addr Physical address of memory to grant access to
+     * 
+     * @return 
+     */
+    status_t grant_dma_access(addr_t phys_addr);
+
     /** 
      * For debugging purposes, fetch the DMA allocation
      * list for the calling process.
@@ -458,6 +527,7 @@ namespace Exokernel
      * @return DMA allocation list.  Entries of the form ownerpid, numa, order, physaddr.
      */
     std::string debug_fetch_dma_allocations();
+
 
     /**----------------------------------------------------------- 
      * MSI and MSI-X interrupt services
@@ -503,6 +573,10 @@ namespace Exokernel
      */
     INLINE Pci_config_space * const pci_config() {
       return _pci_config_space;
+    }
+
+    INLINE Pci_config_space2 * const pci_config2() {
+      return _pci_config_space2;
     }
 
     /** 

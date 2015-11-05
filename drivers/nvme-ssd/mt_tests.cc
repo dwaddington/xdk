@@ -8,22 +8,26 @@
 #include <common/dump_utils.h>
 #include <component/base.h>
 #include <exo/rand.h>
-
-//random generator
-#include <boost/random/random_device.hpp>
-#include <boost/random/uniform_int_distribution.hpp>
+#include <exo/sysfs.h>
 
 #include "nvme_drv_component.h"
 #include "nvme_device.h"
 #include "nvme_types.h"
 
-#define MAX_LBA (64*11*1024*1024) //= 738,197,504; max 781,422,768 sectors
+#define BLOCK_4K
 
-#define COUNT (1024000 * 1)
+#ifdef BLOCK_4K
+#define MAX_LBA (8*11*1024*1024)//= 92,197,504 4K-block; max 781,422,768 512-byte sectors
+#define NUM_BLOCKS (1)//(32)
+#else
+#define MAX_LBA (64*11*1024*1024) //= 738,197,504 512-byte-block; max 781,422,768 512-byte sectors
+#define NUM_BLOCKS (8)//(8*32)
+#endif
+
+#define COUNT (1024000 * 2)
 #define NUM_QUEUES (1)
 #define SLAB_SIZE (512)
 #define IO_PER_BATCH (1)
-#define NUM_BLOCKS (8)//(8*32)
 #define NUMA_NODE (0)
 
 #define TEST_RANDOM_IO  //otherwise, sequential io
@@ -72,6 +76,7 @@ class IO_thread : public Exokernel::Base_thread {
     {
       using namespace Exokernel;
       assert(IO_PER_BATCH == 1);
+      assert(NVME::BLOCK_SIZE == 4096);//currently, focus on 4K block
 
       NVME_IO_queue * ioq = _dev->io_queue(_qid);
 
@@ -80,10 +85,6 @@ class IO_thread : public Exokernel::Base_thread {
       io_descriptor_t* io_desc = (io_descriptor_t *)malloc(SLAB_SIZE * sizeof(io_descriptor_t));
 
       const uint64_t N_PAGES = COUNT;
-#ifdef TEST_RANDOM_IO
-      boost::random::random_device rng;
-      boost::random::uniform_int_distribution<> rnd_page_offset(1, MAX_LBA/NUM_BLOCKS-1); //PAGE offset
-#endif
 
       uint64_t counter = 0;
       Notify *notify = new Notify_Async_Cnt(&counter);
@@ -105,7 +106,8 @@ class IO_thread : public Exokernel::Base_thread {
         io_desc_ptr->buffer_virt = _virt_array_local[slab_idx_local];
         io_desc_ptr->buffer_phys = _phys_array_local[slab_idx_local];
 #ifdef TEST_RANDOM_IO
-        io_desc_ptr->offset = rnd_page_offset(rng) * NUM_BLOCKS;
+        assert(NUM_BLOCKS == 1);
+        io_desc_ptr->offset = rdtsc() % (MAX_LBA - 8);
 #else /* sequential IO */
         //This may be slower than random io, as io operations are not distributed in different SSD channels
         //Instead, use larger io size for sequential io to maximize the bandwidth
@@ -149,11 +151,6 @@ class IO_thread : public Exokernel::Base_thread {
       assert(SLAB_SIZE > 4*(ioq->queue_length()));
       io_descriptor_t* io_desc = (io_descriptor_t *)malloc(SLAB_SIZE * sizeof(io_descriptor_t));
 
-#ifdef TEST_RANDOM_IO
-      boost::random::random_device rng;
-      boost::random::uniform_int_distribution<> rnd_page_offset(1, 64*1024*1024-1); //offset based on page; 781,422,768 sectors(logical block) in total
-#endif
-
       uint64_t counter = 0;
       Notify *notify = new Notify_Async_Cnt(&counter);
       //Notify *notify = new Notify_Async(false);
@@ -185,8 +182,8 @@ class IO_thread : public Exokernel::Base_thread {
           io_desc_ptr->buffer_virt = _virt_array_local[slab_idx_local];
           io_desc_ptr->buffer_phys = _phys_array_local[slab_idx_local];
 #ifdef TEST_RANDOM_IO
-          assert(NUM_BLOCKS == 8);
-          io_desc_ptr->offset = rnd_page_offset(rng) * (PAGE_SIZE/NVME::BLOCK_SIZE);
+          assert(NUM_BLOCKS == 1);
+          io_desc_ptr->offset = rdtsc() % (MAX_LBA - 8);
 #else
           io_desc_ptr->offset = PAGE_SIZE * npages_per_io * io_req_idx;
           unsigned n_partitions = round_up_log2(NUM_QUEUES);
@@ -362,7 +359,11 @@ class mt_tests {
           if(n_pages_left <= 0) {
             //there is problem if we alloc too many pages at once
             //so we alloc these pages in multiple times
-            p = dev->alloc_dma_pages(NUM_PAGES_PER_ALLOC, &phys_addr, NUMA_NODE, 0); 
+#ifdef TEST_IO_READ
+            p = dev->alloc_dma_pages(NUM_PAGES_PER_ALLOC, &phys_addr, Exokernel::Device_sysfs::DMA_FROM_DEVICE, NULL, NUMA_NODE, 0); 
+#else
+            p = dev->alloc_dma_pages(NUM_PAGES_PER_ALLOC, &phys_addr, Exokernel::Device_sysfs::DMA_TO_DEVICE, NULL, NUMA_NODE, 0); 
+#endif
             page_list.push_back(p);
             memset(p, 0, PAGE_SIZE*NUM_PAGES_PER_ALLOC);
 

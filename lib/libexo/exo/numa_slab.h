@@ -41,7 +41,11 @@
 #include <common/cpu_bitset.h>
 #include "shm_table.h"
 
-#include "numa.h"
+#ifdef NUMA_ENABLE
+        #include <numa.h>
+#else
+        #include <common/xdk_numa_wrapper.h>
+#endif
 
 #include <string>
 
@@ -55,6 +59,7 @@ namespace Exokernel {
 
   namespace Memory {
 
+#if defined(__x86_64__)
     /** 
      * Per-NUMA-node slab allocator. 
      * It is a "partitioned" fixed block allocator which uses per-core local
@@ -120,10 +125,17 @@ namespace Exokernel {
         //size_t total_partitions = cpu_mask.count();
         //size_t s = total_partitions * block_size * per_core_block_quota;
         size_t s = total_size;
+#if (__SIZEOF_SIZE_T__ == 4)
+        printf("Setting up NUMA slab allocator [%s] (dbg=%u) (%u MB) " 
+               "across cores:\n 0x%s \n",                
+               (desc != NULL) ? desc : "Unspecified", 
+               debug_id, REDUCE_MB(s), cpu_mask.to_string().c_str());
+#else
         printf("Setting up NUMA slab allocator [%s] (dbg=%u) (%lu MB) " 
                "across cores:\n 0x%s \n",                
                (desc != NULL) ? desc : "Unspecified", 
                debug_id, REDUCE_MB(s), cpu_mask.to_string().c_str());
+#endif
 
         // Check that the CPUs in the CPU mask all belong to the same valid node.
         int numa_id = -1;
@@ -290,6 +302,8 @@ namespace Exokernel {
       }
 
     };
+
+#endif
 
   }
 }

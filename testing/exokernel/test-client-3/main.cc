@@ -43,7 +43,7 @@ void do_huge_alloc()
   using namespace Exokernel::Memory;
 
   addr_t phys;
-  void * p = huge_malloc(MB(2)*4, &phys);
+  void * p = huge_malloc(MB(2)*4);
   printf("huge_malloc returned:%p\n",p);
   strcpy((char*)p,"hello");
 
@@ -56,14 +56,14 @@ void do_page_alloc()
 {
   using namespace Exokernel::Memory;
   addr_t phys = 0;
-  void * p = alloc_pages(8,&phys);
+  void * p = alloc_page(&phys);
 
   PLOG("Allocated 8 pages vaddr=%p paddr=%p",p,(void*)phys);
   memset(p,0,PAGE_SIZE * 8);
   
   //  pm.dump_page_flags(pm.page_flags(p));
 
-  free_pages(p);
+  free_page(p);
   PLOG("Free pages OK.");
 }
 

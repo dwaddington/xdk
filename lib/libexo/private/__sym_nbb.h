@@ -43,7 +43,11 @@
 #ifndef _EXOKERNEL_SYMMETRIC_NBB_H_
 #define _EXOKERNEL_SYMMETRIC_NBB_H_
 
-#include <numa.h>
+#ifdef NUMA_ENABLE
+        #include <numa.h>
+#else
+        #include <common/xdk_numa_wrapper.h>
+#endif
 
 namespace Exokernel
 {

@@ -55,6 +55,7 @@ namespace Exokernel {
 
   namespace Memory {
 
+#if defined(__x86_64__)
     /** 
      * Fast single-size slab memory allocator that operates as a pool of pre-allocated single-size
      * blocks. 
@@ -559,6 +560,9 @@ namespace Exokernel {
       size_t len; //<! Length of the memory area.
       addr_t phys_addr; //<! Physical address.
     };
+
+#endif
+
   }
 }
 

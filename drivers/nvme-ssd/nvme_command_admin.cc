@@ -31,9 +31,9 @@
 #include "nvme_device.h"
 
 Command_admin_base::~Command_admin_base() {
-  if(_cid) {
-    _queues->release_slot(_cid-1);
-  }
+  // if(_cid) {
+  //   _queues->release_slot(_cid-1);
+  // }
 }
 
 
@@ -107,9 +107,9 @@ status_t Command_admin_identify::check_ns_result(NVME_device * dev, unsigned nsi
   _queues->check_command_completion(_cid);
 
   nvme_id_ns * id = (nvme_id_ns *) _prp1;
-  NVME_INFO("[NID(%u):NSIZE] max %lu sectors (%lu GB)\n",nsid,id->nsze,REDUCE_GB(id->nsze*512));
+  NVME_INFO("[NID(%u):NSIZE] max %lu sectors (%lu GB)\n",nsid,id->nsze,REDUCE_GB(id->nsze*4096)); // TODO: fix hard wiring
   NVME_INFO("[NID(%u):NCAP] max %lu sectors\n",nsid,id->ncap);
-  NVME_INFO("[NID(%u):NUSE] used %lu sectors (%lu GB)\n",nsid,id->nuse,REDUCE_GB(id->nuse*512));
+  NVME_INFO("[NID(%u):NUSE] used %lu sectors (%lu GB)\n",nsid,id->nuse,REDUCE_GB(id->nuse*4096));
 
   /* store NS information */  
   NVME_device::ns_info * info = new NVME_device::ns_info();

@@ -34,8 +34,6 @@
 
 #include "mem_component.h"
 
-using namespace Exokernel;
-using namespace Exokernel::Memory;
 using namespace Component;
 
 // ctor
@@ -61,7 +59,7 @@ Component::MemComponent::init(arg_t arg) {
   _shm_max_size = GB(_params->shm_max_size);
   _rx_threads_cpu_mask = _params->rx_threads_cpu_mask;
 
-  _allocator = (Numa_slab_allocator ***) malloc(_nic_num * sizeof(Numa_slab_allocator **));
+  _allocator = (Exokernel::Memory::Numa_slab_allocator ***) malloc(_nic_num * sizeof(Exokernel::Memory::Numa_slab_allocator **));
   _allocator_core = (unsigned **) malloc(_nic_num * sizeof(unsigned *));
 
   for (i = 0; i < _nic_num; i++) {
@@ -103,17 +101,17 @@ Component::MemComponent::init(arg_t arg) {
   }
 
   for (i = 0; i < _nic_num; i++) {
-    _allocator[i] = (Numa_slab_allocator **) malloc(sizeof(Numa_slab_allocator *) * (p->num_allocators));
+    _allocator[i] = (Exokernel::Memory::Numa_slab_allocator **) malloc(sizeof(Exokernel::Memory::Numa_slab_allocator *) * (p->num_allocators));
   }
 
   alloc_config_t ** config_list = p->config_list;
 
   bool master = true;
-  Shm_table * shmem_table = new Shm_table(master, 0); // The first process is shmem_table master.
-  shm_table_entry_t stt;
+  Exokernel::Shm_table * shmem_table = new Exokernel::Shm_table(master, 0); // The first process is shmem_table master.
+  Exokernel::shm_table_entry_t stt;
 
-  huge_shmem_set_system_max(_shm_max_size);
-  huge_shmem_set_region_max(_shm_max_size);
+  Exokernel::Memory::huge_shmem_set_system_max(_shm_max_size);
+  Exokernel::Memory::huge_shmem_set_region_max(_shm_max_size);
 
   shmem_table->lock();
 
@@ -126,7 +124,7 @@ Component::MemComponent::init(arg_t arg) {
       allocator_t id = config_list[i]->allocator_id;
 
       //printf("before round up, total_size = %lu (%lu * %lu)\n",Fast_slab_allocator::actual_block_size(BLOCK_SIZE) * NUM_BLOCKS, Fast_slab_allocator::actual_block_size(BLOCK_SIZE), NUM_BLOCKS);
-      size_t total_size = Fast_slab_allocator::actual_block_size(BLOCK_SIZE) * NUM_BLOCKS;
+      size_t total_size = Exokernel::Memory::Fast_slab_allocator::actual_block_size(BLOCK_SIZE) * NUM_BLOCKS;
 
       //thread should use their local id (not gloabal id) to get the right allocator.
       Cpu_bitset cpu;
@@ -144,10 +142,10 @@ Component::MemComponent::init(arg_t arg) {
         total_size = MB(2);
       //printf("ready to allocate %lu bytes in shared memory\n",total_size); 
 
-      key_t key = j * _cpus_per_nic + id + 100;
+      key_t key = j * p->num_allocators + id + 100;
       int handle = -1;
       try {
-        space_v = huge_shmem_alloc(key, total_size, j, &handle, NULL);
+        space_v = Exokernel::Memory::huge_shmem_alloc(key, total_size, j, &handle, NULL);
       }
       catch(Exokernel::Exception e) {
         printf("huge_shmem_alloc error: %s\n",e.cause());
@@ -162,7 +160,7 @@ Component::MemComponent::init(arg_t arg) {
 
       //create numa_allocator object
       if ((id == DESC_ALLOCATOR) || (id == PACKET_ALLOCATOR) || (id == NET_HEADER_ALLOCATOR))
-        _allocator[j][i] = new Numa_slab_allocator(space_v,
+        _allocator[j][i] = new Exokernel::Memory::Numa_slab_allocator(space_v,
                                               total_size,
                                               per_core_block_quota,
                                               BLOCK_SIZE,
@@ -172,7 +170,7 @@ Component::MemComponent::init(arg_t arg) {
                                               id,                          //debug id
                                               slab_alloc_2_str(id));       //debug desc
       else
-        _allocator[j][i] = new Numa_slab_allocator(space_v,
+        _allocator[j][i] = new Exokernel::Memory::Numa_slab_allocator(space_v,
                                               total_size,
                                               per_core_block_quota,                                       
                                               BLOCK_SIZE,
@@ -184,7 +182,7 @@ Component::MemComponent::init(arg_t arg) {
 
       //populate shared memory table
       stt.type_id = SMT_MEMORY_AREA;
-      stt.sub_type_id = (smt_sub_type_t)id;
+      stt.sub_type_id = (Exokernel::smt_sub_type_t)id;
       stt.value[0] = (uint64_t)space_v;
       stt.value[1] = (uint64_t)key;  
       stt.value[2] = (uint64_t)total_size;

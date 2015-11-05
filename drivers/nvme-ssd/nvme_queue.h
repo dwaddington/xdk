@@ -62,7 +62,6 @@ typedef uint32_t queue_ptr_t;
 class NVME_queues_base
 {
 protected:
-  Exokernel::Bitmap_tracker_threadsafe * _bitmap;
   NVME_batch_manager * _batch_manager;
   
 protected:
@@ -87,7 +86,7 @@ protected:
   addr_t               _cq_dma_mem_phys;
   volatile uint32_t *  _cq_db;         /* pointer to CQ doorbell */
 
-  unsigned             _queue_items;   /* maximum number of items for each queue */
+  const unsigned       _queue_max_items;   /* maximum number of items for each queue */
 
   Submission_command_slot * _sub_cmd;  /* array of submission commands */
   Completion_command_slot * _comp_cmd; /* array of completion commands */
@@ -95,9 +94,11 @@ protected:
 private:
 
   uint16_t  _sq_tail  __attribute__((aligned(8)));
+  uint16_t  _sq_head  __attribute__((aligned(8))); /*get updated from completion command, which indicates the most recent SQ entry fetched*/
+
   uint16_t  _cq_head  __attribute__((aligned(8)));
   uint16_t  _cq_phase __attribute__((aligned(8)));
-  volatile uint16_t  _sq_head  __attribute__((aligned(8))); /*get updated from completion command, which indicates the most recent SQ entry fetched*/
+
   uint16_t _cmdid_counter;
 
   unsigned _irq;  
@@ -137,13 +138,18 @@ public:
 
   void setup_doorbells();
 
+  /**
+   * alloc a command id
+   */
   uint16_t alloc_cmdid() {
     _cmdid_counter++;
     if( _unlikely(_cmdid_counter == 0) ) _cmdid_counter++;
     return _cmdid_counter;
   }
 
-  //used to check next available cmdid, but not really alloc the id
+  /**
+   * check next available cmdid, but not really alloc the id
+   */
   uint16_t next_cmdid() {
     uint16_t next_id = _cmdid_counter + 1;
     if( _unlikely(next_id == 0) ) next_id = 1;
@@ -158,30 +164,37 @@ public:
   }
 
   void reset_cmdid() {
+#ifndef DISABLE_BATCH_MANAGER_FOR_TESTIN
     NVME_LOOP( (!(_batch_manager->can_reset_cmdid(_cmdid_counter)) ), false);
+#endif
     _cmdid_counter = 0;
   }
 
-  void release_slot(uint16_t slot) {
-    //status_t s = _bitmap->mark_free(slot);
-    //assert(s==Exokernel::S_OK);
-  }
-
+  /**
+   * update the head of IO sub queue
+   */
   void update_sq_head(Completion_command_slot *ccs) {
     //PLOG("(%p)sq_head = %u, ccs->get_sq_head = %u, cq_head = %u, cmdid = %u (qid=%u)\n", ccs, _sq_head, ccs->get_sq_head(), _cq_head, ccs->command_id, _queue_id);
     _sq_head = ccs->get_sq_head();
   }
 
+  /**
+   * upate the head of admin sub queue
+   * NOTE: currently, assuming admin conmmands are all synchronous
+   */
   void update_admin_sq_head() {
     _sq_head = _cq_head;
   }
 
+  /**
+   * called by completion thread to update batch info
+   */
   status_t update_batch_manager(uint16_t cmdid) {
     return _batch_manager->update(cmdid);
   }
 
   unsigned queue_length() const {
-    return _queue_items;
+    return _queue_max_items;
   }
 
 
@@ -240,7 +253,7 @@ public:
 #define N_ITEMS (128)//(64+4)
   void dump_queue_info(unsigned n_entries = N_ITEMS) {
 
-    unsigned max_entries = _queue_items>n_entries?n_entries:_queue_items; 
+    unsigned max_entries = _queue_max_items>n_entries?n_entries:_queue_max_items; 
 
     PLOG("SQ_Tail=%u SQ_HEAD=%u CQ_Head=%u",_sq_tail, _sq_head, _cq_head);
     //PLOG("CQ hd vaddr=%p (paddr=0x%lx)",_comp_cmd, (unsigned long) pm.virt_to_phys(_comp_cmd));
@@ -248,7 +261,7 @@ public:
     __sync_synchronize();
 
     PLOG("===== SQ dump ======");
-    for(unsigned i=0; i<max_entries; i++) { // _queue_items
+    for(unsigned i=0; i<max_entries; i++) { // _queue_max_items
       struct nvme_rw_command * c = (struct nvme_rw_command *) _sub_cmd[i].raw();
       PLOG("SQCMD[%u] (%s) command cid=%u prp1=0x%lx nsid=%d slba=%ld nblocks=%u control=0x%x dsmgmt=0x%x",
           i,
@@ -264,7 +277,7 @@ public:
     }
 
     PLOG("===== CQ dump ======");
-    for(unsigned i=0; i<max_entries; i++) { // _queue_items
+    for(unsigned i=0; i<max_entries; i++) { // _queue_max_items
       PLOG("CQCMD[%u][cid=%u](status=0x%x)(sct=0x%x)(phase=%u)(sqhd=%u)(result=%x)",
           i,
           _comp_cmd[i].command_id,
@@ -525,10 +538,9 @@ public:
                              unsigned nsid=1);
 
 
-  uint16_t issue_async_io_batch(io_descriptor_t* io_desc,
-                                uint64_t length,
-                                Notify *notify
-                                );
+  uint16_t issue_async_io_batch(io_request_t* io_desc,
+                                uint64_t length);
+
 
   status_t wait_io_completion();
 

@@ -2,8 +2,8 @@ include ../../../../mk/global.mk
 
 TARGET = test_drv
 SOURCES = main.cc 
-CXXFLAGS += -g -I$(XDK_BASE)/lib/libexo -I$(XDK_BASE)/lib/libcommon -DCONFIG_BUILD_DEBUG
-LIBS = -L$(XDK_BASE)/lib/libexo -L$(XDK_BASE)/lib/libcommon -L$(XDK_BASE)/lib/libcomponent -lcommon -lcomponent -lexo -lpthread -lrt -lnuma
+CXXFLAGS += -g $(XDK_INCLUDES) -DCONFIG_BUILD_DEBUG
+LIBS = $(XDK_LIBS) -lpthread -lrt $(XDK_NUMA_LIB)
 
 all: test_drv
 
@@ -14,4 +14,4 @@ test_drv: $(OBJS)
 clean:
 	rm -Rf *.o test_drv obj/
 
-.PHONY: clean
+.PHONY: test_drv

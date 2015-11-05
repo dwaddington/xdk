@@ -44,6 +44,7 @@
 #include <errno.h>
 
 #include <common/logging.h>
+#include <common/utils.h>
 
 #include "exo/sysfs.h"
 #include "exo/memory.h"
@@ -63,8 +64,7 @@ Exokernel::Device_sysfs::Pci_config_space::Pci_config_space(std::string& root_fs
 {
   const std::string config_node = root_fs + "/config";
 
-  if(verbose)
-    PLOG("Opening config space (%s)",config_node.c_str());
+  PDBG("opening config space (%s)",config_node.c_str());
 
   _fd = open(config_node.c_str(), O_RDWR|O_SYNC);
 
@@ -85,12 +85,16 @@ void Exokernel::Device_sysfs::Pci_config_space::interrogate_bar_regions()
 {
   for(unsigned i=0;i<6;i++) {
 
+    PDBG("accessing PCI bar (%u)", i);
+
     uint32_t bar = read32(PCI_BAR_0+i*4);
     if (bar > 0) {
+
       write32(PCI_BAR_0+i*4,~(0U));
       uint32_t ss_value = read32(PCI_BAR_0+i*4);
       ss_value &= ~0xFU;
       _bar_region_sizes[i] = ss_value & ~( ss_value - 1 );
+      PLOG("PCI bar region %u is %ld bytes",i, _bar_region_sizes[i]);
       
       write32(PCI_BAR_0+i*4,bar);  // replace original
     } 
@@ -171,8 +175,11 @@ uint8_t Exokernel::Device_sysfs::Sysfs_file_accessor::read8(unsigned offset)
   assert(_fd > 0);
   uint8_t val;
 
-  if(pread(_fd,&val,1,offset) != 1) 
-    throw Exokernel::Fatal(__FILE__,__LINE__,"unable to read8 PCI config space");
+  if(pread(_fd,&val,1,offset) != 1) {
+    std::stringstream ss;
+    ss << "unable to read8 PCI config space, offset: " << offset;
+    throw Exokernel::Fatal(__FILE__,__LINE__,ss.str().c_str());
+  }
 
   return val;
 }
@@ -182,7 +189,7 @@ uint16_t Exokernel::Device_sysfs::Sysfs_file_accessor::read16(unsigned offset)
   assert(_fd > 0);
   uint16_t val;
 
-  if(pread(_fd,&val,2,offset) != 2)
+  if(pread(_fd,&val,2,offset) != 2) 
     throw Exokernel::Fatal(__FILE__,__LINE__,"unable to read16 PCI config space");
 
   return val;
@@ -264,6 +271,18 @@ Exokernel::Device_sysfs::
   }
 }
 
+static void touch(void * addr, size_t size) {
+
+  SUPPRESS_NOT_USED_WARN volatile byte b;
+
+  // Touch memory to trigger page mapping.
+  for(volatile byte * p = (byte*) addr; 
+      ((unsigned long)p) < (((unsigned long)addr)+size); 
+      p+=PAGE_SIZE) {
+    b = *p; // R touch.
+  }
+}
+
 
 /** 
  * Allocate contiguous pages for DMA
@@ -277,7 +296,12 @@ Exokernel::Device_sysfs::
  */
 void * 
 Exokernel::Device_sysfs::
-alloc_dma_pages(size_t num_pages, addr_t * phys_addr, int numa_node, int flags) 
+alloc_dma_pages(size_t num_pages, 
+                addr_t * phys_addr, 
+                dma_direction_t direction,
+                void * virt_hint,
+                int numa_node, 
+                int flags) 
 {
   try {
 
@@ -291,7 +315,7 @@ alloc_dma_pages(size_t num_pages, addr_t * phys_addr, int numa_node, int flags)
     fs.open(n.c_str());
 
     std::stringstream sstr;
-    sstr << num_pages << " " << numa_node << std::endl;
+    sstr << num_pages << " " << numa_node <<  " " << direction << std::endl;
     fs << sstr.str();
 
     /* Reset file pointer and read allocation results.  When we do
@@ -329,12 +353,12 @@ alloc_dma_pages(size_t num_pages, addr_t * phys_addr, int numa_node, int flags)
       if(fd == -1)
         throw Exokernel::Fatal(__FILE__,__LINE__,"unable to open /dev/parasite");
       
-      p = mmap(NULL,
+      p = mmap(virt_hint,
                num_pages * PAGE_SIZE, 
                PROT_READ | PROT_WRITE, // prot
                MAP_SHARED | flags,
                fd,
-               paddr);
+               paddr); // phys address will be passed through as offset
         
       if(p==MAP_FAILED) {
         close(fd);
@@ -343,8 +367,11 @@ alloc_dma_pages(size_t num_pages, addr_t * phys_addr, int numa_node, int flags)
       }
       /* zero memory */
       //      memset(p,0,num_pages * PAGE_SIZE);
-      assert(check_aligned(p,PAGE_SIZE));
-          
+
+      /* touch pages */
+      //touch((void*)p,(size_t)(num_pages * PAGE_SIZE));
+
+      assert(check_aligned(p,PAGE_SIZE));          
       close(fd);
     }
 
@@ -371,6 +398,7 @@ alloc_dma_pages(size_t num_pages, addr_t * phys_addr, int numa_node, int flags)
  * 
  * @param num_pages Number of pages (2MB each)
  * @param phys_addr Returned physical address
+ * @param addr_hint Returned virtual address hint
  * @param numa_node Numa node to allocate from
  * @param flags Additional flags
  * 
@@ -378,7 +406,7 @@ alloc_dma_pages(size_t num_pages, addr_t * phys_addr, int numa_node, int flags)
  */
 void * 
 Exokernel::Device_sysfs::
-alloc_dma_huge_pages(size_t num_pages, addr_t * phys_addr, int numa_node, int flags) 
+alloc_dma_huge_pages(size_t num_pages, addr_t * phys_addr, void * addr_hint, int numa_node, int flags) 
 {
   assert(!_fs_root_name.empty());
 
@@ -427,7 +455,7 @@ alloc_dma_huge_pages(size_t num_pages, addr_t * phys_addr, int numa_node, int fl
       if(fd == -1)
         throw Exokernel::Fatal(__FILE__,__LINE__,"unable to open /dev/parasite");
           
-      p = mmap(NULL,
+      p = mmap(addr_hint,
                num_pages * HUGE_PAGE_SIZE, 
                PROT_READ | PROT_WRITE, // prot
                MAP_SHARED | MAP_ANONYMOUS | MAP_HUGETLB | flags,     // flags
@@ -458,6 +486,48 @@ alloc_dma_huge_pages(size_t num_pages, addr_t * phys_addr, int numa_node, int fl
                            "unexpected condition in alloc_dma_huge_pages");
   }
 }
+
+
+/** 
+ * Grant access to allocated memory to all other processes
+ * 
+ * @param phys_addr Physical address of allocated region
+ * 
+ * @return 
+ */
+status_t
+Exokernel::Device_sysfs::
+grant_dma_access(addr_t phys_addr) 
+{
+  assert(!_fs_root_name.empty());
+
+  PINF("granting access ...");
+  try {
+
+    /* first allocate physical pages */
+    std::fstream fs;
+    std::string n = _fs_root_name;
+    n += "/grant_access";
+ 
+    fs.open(n.c_str());
+
+    std::stringstream sstr;
+    sstr << "0x" << std::hex << phys_addr << std::endl;
+    fs << sstr.str();
+  }
+  catch(Exokernel::Fatal e) {
+    PERR("exception %s",e.cause());
+    throw e;
+  }
+  catch(...) {
+    throw Exokernel::Fatal(__FILE__,__LINE__,
+                           "unexpected condition in grant_dma_access");
+  }
+
+  PINF("grant_dma_access OK.");
+  return S_OK;
+}
+
 
 
 /** 
