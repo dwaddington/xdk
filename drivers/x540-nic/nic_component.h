@@ -39,7 +39,6 @@
 #include "xml_config_parser.h"
 #include <component/base.h>
 
-using namespace Exokernel;
 using namespace Component;
 
 namespace Component
@@ -88,5 +87,7 @@ namespace Component
     status_t init(arg_t arg);
     void run();
     status_t cpu_allocation(cpu_mask_t mask);
+
+    DUMMY_IBASE_CONTROL;
   };
 }

@@ -35,7 +35,7 @@
 #include <unistd.h>
 #include <fstream>
 #include <assert.h>
-
+#include <common/dump_utils.h>
 #include "libexo.h"
 
 #define TEST_SIZE HUGE_PAGE_SIZE
@@ -53,12 +53,12 @@ int main(int argc, char * argv[])
     Exokernel::Memory::huge_system_configure_nrpages(128);
     PLOG("configure 128 huge pages");
 
-    q = Exokernel::Memory::huge_malloc(TEST_SIZE,&q_p);
+    q = Exokernel::Memory::huge_malloc(TEST_SIZE);
     assert(q);
     printf("Huge malloc v=%p p=%p\n",q,(void*) q_p);  
   
     memset(q,0xE,TEST_SIZE);
-    Exokernel::hexdump(q,20);
+    hexdump(q,20);
 
     printf("Press a key to exit.\n");
     getchar();
@@ -73,9 +73,9 @@ int main(int argc, char * argv[])
     printf("mq=%p\n",(void*) mq);
     printf("got mq=%p (phys=0x%lx)\n",mq,pm.virt_to_phys(mq));
 
-    Exokernel::hexdump(mq,20);
+    hexdump(mq,20);
     memset(mq,0xD,TEST_SIZE);
-    Exokernel::hexdump(mq,20);
+    hexdump(mq,20);
   }
   
   return 0;

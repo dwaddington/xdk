@@ -48,7 +48,12 @@
 #include <sys/mman.h>
 #include <map>
 #include <sys/shm.h>
-#include <numa.h>
+
+#ifdef NUMA_ENABLE
+        #include <numa.h>
+#else
+        #include <common/xdk_numa_wrapper.h>
+#endif
 
 
 #ifndef SUPPRESS_NOT_USED_WARN

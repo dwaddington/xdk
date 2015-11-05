@@ -34,7 +34,10 @@
 
 #include <fcntl.h>
 #include <assert.h>
-#include <numaif.h>
+
+#ifdef NUMA_ENABLE
+        #include <numaif.h>
+#endif
 
 #include <string.h>
 #include <errno.h>
