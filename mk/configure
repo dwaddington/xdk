@@ -2655,9 +2655,9 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_numa_numa_available" >&5
 $as_echo "$ac_cv_lib_numa_numa_available" >&6; }
 if test "x$ac_cv_lib_numa_numa_available" = xyes; then :
-  use_numa=true
+  have_numa=true
 else
-  use_numa=false
+  have_numa=false
 fi
 
 # Check whether --enable-numa was given.
@@ -2675,16 +2675,17 @@ case "$enable_numa" in
 		;;
 esac
 
-
-if $use_numa
+if $have_numa
 then
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: use libnuma" >&5
+	if $use_numa
+	then
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: use libnuma" >&5
 $as_echo "$as_me: use libnuma" >&6;}
-	numa_flag="-D NUMA_ENABLE"
+		numa_flag="-D NUMA_ENABLE"
 
-	numa_lib="-lnuma"
+		numa_lib="-lnuma"
 
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for numa_available in -lnuma" >&5
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for numa_available in -lnuma" >&5
 $as_echo_n "checking for numa_available in -lnuma... " >&6; }
 if ${ac_cv_lib_numa_numa_available+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -2731,16 +2732,22 @@ else
   as_fn_error $? "libnuma-dev not installed" "$LINENO" 5
 fi
 
+	else
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: not use libnuma" >&5
+$as_echo "$as_me: not use libnuma" >&6;}
+		numa_flag="-D NUMA_DISABLE"
+
+		numa_lib=" "
+
+	fi
 else
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: not use libnuma" >&5
 $as_echo "$as_me: not use libnuma" >&6;}
-	numa_flag="-D NUMA_DISABLE"
+        numa_flag="-D NUMA_DISABLE"
 
-	numa_lib=" "
+        numa_lib=" "
 
 fi
-
-
 
 # this should work but it doesn't?
 #
