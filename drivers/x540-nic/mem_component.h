@@ -39,8 +39,6 @@
 #include "xml_config_parser.h"
 #include <component/base.h>
 
-using namespace Exokernel;
-using namespace Exokernel::Memory;
 using namespace Component;
 
 namespace Component
@@ -53,7 +51,7 @@ namespace Component
                        public Component::IMem
   {
   public:
-    Numa_slab_allocator *** _allocator;
+    Exokernel::Memory::Numa_slab_allocator *** _allocator;
     INic * _inic;
     unsigned** _allocator_core;
     unsigned _nic_num;
@@ -97,6 +95,8 @@ namespace Component
     void * alloc(size_t n);
     status_t free(void * p);
     status_t cpu_allocation(cpu_mask_t mask);
+
+    DUMMY_IBASE_CONTROL;
   };
 }
 

@@ -1,7 +1,37 @@
 AC_INIT([XDK],[0.1])
-AC_CHECK_LIB([numa],[numa_available],[],AC_MSG_ERROR([libnuma-dev not installed]))
 AC_CHECK_LIB([tinyxml],[tolower],[],AC_MSG_ERROR([libtinyxml-dev not installed]))
 
+AC_MSG_CHECKING(whether to enable NUMA support)
+AC_CHECK_LIB([numa],[numa_available], [have_numa=true], [have_numa=false])
+AC_ARG_ENABLE(numa, [AS_HELP_STRING([--enable-numa],[enable numa support, requires libnuma-dev installed])])
+
+case "$enable_numa" in
+	no)
+		use_numa=false
+		;;
+	*)	
+		use_numa=true
+		;;
+esac
+
+if $have_numa
+then
+	if $use_numa
+	then
+		AC_MSG_NOTICE([use libnuma])
+		AC_SUBST(numa_flag, "-D NUMA_ENABLE")
+		AC_SUBST(numa_lib, "-lnuma")
+		AC_CHECK_LIB([numa],[numa_available],[],AC_MSG_ERROR([libnuma-dev not installed]))
+	else
+		AC_MSG_NOTICE([not use libnuma])
+		AC_SUBST(numa_flag, "-D NUMA_DISABLE")
+		AC_SUBST(numa_lib, " ")
+	fi
+else
+	AC_MSG_NOTICE([not use libnuma])
+        AC_SUBST(numa_flag, "-D NUMA_DISABLE")
+        AC_SUBST(numa_lib, " ")
+fi
 
 # this should work but it doesn't?
 #

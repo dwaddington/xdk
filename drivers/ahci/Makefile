@@ -3,7 +3,7 @@ include ../../mk/global.mk
 TARGET = ahci_drv
 SOURCES = main.cc ahci_device.cc ahci_port.cc debug.cc
 CXXFLAGS += $(XDK_INCLUDES)
-LIBS = $(XDK_LIBS) -lpthread -lrt -lnuma
+LIBS = $(XDK_LIBS) -lpthread -lrt $(XDK_NUMA_LIB)
 
 all: ahci_drv
 

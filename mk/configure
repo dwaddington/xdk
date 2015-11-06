@@ -583,6 +583,8 @@ PACKAGE_URL=''
 
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
+numa_lib
+numa_flag
 OBJEXT
 EXEEXT
 ac_ct_CC
@@ -631,6 +633,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+enable_numa
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1244,6 +1247,12 @@ if test -n "$ac_init_help"; then
      short | recursive ) echo "Configuration of XDK 0.1:";;
    esac
   cat <<\_ACEOF
+
+Optional Features:
+  --disable-option-checking  ignore unrecognized --enable/--with options
+  --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
+  --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
+  --enable-numa           enable numa support, requires libnuma-dev installed
 
 Some influential environment variables:
   CC          C compiler command
@@ -2559,53 +2568,6 @@ ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for numa_available in -lnuma" >&5
-$as_echo_n "checking for numa_available in -lnuma... " >&6; }
-if ${ac_cv_lib_numa_numa_available+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lnuma  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char numa_available ();
-int
-main ()
-{
-return numa_available ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_numa_numa_available=yes
-else
-  ac_cv_lib_numa_numa_available=no
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_numa_numa_available" >&5
-$as_echo "$ac_cv_lib_numa_numa_available" >&6; }
-if test "x$ac_cv_lib_numa_numa_available" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_LIBNUMA 1
-_ACEOF
-
-  LIBS="-lnuma $LIBS"
-
-else
-  as_fn_error $? "libnuma-dev not installed" "$LINENO" 5
-fi
-
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for tolower in -ltinyxml" >&5
 $as_echo_n "checking for tolower in -ltinyxml... " >&6; }
 if ${ac_cv_lib_tinyxml_tolower+:} false; then :
@@ -2654,6 +2616,138 @@ else
 fi
 
 
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to enable NUMA support" >&5
+$as_echo_n "checking whether to enable NUMA support... " >&6; }
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for numa_available in -lnuma" >&5
+$as_echo_n "checking for numa_available in -lnuma... " >&6; }
+if ${ac_cv_lib_numa_numa_available+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lnuma  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char numa_available ();
+int
+main ()
+{
+return numa_available ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_numa_numa_available=yes
+else
+  ac_cv_lib_numa_numa_available=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_numa_numa_available" >&5
+$as_echo "$ac_cv_lib_numa_numa_available" >&6; }
+if test "x$ac_cv_lib_numa_numa_available" = xyes; then :
+  have_numa=true
+else
+  have_numa=false
+fi
+
+# Check whether --enable-numa was given.
+if test "${enable_numa+set}" = set; then :
+  enableval=$enable_numa;
+fi
+
+
+case "$enable_numa" in
+	no)
+		use_numa=false
+		;;
+	*)
+		use_numa=true
+		;;
+esac
+
+if $have_numa
+then
+	if $use_numa
+	then
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: use libnuma" >&5
+$as_echo "$as_me: use libnuma" >&6;}
+		numa_flag="-D NUMA_ENABLE"
+
+		numa_lib="-lnuma"
+
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for numa_available in -lnuma" >&5
+$as_echo_n "checking for numa_available in -lnuma... " >&6; }
+if ${ac_cv_lib_numa_numa_available+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lnuma  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char numa_available ();
+int
+main ()
+{
+return numa_available ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_numa_numa_available=yes
+else
+  ac_cv_lib_numa_numa_available=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_numa_numa_available" >&5
+$as_echo "$ac_cv_lib_numa_numa_available" >&6; }
+if test "x$ac_cv_lib_numa_numa_available" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LIBNUMA 1
+_ACEOF
+
+  LIBS="-lnuma $LIBS"
+
+else
+  as_fn_error $? "libnuma-dev not installed" "$LINENO" 5
+fi
+
+	else
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: not use libnuma" >&5
+$as_echo "$as_me: not use libnuma" >&6;}
+		numa_flag="-D NUMA_DISABLE"
+
+		numa_lib=" "
+
+	fi
+else
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: not use libnuma" >&5
+$as_echo "$as_me: not use libnuma" >&6;}
+        numa_flag="-D NUMA_DISABLE"
+
+        numa_lib=" "
+
+fi
 
 # this should work but it doesn't?
 #

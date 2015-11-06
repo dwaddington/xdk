@@ -34,8 +34,6 @@
 
 #include "exo/topology.h"
 
-#include <numa.h>
-
 unsigned Exokernel::CPU::num_configured() {
   return numa_num_configured_cpus();
 }
