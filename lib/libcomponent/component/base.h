@@ -35,7 +35,6 @@
 #ifndef __COMPONENT_BASE_H__
 #define __COMPONENT_BASE_H__
 
-#include <boost/atomic.hpp>
 #include <assert.h>
 #include <stdint.h>
 #include <dlfcn.h>
@@ -43,6 +42,7 @@
 #include <common/types.h>
 #include <common/logging.h>
 #include <common/errors.h>
+#include <atomic>
 #include <string>
 #include <sstream>
 #include <iomanip>
@@ -129,7 +129,7 @@ namespace Component
   class IBase
   {
   private:
-    boost::atomic<unsigned> _ref_count; /* component level reference counting */
+    std::atomic<unsigned>   _ref_count; /* component level reference counting */
     void *                  _dll_handle;
 
   public:
