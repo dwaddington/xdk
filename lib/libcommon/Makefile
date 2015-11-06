@@ -1,5 +1,13 @@
+include ../../mk/global.mk
 CXX_FLAGS+=-I./
-OBJS=dump_utils.o cycles.o utils.o xdk_numa_wrapper.o
+
+ifeq ($(XDK_NUMA_LIB), -lnuma)
+	OBJS=dump_utils.o cycles.o utils.o
+else
+	OBJS=dump_utils.o cycles.o utils.o xdk_numa_wrapper.o
+endif
+
+#OBJS=dump_utils.o cycles.o utils.o xdk_numa_wrapper.o
 
 all: libcommon.a
 
