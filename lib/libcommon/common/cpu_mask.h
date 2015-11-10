@@ -13,7 +13,7 @@ private:
 
 public:
   cpu_mask_t() {
-    memset(&cpu_set_,0,sizeof(cpu_set_t));
+    __builtin_memset(&cpu_set_,0,sizeof(cpu_set_t));
   }
 
   void set_bit(int cpu) {

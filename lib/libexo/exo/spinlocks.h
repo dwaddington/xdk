@@ -48,7 +48,7 @@
 #define INLINE inline __attribute__((always_inline))
 #endif
 
-#if defined(__x86_64__) || defined(__i386__) || defined(__ARM_ARCH_7A__)
+#if defined(__x86_64__) || defined(__i386__) || defined(__arm__)
 #define CACHE_LINE_SIZE 64
 #endif
 

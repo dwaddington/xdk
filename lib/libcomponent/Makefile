@@ -9,4 +9,4 @@ clean:
 	rm -f *.o libcomponent.a
 
 %.o:%.cc
-	g++ -fPIC -g $(CXX_FLAGS) -c $< -o $@
+	g++ -std=c++11 -fPIC -g $(CXX_FLAGS) -c $< -o $@

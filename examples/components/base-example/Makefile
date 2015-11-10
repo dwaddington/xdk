@@ -1,6 +1,6 @@
 include ../../../mk/global.mk
 
-CXXFLAGS += -g $(XDK_INCLUDES)
+CXXFLAGS += -g -std=c++11 $(XDK_INCLUDES)
 BOOST_LIBS = -lboost_thread
 LIBS = $(XDK_LIBS) -ldl $(BOOST_LIBS)
 
