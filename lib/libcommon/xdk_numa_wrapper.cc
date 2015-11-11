@@ -651,3 +651,15 @@ long move_pages(int pid, unsigned long count,
   printf("%s: NOT IMPLEMENTED! return 0\n",__PRETTY_FUNCTION__);
   return 0;      
 }
+
+void *numa_alloc_local(size_t size)
+{
+  char *mem;
+  mem = mmap(0, size, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS,
+      0, 0);
+  if (mem == (char *)-1)
+    mem =  NULL;
+  else
+    dombind(mem, size, MPOL_PREFERRED, NULL);
+  return mem;
+}
