@@ -36,6 +36,7 @@
 #include <dlfcn.h>
 #include <assert.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <component/base.h>
 #include <common/errors.h>
