@@ -1,0 +1,6 @@
+src/src_libzmq_la-pgm_socket.lo: src/pgm_socket.cpp \
+ /usr/include/stdc-predef.h src/platform.hpp
+
+/usr/include/stdc-predef.h:
+
+src/platform.hpp:

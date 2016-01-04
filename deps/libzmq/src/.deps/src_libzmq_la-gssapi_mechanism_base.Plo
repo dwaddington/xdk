@@ -1,0 +1,6 @@
+src/src_libzmq_la-gssapi_mechanism_base.lo: src/gssapi_mechanism_base.cpp \
+ /usr/include/stdc-predef.h src/platform.hpp
+
+/usr/include/stdc-predef.h:
+
+src/platform.hpp:

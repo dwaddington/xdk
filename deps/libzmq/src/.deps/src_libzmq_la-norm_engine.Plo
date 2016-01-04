@@ -1,0 +1,6 @@
+src/src_libzmq_la-norm_engine.lo: src/norm_engine.cpp \
+ /usr/include/stdc-predef.h src/platform.hpp
+
+/usr/include/stdc-predef.h:
+
+src/platform.hpp:

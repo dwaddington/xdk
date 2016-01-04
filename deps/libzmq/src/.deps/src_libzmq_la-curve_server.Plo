@@ -1,0 +1,6 @@
+src/src_libzmq_la-curve_server.lo: src/curve_server.cpp \
+ /usr/include/stdc-predef.h src/platform.hpp
+
+/usr/include/stdc-predef.h:
+
+src/platform.hpp:
