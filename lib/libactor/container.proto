@@ -1,0 +1,38 @@
+import "msgtypes.proto";
+
+package ContainerProtocol;
+
+option optimize_for = SPEED;
+
+message Request
+{
+  required MessageType type = 1 [default = CONTAINER_REQ];
+
+  enum Operation {
+    ADD_COMPONENT = 1;
+    REMOVE_COMPONENT = 2;
+    INVOKE_COMPONENT = 3;
+    PAIRWISE_BIND = 4;
+    CONFIGURE_PIPELINE = 5;
+    TEARDOWN_PIPELINE = 6;
+    START_PIPELINE = 7;
+    STOP_PIPELINE = 8;
+    RESET_PIPELINE = 9;
+  }
+
+  required Operation op = 2;
+  optional string instance_id = 3;
+  optional string component_id = 4;
+  optional string path = 5;
+  optional string xml = 6;
+  optional string operation = 7;
+}
+
+message Reply
+{
+  required MessageType type = 1 [default = CONTAINER_REPLY];
+  optional int32 status = 2;
+  optional int32 remaining = 3;
+  optional string operation_result = 4;
+}
+

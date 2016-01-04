@@ -1,0 +1,18 @@
+enum MessageType
+{
+  ACTOR_REQ = 1;
+  ACTOR_REPLY = 2;
+  CONTAINER_REQ = 3;
+  CONTAINER_REPLY = 4;
+  PACKET_IN = 9;
+  PACKET_OUT = 10;
+  USER1 = 11;
+  USER2 = 12;
+  USER3 = 13;
+  USER4 = 14;
+  USER5 = 15;
+  USER6 = 16;
+  USER7 = 17;
+  USER8 = 18;
+  USER9 = 19;
+}

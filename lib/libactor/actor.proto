@@ -1,0 +1,30 @@
+import "msgtypes.proto";
+
+package ActorProtocol;
+
+option optimize_for = SPEED;
+
+message Unknown
+{
+  required MessageType type = 1;
+}
+
+message ActorRequest
+{
+  required MessageType type = 1 [default = ACTOR_REQ];
+  enum Operation {
+    CREATE_SESSION = 1;
+    CLOSE_SESSION = 2;
+    ACTOR_SHUTDOWN = 3;	
+  }
+  required Operation operation = 2;
+  optional string base_endpoint = 3;
+  optional uint32 request_id = 4;
+}
+
+message ActorReply
+{
+  required MessageType type = 1 [default = ACTOR_REPLY];
+  optional string session_endpoint = 2;
+}
+
