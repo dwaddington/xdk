@@ -37,6 +37,7 @@
 #include <linux/pci.h>
 #include <linux/interrupt.h>
 #include <linux/proc_fs.h>
+#include <linux/version.h>
 
 /* #include <linux/uio_driver.h> */
 
@@ -45,7 +46,7 @@
 #include "version.h"
 
 #define DEVICE_NAME "parasite"
-#define PARASITIC_KERNEL_VER "0.1"
+#define PARASITIC_KERNEL_VER "0.2"
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Daniel G. Waddington");
@@ -113,6 +114,7 @@ struct pk_device * sysfs_class_register_device(struct pci_dev * pci_dev)
 {
 	struct pk_device *pkdev;
 	int ret = 0;
+  int error = 0;
 
   if(!pci_dev)
     return NULL;
@@ -163,17 +165,20 @@ struct pk_device * sysfs_class_register_device(struct pci_dev * pci_dev)
 	}
 
   /* create device attributes */
-  device_create_file(pkdev->dev, &dev_attr_name);
-  device_create_file(pkdev->dev, &dev_attr_version);
-  device_create_file(pkdev->dev, &dev_attr_pci);
-  device_create_file(pkdev->dev, &dev_attr_irq);
-  device_create_file(pkdev->dev, &dev_attr_irq_mode);
-  device_create_file(pkdev->dev, &dev_attr_dma_mask);
-  device_create_file(pkdev->dev, &dev_attr_dma_page_alloc);
-  device_create_file(pkdev->dev, &dev_attr_dma_page_free);
-  device_create_file(pkdev->dev, &dev_attr_msi_alloc);
-  device_create_file(pkdev->dev, &dev_attr_msi_cap);
-  device_create_file(pkdev->dev, &dev_attr_grant_access);
+  if((error = device_create_file(pkdev->dev, &dev_attr_name)) ||
+     (error = device_create_file(pkdev->dev, &dev_attr_version)) ||
+     (error = device_create_file(pkdev->dev, &dev_attr_pci)) ||
+     (error = device_create_file(pkdev->dev, &dev_attr_irq)) ||
+     (error = device_create_file(pkdev->dev, &dev_attr_irq_mode)) ||
+     (error = device_create_file(pkdev->dev, &dev_attr_dma_mask)) ||
+     (error = device_create_file(pkdev->dev, &dev_attr_dma_page_alloc)) ||
+     (error = device_create_file(pkdev->dev, &dev_attr_dma_page_free)) ||
+     (error = device_create_file(pkdev->dev, &dev_attr_msi_alloc)) ||
+     (error = device_create_file(pkdev->dev, &dev_attr_msi_cap)) ||
+     (error = device_create_file(pkdev->dev, &dev_attr_grant_access))) {
+    PERR("device_create_file: attribute reg failed");
+    goto err_device_create;
+  }
 
   /* create procfs dir */
   ASSERT(pk_proc_dir_root!=NULL);
@@ -424,6 +429,11 @@ static status_t major_init(void)
   pk_proc_dir_root = proc_mkdir(DEVICE_NAME, NULL);    
   ASSERT(pk_proc_dir_root);
 
+
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,14,0)
+  idr_preload(GFP_KERNEL);
+#endif
+  
   PLOG("major init complete.");
   return S_OK;
 }
@@ -581,17 +591,6 @@ bool check_authority(struct pci_dev * pci_dev)
 }
 
 
-
-
-static struct class_attribute pk_version =
-  __ATTR(version, S_IRUGO, pk_class_version_show, NULL);
-
-static struct class_attribute pk_detach = 
-  __ATTR(detach, S_IWUSR, NULL, pk_detach_store);
-
-static struct class_attribute pk_grant_device = 
-  __ATTR(grant_device, S_IWUGO, NULL, pk_grant_device_store);
-
 /** 
  * Write handler for /sys/class/parasite/new_id, which is
  * non-root priviledged command point for adding a device
@@ -658,11 +657,35 @@ ssize_t pk_new_id_store(struct class *class,
 	return count;
 }
 
+
+
+
+/* static const struct class_attribute pk_version = */
+/*   __ATTR(version, S_IRUGO, pk_class_version_show, NULL); */
+
+static struct class_attribute pk_version[] = {
+  __ATTR(version, S_IRUGO, pk_class_version_show, NULL),
+  __ATTR_NULL,
+};
+
+static struct class_attribute pk_detach[] = {
+  __ATTR(detach, S_IWUSR, NULL, pk_detach_store),
+  __ATTR_NULL,
+};
+
+static struct class_attribute pk_grant_device[] = {
+  __ATTR(grant_device, S_IWUSR, NULL, pk_grant_device_store),
+  __ATTR_NULL,
+};
+
 /* allow non-root call of /sys/class/parasite/new_id which
    attaches a device to the parasitic kernel 
 */
-static struct class_attribute pk_new_id = 
-  __ATTR(new_id, S_IWUSR|S_IWOTH, NULL, pk_new_id_store);
+static const struct class_attribute pk_new_id[] = {
+  __ATTR(new_id, S_IWUSR|S_IRUGO, NULL, pk_new_id_store),
+  __ATTR_NULL,
+};
+
 
 
 /** 
@@ -684,19 +707,19 @@ status_t class_init(void)
     goto err_class_register;
 
   /* set attributes for class (i.e. /sys/class/parasite/version etc.) */
-  ret = class_create_file(parasite_class, &pk_version);
+  ret = class_create_file(parasite_class, pk_version);
   if(ret)
     goto err_class_create_file;
 
-  ret = class_create_file(parasite_class, &pk_detach);
+  ret = class_create_file(parasite_class, pk_detach);
   if(ret)
     goto err_class_create_file;
 
-  ret = class_create_file(parasite_class, &pk_grant_device);
+  ret = class_create_file(parasite_class, pk_grant_device);
   if(ret)
     goto err_class_create_file;
 
-  ret = class_create_file(parasite_class, &pk_new_id);
+  ret = class_create_file(parasite_class, pk_new_id);
   if(ret)
     goto err_class_create_file;
 
@@ -725,6 +748,8 @@ static int get_minor(struct pk_device *dev)
 	int id;
 
 	mutex_lock(&minor_lock);
+
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(3,14,0)
 	if (idr_pre_get(&pk_idr, GFP_KERNEL) == 0)
 		goto exit;
 
@@ -734,6 +759,13 @@ static int get_minor(struct pk_device *dev)
 			retval = -ENOMEM;
 		goto exit;
 	}
+#else
+  id = idr_alloc(&pk_idr, dev, 0, 0, GFP_KERNEL);
+  if (id == -ENOMEM) {
+    retval = -ENOMEM;
+    goto exit;
+  }
+#endif
 
 	if (id < MAX_DEVICES) {
 		dev->minor = id;

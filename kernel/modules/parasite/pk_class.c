@@ -70,7 +70,8 @@ extern struct proc_dir_entry * pk_proc_dir_root;
 extern void pk_device_cleanup(struct pk_device * pkdev);
 
 static ssize_t show_name(struct device *dev,
-                         struct device_attribute *attr, char *buf)
+                         struct device_attribute *attr,
+                         char *buf)
 {
   return sprintf(buf, "XDK parasitic driver\n");
 }
@@ -972,7 +973,9 @@ static ssize_t msi_alloc_store(struct device *dev,
 
     pkdev->msi_entry_num = num_vecs;
 
-    rc = pci_enable_msi_block(pkdev->pci_dev, num_vecs);    
+#if LINUX_VERSION_CODE > KERNEL_VERSION(3,15,0)
+#else
+    rc = pci_enable_msi_block(pkdev->pci_dev, num_vecs);
 
     if (rc!=0) {
       if (rc > 0) {
@@ -983,6 +986,7 @@ static ssize_t msi_alloc_store(struct device *dev,
       }
       return rc;
     }
+#endif
 
     rc = setup_msi_handlers(pkdev);
     ASSERT(rc==0);
@@ -1178,13 +1182,12 @@ DEVICE_ATTR(name, S_IRUGO, show_name, NULL);
 DEVICE_ATTR(version, S_IRUGO, show_version, NULL);
 DEVICE_ATTR(pci, S_IRUGO, show_pci, NULL);
 DEVICE_ATTR(irq, S_IRUGO, wait_irq, NULL);
-DEVICE_ATTR(irq_mode, S_IRUGO | S_IWUGO, irq_mode_show, irq_mode_store);
-DEVICE_ATTR(dma_mask, S_IRUGO | S_IWUGO, dma_mask_show, dma_mask_store);
-DEVICE_ATTR(dma_page_alloc, S_IRUGO | S_IWUGO, dma_alloc_show, dma_alloc_store);
-DEVICE_ATTR(dma_page_free, S_IWUGO, NULL, dma_free_store);
-DEVICE_ATTR(msi_alloc, S_IRUGO | S_IWUGO, msi_alloc_show, msi_alloc_store);
+DEVICE_ATTR(irq_mode, S_IRUGO | S_IWUSR, irq_mode_show, irq_mode_store);
+DEVICE_ATTR(dma_mask, S_IRUGO | S_IWUSR, dma_mask_show, dma_mask_store);
+DEVICE_ATTR(dma_page_alloc, S_IRUGO | S_IWUSR, dma_alloc_show, dma_alloc_store);
+DEVICE_ATTR(dma_page_free, S_IWUSR, NULL, dma_free_store);
+DEVICE_ATTR(msi_alloc, S_IRUGO | S_IWUSR, msi_alloc_show, msi_alloc_store);
 DEVICE_ATTR(msi_cap, S_IRUGO, msi_cap_show, NULL);
-DEVICE_ATTR(grant_access, S_IWUGO, NULL, grant_access_store);
-
+DEVICE_ATTR(grant_access, S_IWUSR, NULL, grant_access_store);
 
 #undef DECLARE_PCIDEV_PKDEV
