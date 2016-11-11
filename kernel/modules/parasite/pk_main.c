@@ -663,17 +663,17 @@ ssize_t pk_new_id_store(struct class *class,
 /* static const struct class_attribute pk_version = */
 /*   __ATTR(version, S_IRUGO, pk_class_version_show, NULL); */
 
-static struct class_attribute pk_version[] = {
+struct class_attribute pk_version[] = {
   __ATTR(version, S_IRUGO, pk_class_version_show, NULL),
   __ATTR_NULL,
 };
 
-static struct class_attribute pk_detach[] = {
+struct class_attribute pk_detach[] = {
   __ATTR(detach, S_IWUSR, NULL, pk_detach_store),
   __ATTR_NULL,
 };
 
-static struct class_attribute pk_grant_device[] = {
+struct class_attribute pk_grant_device[] = {
   __ATTR(grant_device, S_IWUSR, NULL, pk_grant_device_store),
   __ATTR_NULL,
 };
@@ -681,7 +681,7 @@ static struct class_attribute pk_grant_device[] = {
 /* allow non-root call of /sys/class/parasite/new_id which
    attaches a device to the parasitic kernel 
 */
-static const struct class_attribute pk_new_id[] = {
+struct class_attribute pk_new_id[] = {
   __ATTR(new_id, S_IWUSR|S_IRUGO, NULL, pk_new_id_store),
   __ATTR_NULL,
 };

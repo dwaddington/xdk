@@ -162,10 +162,12 @@ static int probe(struct pci_dev *dev,
   PLOG("pci: vendor=%x device=%x",dev->vendor, dev->device);
   PLOG("pci: slot=%u", PCI_SLOT(dev->devfn));
 
+  #ifdef BROKEN
   if(!check_authority(dev)) {
     PLOG("pci:probe denied!");
     return -EINVAL;
   }
+  #endif
 
   PLOG("pci:probe on device granted");
   
@@ -259,6 +261,7 @@ static int probe(struct pci_dev *dev,
     }
   }
 
+  PLOG("pci: probe complete.");
   return 0;
 }
 
