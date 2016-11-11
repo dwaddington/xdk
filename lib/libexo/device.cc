@@ -193,6 +193,7 @@ __locate_device(unsigned instance, unsigned vendor, unsigned device) {
       
       //      fs.open("/sys/bus/pci/drivers/parasite/new_id");  
       fs.open("/sys/class/parasite/new_id");  /* non-root access */
+      std::cout << "DBG:" << std::hex << vendor << " " << std::hex << device << std::endl;
       fs << std::hex << vendor << " " << std::hex << device << std::endl;
       fs.close();
 

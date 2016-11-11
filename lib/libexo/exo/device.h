@@ -125,6 +125,7 @@ namespace Exokernel
       _instance = instance;
 
       /* initialized inherited classes */
+      assert(!_sys_fs_root_name.empty());
       Device_sysfs::init(_sys_fs_root_name, _sys_fs_pci_root_name);
     }
 

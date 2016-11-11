@@ -150,6 +150,8 @@ struct pk_device * sysfs_class_register_device(struct pci_dev * pci_dev)
 
   /* create new device with sysfs */
   BUG_ON(parasite_class == NULL);
+
+  PLOG("Creating device for newly attached PCI device.");
 	pkdev->dev = device_create(parasite_class, /* class to which this device belongs */
                              NULL, // no parent
                              MKDEV(pk_major, pkdev->minor), 
@@ -663,28 +665,16 @@ ssize_t pk_new_id_store(struct class *class,
 /* static const struct class_attribute pk_version = */
 /*   __ATTR(version, S_IRUGO, pk_class_version_show, NULL); */
 
-struct class_attribute pk_version[] = {
-  __ATTR(version, S_IRUGO, pk_class_version_show, NULL),
-  __ATTR_NULL,
-};
+struct class_attribute pk_version = __ATTR(version, S_IRUGO, pk_class_version_show, NULL);
 
-struct class_attribute pk_detach[] = {
-  __ATTR(detach, S_IWUSR, NULL, pk_detach_store),
-  __ATTR_NULL,
-};
+struct class_attribute pk_detach =  __ATTR(detach, S_IWUSR, NULL, pk_detach_store);
 
-struct class_attribute pk_grant_device[] = {
-  __ATTR(grant_device, S_IWUSR, NULL, pk_grant_device_store),
-  __ATTR_NULL,
-};
+struct class_attribute pk_grant_device = __ATTR(grant_device, S_IWUSR, NULL, pk_grant_device_store);
 
 /* allow non-root call of /sys/class/parasite/new_id which
    attaches a device to the parasitic kernel 
 */
-struct class_attribute pk_new_id[] = {
-  __ATTR(new_id, S_IWUSR|S_IRUGO, NULL, pk_new_id_store),
-  __ATTR_NULL,
-};
+struct class_attribute pk_new_id = __ATTR(new_id, S_IWUSR|S_IRUGO, NULL, pk_new_id_store);
 
 
 
@@ -707,19 +697,19 @@ status_t class_init(void)
     goto err_class_register;
 
   /* set attributes for class (i.e. /sys/class/parasite/version etc.) */
-  ret = class_create_file(parasite_class, pk_version);
+  ret = class_create_file(parasite_class, &pk_version);
   if(ret)
     goto err_class_create_file;
 
-  ret = class_create_file(parasite_class, pk_detach);
+  ret = class_create_file(parasite_class, &pk_detach);
   if(ret)
     goto err_class_create_file;
 
-  ret = class_create_file(parasite_class, pk_grant_device);
+  ret = class_create_file(parasite_class, &pk_grant_device);
   if(ret)
     goto err_class_create_file;
 
-  ret = class_create_file(parasite_class, pk_new_id);
+  ret = class_create_file(parasite_class, &pk_new_id);
   if(ret)
     goto err_class_create_file;
 

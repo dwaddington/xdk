@@ -11,6 +11,7 @@ using namespace Exokernel;
 
 static Exokernel::device_vendor_pair_t 
 dev_tbl[] = {{0x8086,0x5845}, // QEMU NVME SSD
+             {0x8086,0x0953}, // Intel PC 3700 SSD
              {0,0}};
 
 class Dummy_device : public Exokernel::Pci_device {
