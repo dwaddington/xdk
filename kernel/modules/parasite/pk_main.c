@@ -112,19 +112,21 @@ static inline struct page *__last_page(void *addr, unsigned long size)
  */
 struct pk_device * sysfs_class_register_device(struct pci_dev * pci_dev)
 {
-	struct pk_device *pkdev;
-	int ret = 0;
+  struct pk_device *pkdev;
+  int ret = 0;
   int error = 0;
 
+  BUG_ON(pci_dev == NULL);
+  
   if(!pci_dev)
     return NULL;
 
   /* allocate memory for new pk_device */
-	pkdev = kzalloc(sizeof(*pkdev), GFP_KERNEL);
-	if (!pkdev) {
-		ret = -ENOMEM;
-		goto err_kzalloc;
-	}
+  pkdev = kzalloc(sizeof(*pkdev), GFP_KERNEL);
+  if (!pkdev) {
+    ret = -ENOMEM;
+    goto err_kzalloc;
+  }
 
   /* init pk_device structure */
   memset((void*)pkdev,0,sizeof(struct pk_device));
@@ -136,15 +138,17 @@ struct pk_device * sysfs_class_register_device(struct pci_dev * pci_dev)
 	init_waitqueue_head(&pkdev->irq_wait);
   pkdev->magic = PK_MAGIC;
   pkdev->irq_mode = IRQ_MODE_NONMASKING;
-  
+
   /* populate class device structure */
   pkdev->pci_dev = pci_dev;
   PLOG("(*) %u:%u\n",pci_dev->bus->number,pci_dev->bus->primary);
 
-	ret = get_minor(pkdev);
-	if (ret)
-		goto err_get_minor;
+  ret = get_minor(pkdev);
+  if (ret)
+    goto err_get_minor;
 
+  PLOG("got minor");
+  
   /* set up name */
   snprintf(pkdev->name,32,"pk%d",pkdev->minor);
 
@@ -578,6 +582,8 @@ static bool is_device_granted(int bus,
 
 bool check_authority(struct pci_dev * pci_dev)
 {
+  return true;
+#ifdef THIS_IS_BROKEN
   int uid = uid = get_current_user()->uid.val;
   struct pci_bus *bus = pci_dev->slot->bus;
 
@@ -590,6 +596,7 @@ bool check_authority(struct pci_dev * pci_dev)
   }
 
   return result;
+#endif
 }
 
 
@@ -734,41 +741,46 @@ err_class_register:
  */
 static int get_minor(struct pk_device *dev)
 {
-	int retval = -ENOMEM;
-	int id;
+  int retval = -ENOMEM;
+  int id;
 
-	mutex_lock(&minor_lock);
+  BUG_ON(dev == NULL);
+  mutex_lock(&minor_lock);
 
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(3,14,0)
-	if (idr_pre_get(&pk_idr, GFP_KERNEL) == 0)
-		goto exit;
+  if (idr_pre_get(&pk_idr, GFP_KERNEL) == 0)
+    goto exit;
 
-	retval = idr_get_new(&pk_idr, dev, &id);
-	if (retval < 0) {
-		if (retval == -EAGAIN)
-			retval = -ENOMEM;
-		goto exit;
-	}
+  retval = idr_get_new(&pk_idr, dev, &id);
+  if (retval < 0) {
+    if (retval == -EAGAIN)
+      retval = -ENOMEM;
+    goto exit;
+  }
 #else
+  PLOG("calling idr_alloc");
   id = idr_alloc(&pk_idr, dev, 0, 0, GFP_KERNEL);
   if (id == -ENOMEM) {
     retval = -ENOMEM;
     goto exit;
   }
 #endif
-
-	if (id < MAX_DEVICES) {
-		dev->minor = id;
-	} 
+  PLOG("idr_get_new allocated id=%d",id);
+  
+  if (id < MAX_DEVICES) {
+    dev->minor = id;
+  } 
   else {
-		dev_err(dev->dev, "too many pk devices\n");
-		retval = -EINVAL;
-		idr_remove(&pk_idr, id);
-	}
+    dev_err(dev->dev, "too many pk devices\n");
+    retval = -EINVAL;
+    idr_remove(&pk_idr, id);
+  }
 
-exit:
-	mutex_unlock(&minor_lock);
-	return retval;
+  return 0;
+  
+ exit:
+  mutex_unlock(&minor_lock);
+  return retval;
 }
 
 void free_minor(struct pk_device *pkdev)

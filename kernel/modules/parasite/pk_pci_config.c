@@ -10,6 +10,9 @@ ssize_t pci_config_proc_read(struct file * fp,
                              size_t size, 
                              loff_t * offset)
 {
+  BUG_ON(offset == NULL);
+  BUG_ON(fp ==NULL);
+  
   struct pk_device * pkdev;
   struct pci_dev * pci_dev;
   int rc;
