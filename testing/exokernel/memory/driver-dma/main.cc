@@ -14,6 +14,7 @@ using namespace Exokernel;
 static Exokernel::device_vendor_pair_t 
 dev_tbl[] = {{0x8086,0x2922}, // Qemu
              {0x8086,0x3a22}, // Intel ICH
+             {0x8086,0x0953}, // Intel PC 3700 SSD
              {0x8086,0x2829}, // VirtualBox
 	     {0x8086,0x1528}, // X540 NIC card
              {0,0}};
